@@ -1,0 +1,61 @@
+"use client";
+
+import Link, { useLinkStatus } from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
+
+const links = [
+  { href: "/dashboard", label: "Listings" },
+  { href: "/dashboard/preferences", label: "Preferences" },
+  { href: "/dashboard/groups", label: "FB Groups" },
+  { href: "/dashboard/stats", label: "Stats" },
+  { href: "/dashboard/chat", label: "Chat" },
+] as const;
+
+export function DashboardNav() {
+  const pathname = usePathname();
+  return (
+    <nav className="flex gap-4">
+      {links.map((l) => {
+        const isActive =
+          l.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(l.href);
+        return (
+          <Link
+            key={l.href}
+            href={l.href}
+            prefetch
+            className={cn(
+              "inline-flex items-center gap-1.5 text-sm transition-colors",
+              isActive
+                ? "font-medium text-foreground"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <LinkPendingIndicator />
+            {l.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+function LinkPendingIndicator() {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return <Spinner className="h-3 w-3" />;
+}
+
+export function HeaderBrandLink() {
+  return (
+    <Link
+      href="/dashboard"
+      prefetch
+      className="inline-flex items-center gap-2 text-lg font-semibold"
+    >
+      <LinkPendingIndicator />
+      Apartment Finder
+    </Link>
+  );
+}
