@@ -1,28 +1,45 @@
-import { ApifyClient } from "apify-client";
-// apify-client loads proxy-agent via a variable-specifier require() that
-// Vercel's file tracer cannot follow, so the dep gets dropped from the
-// serverless bundle. Keep a static import here so NFT traces proxy-agent
-// (and its transitive deps) and ships them alongside apify-client.
-import "proxy-agent";
 import { eq } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { getDb } from "@/db";
 import { monitoredGroups } from "@/db/schema";
 
 const FB_GROUPS_ACTOR_ID = "apify~facebook-groups-scraper";
-
-let client: ApifyClient | undefined;
+const APIFY_API_BASE = "https://api.apify.com/v2";
 
 export function isApifyConfigured(): boolean {
   return Boolean(env().APIFY_TOKEN);
 }
 
-function getClient(): ApifyClient {
-  if (client) return client;
+function getToken(): string {
   const token = env().APIFY_TOKEN;
   if (!token) throw new Error("APIFY_TOKEN not set");
-  client = new ApifyClient({ token });
-  return client;
+  return token;
+}
+
+async function apifyFetch(
+  path: string,
+  init: { method: "GET" | "POST"; query?: Record<string, string>; body?: unknown } = { method: "GET" },
+): Promise<unknown> {
+  const url = new URL(`${APIFY_API_BASE}${path}`);
+  if (init.query) {
+    for (const [k, v] of Object.entries(init.query)) {
+      url.searchParams.set(k, v);
+    }
+  }
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${getToken()}`,
+  };
+  let body: string | undefined;
+  if (init.body !== undefined) {
+    headers["content-type"] = "application/json";
+    body = JSON.stringify(init.body);
+  }
+  const res = await fetch(url, { method: init.method, headers, body });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Apify API ${res.status}: ${text.slice(0, 500)}`);
+  }
+  return res.json();
 }
 
 export async function listMonitoredGroups(): Promise<
@@ -44,28 +61,38 @@ export async function startFacebookGroupsRun(opts: {
   const groups = await listMonitoredGroups();
   if (groups.length === 0) return null;
 
-  const run = await getClient()
-    .actor(FB_GROUPS_ACTOR_ID)
-    .start({
-      startUrls: groups.map((g) => ({ url: g.url })),
-      resultsLimit: opts.maxPostsPerGroup ?? 20,
-      onlyPostsNewerThan: "1 day",
-    }, {
-      webhooks: [
-        {
-          eventTypes: ["ACTOR.RUN.SUCCEEDED", "ACTOR.RUN.FAILED"],
-          requestUrl: opts.webhookUrl,
-          headersTemplate: JSON.stringify({
-            "x-apify-webhook-secret": opts.webhookSecret,
-          }),
-        },
-      ],
-    });
+  const webhooks = [
+    {
+      eventTypes: ["ACTOR.RUN.SUCCEEDED", "ACTOR.RUN.FAILED"],
+      requestUrl: opts.webhookUrl,
+      headersTemplate: JSON.stringify({
+        "x-apify-webhook-secret": opts.webhookSecret,
+      }),
+    },
+  ];
+  const webhooksB64 = Buffer.from(JSON.stringify(webhooks), "utf8").toString(
+    "base64",
+  );
 
-  return { runId: run.id, groupCount: groups.length };
+  const input = {
+    startUrls: groups.map((g) => ({ url: g.url })),
+    resultsLimit: opts.maxPostsPerGroup ?? 20,
+    onlyPostsNewerThan: "1 day",
+  };
+
+  const response = (await apifyFetch(`/acts/${FB_GROUPS_ACTOR_ID}/runs`, {
+    method: "POST",
+    body: input,
+    query: { webhooks: webhooksB64 },
+  })) as { data: { id: string } };
+
+  return { runId: response.data.id, groupCount: groups.length };
 }
 
 export async function fetchDatasetItems(datasetId: string): Promise<unknown[]> {
-  const { items } = await getClient().dataset(datasetId).listItems();
+  const items = (await apifyFetch(
+    `/datasets/${encodeURIComponent(datasetId)}/items`,
+    { method: "GET" },
+  )) as unknown[];
   return items;
 }
