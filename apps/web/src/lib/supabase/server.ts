@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 
@@ -33,4 +34,13 @@ export async function getCurrentUser() {
   } catch {
     return null;
   }
+}
+
+export function isAdmin(user: User | null | undefined): boolean {
+  return user?.app_metadata?.is_admin === true;
+}
+
+export async function getCurrentAdmin(): Promise<User | null> {
+  const user = await getCurrentUser();
+  return isAdmin(user) ? user : null;
 }

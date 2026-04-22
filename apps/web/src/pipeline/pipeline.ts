@@ -16,6 +16,8 @@ export type RunArgs = {
   listingId: number;
   listing: NormalizedListing;
   prefs: Preferences;
+  /** User to attribute notifications + sent_alerts to — typically the admin. */
+  notifyUserId: string;
   channels?: AlertChannel[];
 };
 
@@ -27,7 +29,7 @@ export async function runJudgeAndNotify(args: RunArgs): Promise<PipelineResult> 
       reason: "Rule filter only (AI gateway not configured)",
     };
     try {
-      await notifyListing({ ...alert, channels: args.channels });
+      await notifyListing({ ...alert, userId: args.notifyUserId, channels: args.channels });
       return { outcome: "alert", alert };
     } catch (err) {
       console.error("notify failed:", err);
@@ -68,7 +70,7 @@ export async function runJudgeAndNotify(args: RunArgs): Promise<PipelineResult> 
   };
 
   try {
-    await notifyListing({ ...alert, channels: args.channels });
+    await notifyListing({ ...alert, userId: args.notifyUserId, channels: args.channels });
     return { outcome: "alert", alert };
   } catch (err) {
     console.error(`notify failed for listing ${args.listingId}:`, err);

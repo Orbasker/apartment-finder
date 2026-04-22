@@ -29,7 +29,7 @@ export async function rejudgeListingAction(
     return { ok: false, error: "AI_GATEWAY_API_KEY not set" };
   }
 
-  const row = await getListingById(listingId);
+  const row = await getListingById(listingId, user.id);
   if (!row) return { ok: false, error: "Listing not found" };
 
   const listing: NormalizedListing = {
@@ -51,7 +51,7 @@ export async function rejudgeListingAction(
   };
 
   try {
-    const prefs = await loadPreferences();
+    const prefs = await loadPreferences(user.id);
     const result = await judgeListing(listing, prefs);
     await persistJudgment(listingId, result);
     revalidatePath(`/listings/${listingId}`);

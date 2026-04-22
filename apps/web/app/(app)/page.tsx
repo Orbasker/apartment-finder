@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { countListings, searchListings, type ListingRow } from "@/listings/queries";
+import type { NormalizedListing } from "@apartment-finder/shared";
+import {
+  countListings,
+  searchListings,
+  type ListingRow,
+  type ListingsFilter,
+} from "@/listings/queries";
 import {
   buildFilterQueryString,
   hasActiveFilters,
@@ -11,6 +17,10 @@ import { ListingsFiltersBar } from "@/listings/filters-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatNis, relTime } from "@/lib/utils";
+import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
+import { loadPreferences } from "@/preferences/store";
+import { getSubscribedGroupUrls } from "@/groups/subscriptions";
+import { ruleFilter } from "@/pipeline/ruleFilter";
 import { RunJobsCard } from "./run-jobs-card";
 
 export const dynamic = "force-dynamic";
@@ -24,11 +34,28 @@ export default async function DashboardHomePage({
   const filters = parseListingFilters(rawParams);
   const active = hasActiveFilters(filters);
 
+  const user = await getCurrentUser();
+  const admin = isAdmin(user);
+
+  const scope: Pick<ListingsFilter, "forUserId" | "subscribedGroupUrls"> = user
+    ? {
+        forUserId: user.id,
+        subscribedGroupUrls: await getSubscribedGroupUrls(user.id),
+      }
+    : {};
+  const prefs = user ? await loadPreferences(user.id) : null;
+  const applyUserRules = (rows: ListingRow[]): ListingRow[] =>
+    prefs ? rows.filter((r) => ruleFilter(rowToListing(r), prefs).pass) : rows;
+
   const [alertsToday, page, totalMatches] = await Promise.all([
-    searchListings({ decision: "alert", hoursAgo: 24, limit: 30 }),
-    searchListings(toListingsFilter(filters)),
-    active ? countListings(toListingsFilter(filters)) : Promise.resolve<number | null>(null),
+    searchListings({ decision: "alert", hoursAgo: 24, limit: 30, ...scope }),
+    searchListings({ ...toListingsFilter(filters), ...scope }),
+    active
+      ? countListings({ ...toListingsFilter(filters), ...scope })
+      : Promise.resolve<number | null>(null),
   ]);
+  const alertsTodayRows = applyUserRules(alertsToday.rows);
+  const pageRows = applyUserRules(page.rows);
 
   const baseFiltersQs = buildFilterQueryString(filters);
   const nextHref = page.nextCursor
@@ -40,19 +67,19 @@ export default async function DashboardHomePage({
 
   return (
     <div className="space-y-8">
-      <RunJobsCard />
+      {admin && <RunJobsCard />}
 
       <section>
         <h2 className="mb-3 text-xl font-semibold">
-          {`Today's alerts (${alertsToday.rows.length})`}
+          {`Today's alerts (${alertsTodayRows.length})`}
         </h2>
-        {alertsToday.rows.length === 0 ? (
+        {alertsTodayRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Nothing matched yet in the last 24 hours.
           </p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {alertsToday.rows.map((l) => (
+            {alertsTodayRows.map((l) => (
               <ListingCard key={l.id} listing={l} />
             ))}
           </div>
@@ -63,7 +90,7 @@ export default async function DashboardHomePage({
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-xl font-semibold">Browse collected listings</h2>
           <ResultSummary
-            shown={page.rows.length}
+            shown={pageRows.length}
             total={totalMatches}
             limit={filters.limit}
             active={active}
@@ -74,7 +101,7 @@ export default async function DashboardHomePage({
 
         <ListingsFiltersBar values={filters} hasActiveFilters={active} />
 
-        {page.rows.length === 0 ? (
+        {pageRows.length === 0 ? (
           <p className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
             No listings match these filters.
           </p>
@@ -94,7 +121,7 @@ export default async function DashboardHomePage({
                 </tr>
               </thead>
               <tbody>
-                {page.rows.map((l) => (
+                {pageRows.map((l) => (
                   <tr key={l.id} className="border-t hover:bg-muted/50">
                     <td className="p-2 text-muted-foreground">{relTime(l.ingestedAt)}</td>
                     <td className="p-2">
@@ -192,6 +219,25 @@ function DecisionBadge({ decision }: { decision: string }) {
   if (decision === "alert") return <Badge variant="success">alert</Badge>;
   if (decision === "skip") return <Badge variant="muted">skip</Badge>;
   return <Badge variant="muted">unsure</Badge>;
+}
+
+function rowToListing(r: ListingRow): NormalizedListing {
+  return {
+    source: r.source as NormalizedListing["source"],
+    sourceId: r.sourceId,
+    url: r.url,
+    title: r.title ?? null,
+    description: r.description ?? null,
+    priceNis: r.priceNis ?? null,
+    rooms: r.rooms ?? null,
+    sqm: r.sqm ?? null,
+    neighborhood: r.neighborhood ?? null,
+    street: r.street ?? null,
+    postedAt: r.postedAt ?? null,
+    isAgency: r.isAgency ?? null,
+    authorName: r.authorName ?? null,
+    authorProfile: null,
+  };
 }
 
 function ListingCard({ listing }: { listing: ListingRow }) {

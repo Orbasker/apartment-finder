@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
 import {
   runAdminCostSummaryJob,
   runAiTopPicksJob,
@@ -23,6 +23,12 @@ export async function POST(req: Request): Promise<Response> {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (!isAdmin(user)) {
+    return NextResponse.json(
+      { error: "Only admins can trigger data collection runs" },
+      { status: 403 },
+    );
   }
 
   const json = await req.json().catch(() => null);

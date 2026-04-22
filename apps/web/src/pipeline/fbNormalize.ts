@@ -66,6 +66,7 @@ export async function normalizeFbPost(
     isAgency,
     authorName: r.user?.name ?? null,
     authorProfile: r.user?.profileUrl ?? null,
+    sourceGroupUrl: r.groupUrl ? normalizeGroupUrl(r.groupUrl) : null,
     rawJson: raw,
   };
 }
@@ -113,4 +114,8 @@ function hashIdFromUrl(url: string | undefined): string | null {
   if (!url) return null;
   const m = /\/(\d{6,})/.exec(url);
   return m?.[1] ?? url.slice(-32);
+}
+
+function normalizeGroupUrl(url: string): string {
+  return url.replace(/\?.*$/, "").replace(/\/$/, "");
 }

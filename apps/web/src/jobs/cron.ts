@@ -3,7 +3,7 @@ import { ingestNewListings } from "@/pipeline/dedup";
 import { ruleFilter } from "@/pipeline/ruleFilter";
 import { runJudgeAndNotify } from "@/pipeline/pipeline";
 import type { AlertEntry } from "@/pipeline/sentAlerts";
-import { loadPreferences } from "@/preferences/store";
+import { getAdminUserId, loadAdminPreferences } from "@/preferences/store";
 import { describeLocalSchedule, shouldRunApifyPoll, shouldRunYad2Poll } from "@/lib/schedule";
 import {
   hasAdminSummaryRecipients,
@@ -52,7 +52,10 @@ export async function runYad2PollJob(options?: {
   try {
     const listings = await fetchYad2Listings();
     const { inserted, skippedExisting } = await ingestNewListings(listings);
-    const prefs = await loadPreferences();
+    const [prefs, adminUserId] = await Promise.all([
+      loadAdminPreferences(),
+      getAdminUserId(),
+    ]);
 
     let passed = 0;
     let filtered = 0;
@@ -68,10 +71,16 @@ export async function runYad2PollJob(options?: {
         continue;
       }
       passed++;
+      if (!adminUserId) {
+        // Without an admin user we can't attribute notifications; skip notify.
+        skipped++;
+        continue;
+      }
       const result = await runJudgeAndNotify({
         listingId: row.id,
         listing: row.listing,
         prefs,
+        notifyUserId: adminUserId,
         channels: ["telegram"],
       });
       if (result.outcome === "alert") {
@@ -277,7 +286,7 @@ export async function runAiTopPicksJob(options?: {
   }
 
   try {
-    const prefs = await loadPreferences();
+    const prefs = await loadAdminPreferences();
     const result = await pickTopListings({ prefs, hoursAgo, topN });
 
     await Promise.all([

@@ -2,6 +2,7 @@ import { getDb } from "@/db";
 import { feedback } from "@/db/schema";
 
 export async function recordFeedback(
+  userId: string,
   listingId: number,
   rating: 1 | -1,
   note?: string,
@@ -9,9 +10,9 @@ export async function recordFeedback(
   const db = getDb();
   await db
     .insert(feedback)
-    .values({ listingId, rating, note: note ?? null })
+    .values({ userId, listingId, rating, note: note ?? null })
     .onConflictDoUpdate({
-      target: feedback.listingId,
+      target: [feedback.listingId, feedback.userId],
       set: { rating, note: note ?? null, createdAt: new Date() },
     });
 }
