@@ -69,10 +69,101 @@ export default async function DashboardHomePage({
     <div className="space-y-8">
       {admin && <RunJobsCard />}
 
-      <section>
-        <h2 className="mb-3 text-xl font-semibold">
-          {`Today's alerts (${alertsTodayRows.length})`}
-        </h2>
+      <CollapsibleSection
+        title="Browse collected listings"
+        headerRight={
+          <ResultSummary
+            shown={pageRows.length}
+            total={totalMatches}
+            limit={filters.limit}
+            active={active}
+            cursorActive={Boolean(filters.cursor)}
+            resetCursorHref={resetCursorHref}
+          />
+        }
+        defaultOpen
+      >
+        <div className="space-y-4">
+          <ListingsFiltersBar values={filters} hasActiveFilters={active} />
+
+          {pageRows.length === 0 ? (
+            <p className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+              No listings match these filters.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="min-w-full text-sm">
+                <thead className="bg-muted text-left">
+                  <tr>
+                    <th className="p-2">When</th>
+                    <th className="p-2">Source</th>
+                    <th className="p-2">Price</th>
+                    <th className="p-2">Rooms</th>
+                    <th className="p-2">Neighborhood</th>
+                    <th className="p-2">Score</th>
+                    <th className="p-2">Decision</th>
+                    <th className="p-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageRows.map((l) => (
+                    <tr key={l.id} className="border-t hover:bg-muted/50">
+                      <td className="p-2 text-muted-foreground">{relTime(l.ingestedAt)}</td>
+                      <td className="p-2">
+                        <Badge variant="muted">{l.source}</Badge>
+                      </td>
+                      <td className="p-2">{formatNis(l.priceNis)}</td>
+                      <td className="p-2">{l.rooms ?? "—"}</td>
+                      <td className="p-2">{l.neighborhood ?? "—"}</td>
+                      <td className="p-2">{l.score ?? "—"}</td>
+                      <td className="p-2">
+                        {l.decision ? <DecisionBadge decision={l.decision} /> : "—"}
+                      </td>
+                      <td className="p-2">
+                        <Link
+                          href={`/listings/${l.id}`}
+                          className="text-sm underline hover:text-primary"
+                        >
+                          open
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-sm">
+            <div className="text-muted-foreground">
+              {filters.cursor ? (
+                <Link href={`/${baseFiltersQs}`} className="underline">
+                  ← Back to first page
+                </Link>
+              ) : (
+                <span />
+              )}
+            </div>
+            {nextHref ? (
+              <Link
+                href={nextHref}
+                className="rounded-md border px-3 py-1.5 font-medium hover:bg-muted"
+              >
+                Next {filters.limit} →
+              </Link>
+            ) : (
+              page.rows.length > 0 && (
+                <span className="text-muted-foreground">End of results</span>
+              )
+            )}
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        title={`Today's alerts (${alertsTodayRows.length})`}
+        defaultOpen
+      >
         {alertsTodayRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Nothing matched yet in the last 24 hours.
@@ -84,96 +175,38 @@ export default async function DashboardHomePage({
             ))}
           </div>
         )}
-      </section>
-
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-xl font-semibold">Browse collected listings</h2>
-          <ResultSummary
-            shown={pageRows.length}
-            total={totalMatches}
-            limit={filters.limit}
-            active={active}
-            cursorActive={Boolean(filters.cursor)}
-            resetCursorHref={resetCursorHref}
-          />
-        </div>
-
-        <ListingsFiltersBar values={filters} hasActiveFilters={active} />
-
-        {pageRows.length === 0 ? (
-          <p className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
-            No listings match these filters.
-          </p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="min-w-full text-sm">
-              <thead className="bg-muted text-left">
-                <tr>
-                  <th className="p-2">When</th>
-                  <th className="p-2">Source</th>
-                  <th className="p-2">Price</th>
-                  <th className="p-2">Rooms</th>
-                  <th className="p-2">Neighborhood</th>
-                  <th className="p-2">Score</th>
-                  <th className="p-2">Decision</th>
-                  <th className="p-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((l) => (
-                  <tr key={l.id} className="border-t hover:bg-muted/50">
-                    <td className="p-2 text-muted-foreground">{relTime(l.ingestedAt)}</td>
-                    <td className="p-2">
-                      <Badge variant="muted">{l.source}</Badge>
-                    </td>
-                    <td className="p-2">{formatNis(l.priceNis)}</td>
-                    <td className="p-2">{l.rooms ?? "—"}</td>
-                    <td className="p-2">{l.neighborhood ?? "—"}</td>
-                    <td className="p-2">{l.score ?? "—"}</td>
-                    <td className="p-2">
-                      {l.decision ? <DecisionBadge decision={l.decision} /> : "—"}
-                    </td>
-                    <td className="p-2">
-                      <Link
-                        href={`/listings/${l.id}`}
-                        className="text-sm underline hover:text-primary"
-                      >
-                        open
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between text-sm">
-          <div className="text-muted-foreground">
-            {filters.cursor ? (
-              <Link href={`/${baseFiltersQs}`} className="underline">
-                ← Back to first page
-              </Link>
-            ) : (
-              <span />
-            )}
-          </div>
-          {nextHref ? (
-            <Link
-              href={nextHref}
-              className="rounded-md border px-3 py-1.5 font-medium hover:bg-muted"
-            >
-              Next {filters.limit} →
-            </Link>
-          ) : (
-            page.rows.length > 0 && (
-              <span className="text-muted-foreground">End of results</span>
-            )
-          )}
-        </div>
-      </section>
+      </CollapsibleSection>
     </div>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  headerRight,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  headerRight?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <details open={defaultOpen} className="group">
+      <summary className="flex cursor-pointer list-none flex-wrap items-baseline justify-between gap-2 rounded-md py-1 [&::-webkit-details-marker]:hidden">
+        <h2 className="flex items-center gap-2 text-xl font-semibold">
+          <span
+            aria-hidden="true"
+            className="inline-block text-muted-foreground transition-transform group-open:rotate-90"
+          >
+            ▶
+          </span>
+          {title}
+        </h2>
+        {headerRight}
+      </summary>
+      <div className="mt-3">{children}</div>
+    </details>
   );
 }
 
