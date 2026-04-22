@@ -1,6 +1,6 @@
-"use server";
-
 import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   runAdminCostSummaryJob,
@@ -8,36 +8,56 @@ import {
   runYad2PollJob,
 } from "@/jobs/cron";
 
-export type DashboardJobId = "yad2" | "apify" | "adminCostSummary";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
-export type DashboardJobActionResult = {
-  job: DashboardJobId;
-  ok: boolean;
-  status: number;
-  summary: string;
-  payload: Record<string, unknown>;
-};
+const BodySchema = z.object({
+  job: z.enum(["yad2", "apify", "adminCostSummary"]),
+});
 
-export async function runDashboardJobAction(
-  job: DashboardJobId,
-): Promise<DashboardJobActionResult> {
+export async function POST(req: Request): Promise<Response> {
   const user = await getCurrentUser();
   if (!user) {
-    throw new Error("Unauthorized");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await runJob(job);
+  const json = await req.json().catch(() => null);
+  const parsed = BodySchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
 
-  return {
-    job,
-    ok: result.status < 400 && result.payload.ok !== false,
-    status: result.status,
-    summary: summarizeJobResult(job, result.payload),
-    payload: result.payload,
-  };
+  const { job } = parsed.data;
+
+  try {
+    const result = await runJob(job);
+    return NextResponse.json(
+      {
+        job,
+        ok: result.status < 400 && result.payload.ok !== false,
+        status: result.status,
+        summary: summarizeJobResult(job, result.payload),
+        payload: result.payload,
+      },
+      { status: 200 },
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Job failed";
+    return NextResponse.json(
+      {
+        job,
+        ok: false,
+        status: 500,
+        summary: message,
+        payload: { ok: false, error: message },
+      },
+      { status: 200 },
+    );
+  }
 }
 
-async function runJob(job: DashboardJobId) {
+async function runJob(job: "yad2" | "apify" | "adminCostSummary") {
   switch (job) {
     case "yad2":
       return runYad2PollJob({ enforceSchedule: false });
@@ -62,7 +82,7 @@ async function getRequestOrigin(): Promise<string> {
 }
 
 function summarizeJobResult(
-  job: DashboardJobId,
+  job: "yad2" | "apify" | "adminCostSummary",
   payload: Record<string, unknown>,
 ): string {
   if (typeof payload.skipped === "string") {
