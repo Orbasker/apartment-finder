@@ -1,5 +1,5 @@
 import { generateObject } from "ai";
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import {
   JudgmentSchema,
   type Judgment,
