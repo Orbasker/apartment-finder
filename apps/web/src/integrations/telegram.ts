@@ -138,6 +138,8 @@ export function telegramWebhookHandler() {
   const bot = getBot();
   return webhookCallback(bot, "std/http", {
     secretToken: env().TELEGRAM_WEBHOOK_SECRET,
+    timeoutMilliseconds: 55_000,
+    onTimeout: "return",
   });
 }
 

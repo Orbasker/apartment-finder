@@ -17,7 +17,8 @@
     "db:generate": "bun run --filter @apartment-finder/web db:generate",
     "db:push": "bun run --filter @apartment-finder/web db:push",
     "db:studio": "bun run --filter @apartment-finder/web db:studio",
-    "db:check": "bun run scripts/check-migrations.ts"
+    "db:check": "bun run scripts/check-migrations.ts",
+    "telegram:webhook": "bun run scripts/register-telegram-webhook.ts"
   },
   "devDependencies": {
     "knip": "^5.40.0",
