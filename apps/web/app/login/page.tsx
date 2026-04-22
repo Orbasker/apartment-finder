@@ -1,152 +1,297 @@
-"use client";
-
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import type { ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { LoginForm } from "./login-form";
 
-function GoogleIcon({ className }: { className?: string }) {
+export const metadata = {
+  title: "Apartment Finder — AI-assisted Tel Aviv apartment search",
+  description:
+    "Aggregates Yad2 and Facebook groups, filters listings against your preferences with AI, and pings you on Telegram the moment something matches.",
+};
+
+export default function LoginPage() {
   return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="#4285F4"
-        d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47a5.54 5.54 0 0 1-2.4 3.63v3h3.87c2.27-2.09 3.55-5.17 3.55-8.87Z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 24c3.24 0 5.95-1.08 7.94-2.91l-3.87-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.28v3.09A12 12 0 0 0 12 24Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.27 14.29a7.2 7.2 0 0 1 0-4.58V6.62H1.28a12 12 0 0 0 0 10.76l3.99-3.09Z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.43-3.43C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.62l3.99 3.09C6.22 6.86 8.87 4.75 12 4.75Z"
-      />
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <a href="#top" className="flex items-center gap-2">
+            <LogoMark />
+            <span className="text-sm font-semibold tracking-tight">Apartment Finder</span>
+          </a>
+          <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+            <a href="#how" className="hidden hover:text-foreground sm:inline">
+              How it works
+            </a>
+            <a href="#features" className="hidden hover:text-foreground sm:inline">
+              Features
+            </a>
+            <a
+              href="#signin"
+              className="rounded-md border px-3 py-1.5 text-foreground hover:bg-muted"
+            >
+              Sign in
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      <main id="top" className="mx-auto max-w-6xl px-6">
+        <section className="grid gap-10 py-16 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-24">
+          <div className="space-y-6">
+            <span className="inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              24/7 monitoring · Tel Aviv
+            </span>
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+              Find the right apartment before anyone else sees it.
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Apartment Finder watches Yad2 and dozens of Facebook groups around the clock,
+              filters noise and reposts with AI, and pings you on Telegram the moment a
+              listing matches your preferences.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <Stat label="Sources" value="Yad2 + FB groups" />
+              <Stat label="Signal" value="AI-filtered" />
+              <Stat label="Alerts" value="Telegram, real-time" />
+            </div>
+          </div>
+
+          <div id="signin" className="md:pt-2">
+            <Card className="mx-auto w-full max-w-md">
+              <CardHeader>
+                <CardTitle>Sign in</CardTitle>
+                <p className="pt-1 text-sm text-muted-foreground">
+                  Continue to your dashboard and alerts.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <LoginForm />
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <section id="features" className="border-t py-16">
+          <SectionHeading
+            eyebrow="What it does"
+            title="One pipeline for every source that matters."
+          />
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            <FeatureCard
+              icon={<IconLayers />}
+              title="Aggregates every source"
+              body="Yad2 and the Facebook groups where real listings actually appear — collected continuously, normalized into one feed."
+            />
+            <FeatureCard
+              icon={<IconSpark />}
+              title="AI scores the signal"
+              body="A judge model reads each listing against your preferences, drops spam and reposts, and escalates borderline cases to a stronger model."
+            />
+            <FeatureCard
+              icon={<IconBell />}
+              title="Real-time alerts"
+              body="Matches arrive on Telegram with a conversational agent — ask follow-up questions, mark interested, or dismiss. No dashboard-checking required."
+            />
+          </div>
+        </section>
+
+        <section id="how" className="border-t py-16">
+          <SectionHeading eyebrow="How it works" title="Four steps, fully automated." />
+          <ol className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <Step
+              n="01"
+              title="Set preferences"
+              body="Budget, neighborhoods, rooms, must-haves, deal-breakers — as specific as you like."
+            />
+            <Step
+              n="02"
+              title="We collect"
+              body="Scheduled jobs pull Yad2 and Facebook groups every few minutes, dedupe, and store."
+            />
+            <Step
+              n="03"
+              title="AI filters"
+              body="Each listing is scored; only the ones that actually fit your brief reach you."
+            />
+            <Step
+              n="04"
+              title="You get pinged"
+              body="Matches arrive on Telegram the moment they appear — with a link, key facts, and a chat-able agent."
+            />
+          </ol>
+        </section>
+
+        <section className="border-t py-16">
+          <div className="grid gap-8 md:grid-cols-2">
+            <div>
+              <SectionHeading
+                eyebrow="Why it exists"
+                title="Because the listings you want get buried."
+              />
+              <p className="mt-6 text-muted-foreground">
+                Tel Aviv is a noisy market — Yad2 plus dozens of Facebook groups, most posts
+                are agency spam, duplicates, or reposts. Good listings disappear in hours.
+                Manual monitoring doesn&apos;t scale; this does.
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-6 text-sm">
+              <p className="font-medium text-foreground">Built with</p>
+              <ul className="mt-3 grid grid-cols-2 gap-y-2 text-muted-foreground">
+                <li>Next.js 15 + RSC</li>
+                <li>Supabase Postgres</li>
+                <li>Vercel AI Gateway</li>
+                <li>Claude 4 (Haiku → Sonnet)</li>
+                <li>Telegram (grammY)</li>
+                <li>Apify + custom scrapers</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t py-16 text-center">
+          <h2 className="text-2xl font-semibold tracking-tight">Ready to stop refreshing?</h2>
+          <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
+            Sign in to set up your preferences and start receiving matches.
+          </p>
+          <a
+            href="#signin"
+            className="mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+          >
+            Sign in to continue
+          </a>
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-muted/40 px-3 py-2">
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="text-sm font-medium text-foreground">{value}</div>
+    </div>
+  );
+}
+
+function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) {
+  return (
+    <div className="max-w-2xl">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {eyebrow}
+      </div>
+      <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{title}</h2>
+    </div>
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  body,
+}: {
+  icon: ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-background p-6 shadow-sm">
+      <div className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-muted text-foreground">
+        {icon}
+      </div>
+      <h3 className="mt-4 font-semibold text-foreground">{title}</h3>
+      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+    </div>
+  );
+}
+
+function Step({ n, title, body }: { n: string; title: string; body: string }) {
+  return (
+    <li className="rounded-lg border bg-background p-5">
+      <div className="text-xs font-semibold text-muted-foreground">{n}</div>
+      <div className="mt-2 font-medium text-foreground">{title}</div>
+      <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+    </li>
+  );
+}
+
+function LogoMark() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 11 12 4l9 7" />
+      <path d="M5 10v10h14V10" />
+      <path d="M10 20v-6h4v6" />
     </svg>
   );
 }
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [pendingAction, setPendingAction] = useState<"google" | "magic" | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const busy = status === "sending";
-
-  async function sendMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    setStatus("sending");
-    setPendingAction("magic");
-    setError(null);
-    try {
-      const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) throw error;
-      setStatus("sent");
-    } catch (err) {
-      setStatus("error");
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setPendingAction(null);
-    }
-  }
-
-  async function signInWithGoogle() {
-    setStatus("sending");
-    setPendingAction("google");
-    setError(null);
-    try {
-      const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) throw error;
-    } catch (err) {
-      setStatus("error");
-      setError(err instanceof Error ? err.message : String(err));
-      setPendingAction(null);
-    }
-  }
-
+function IconLayers() {
   return (
-    <main className="mx-auto grid min-h-screen max-w-md place-items-center p-6">
-      {pendingAction === "google" && (
-        <div
-          aria-live="polite"
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm"
-        >
-          <Spinner className="h-8 w-8 text-primary" />
-          <p className="text-sm text-muted-foreground">Redirecting to Google…</p>
-        </div>
-      )}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {status === "sent" ? (
-            <p className="text-sm text-muted-foreground">
-              Check your inbox — we sent a magic link to <strong>{email}</strong>.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={signInWithGoogle}
-                disabled={busy}
-              >
-                {pendingAction === "google" ? (
-                  <Spinner className="mr-2" />
-                ) : (
-                  <GoogleIcon className="mr-2 h-4 w-4" />
-                )}
-                Continue with Google
-              </Button>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">or</span>
-                </div>
-              </div>
-              <form onSubmit={sendMagicLink} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <Button type="submit" disabled={busy} className="w-full">
-                  {pendingAction === "magic" && <Spinner className="mr-2" />}
-                  {pendingAction === "magic" ? "Sending…" : "Send magic link"}
-                </Button>
-              </form>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </main>
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m12 2 9 5-9 5-9-5 9-5Z" />
+      <path d="m3 12 9 5 9-5" />
+      <path d="m3 17 9 5 9-5" />
+    </svg>
+  );
+}
+
+function IconSpark() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 3v4" />
+      <path d="M12 17v4" />
+      <path d="M3 12h4" />
+      <path d="M17 12h4" />
+      <path d="m5.6 5.6 2.8 2.8" />
+      <path d="m15.6 15.6 2.8 2.8" />
+      <path d="m5.6 18.4 2.8-2.8" />
+      <path d="m15.6 8.4 2.8-2.8" />
+    </svg>
+  );
+}
+
+function IconBell() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
   );
 }
