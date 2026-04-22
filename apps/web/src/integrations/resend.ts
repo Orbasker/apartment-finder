@@ -4,6 +4,11 @@ import { env } from "@/lib/env";
 import type { AiUsageSummary } from "@/lib/aiUsage";
 import { getScheduleTimeZone } from "@/lib/schedule";
 import { getAlertEmailTargets, loadPreferences } from "@/preferences/store";
+import {
+  hasAlertBeenSent,
+  recordAlertSent,
+  type AlertEntry,
+} from "@/pipeline/sentAlerts";
 
 let resendClient: Resend | undefined;
 
@@ -30,6 +35,7 @@ type RunSummaryEmailInput = {
   job: string;
   status: "ok" | "skipped" | "error";
   details: Record<string, unknown>;
+  alerts?: AlertEntry[];
 };
 
 export function hasAdminSummaryRecipients(): boolean {
@@ -67,26 +73,99 @@ export async function sendEmailAlert(input: EmailInput): Promise<void> {
 }
 
 export async function sendRunSummaryEmail(input: RunSummaryEmailInput): Promise<void> {
+  if (!isResendConfigured()) return;
+
   const prefs = await loadPreferences();
   const to = getAlertEmailTargets(prefs);
-  if (!prefs.alerts.email.runSummaryEnabled || to.length === 0 || !isResendConfigured()) return;
+  if (to.length === 0) return;
 
-  const subject = `Apartment Finder: ${input.job} ${input.status}`;
+  const freshAlerts = await filterUnsentEmailAlerts(input.alerts ?? []);
+  const hasAlerts = freshAlerts.length > 0;
+  const alertEmailsEnabled = prefs.alerts.email.enabled;
+  const runSummaryEnabled = prefs.alerts.email.runSummaryEnabled;
+
+  if (!runSummaryEnabled && !(hasAlerts && alertEmailsEnabled)) return;
+
+  const alertsToShow = alertEmailsEnabled ? freshAlerts : [];
+  const alertCount = alertsToShow.length;
+  const subject = alertCount > 0
+    ? `Apartment Finder: ${input.job} · ${alertCount} match${alertCount === 1 ? "" : "es"}`
+    : `Apartment Finder: ${input.job} ${input.status}`;
+
   const rows = Object.entries(input.details).map(
     ([key, value]) =>
       `<tr><td style="padding:4px 12px 4px 0;"><strong>${escape(formatKey(key))}</strong></td><td style="padding:4px 0;">${escape(formatValue(value))}</td></tr>`,
   );
 
+  const html = [
+    `<h2>${escape(input.job)}</h2>`,
+    `<p>Status: <strong>${escape(input.status)}</strong></p>`,
+    alertsToShow.length > 0 ? renderAlertsSection(alertsToShow) : "",
+    `<h3>Run details</h3>`,
+    `<table cellpadding="0" cellspacing="0">${rows.join("")}</table>`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   await getClient().emails.send({
     from: getFromAddress(),
     to,
     subject,
-    html: [
-      `<h2>${escape(input.job)}</h2>`,
-      `<p>Status: <strong>${escape(input.status)}</strong></p>`,
-      `<table cellpadding="0" cellspacing="0">${rows.join("")}</table>`,
-    ].join("\n"),
+    html,
   });
+
+  await Promise.all(
+    alertsToShow.map((entry) => recordAlertSent(entry.listingId, "email")),
+  );
+}
+
+async function filterUnsentEmailAlerts(alerts: AlertEntry[]): Promise<AlertEntry[]> {
+  const results = await Promise.all(
+    alerts.map(async (entry) => ({
+      entry,
+      sent: await hasAlertBeenSent(entry.listingId, "email"),
+    })),
+  );
+  return results.filter((r) => !r.sent).map((r) => r.entry);
+}
+
+function renderAlertsSection(alerts: AlertEntry[]): string {
+  const items = alerts
+    .map((entry) => {
+      const { listing, summary, judgment, reason } = entry;
+      const title = listing.title || listing.neighborhood || "Listing";
+      const priceLine = [
+        listing.priceNis ? `₪${formatInteger(listing.priceNis)}` : null,
+        listing.rooms != null ? `${listing.rooms} rooms` : null,
+        listing.sqm != null ? `${listing.sqm} sqm` : null,
+        listing.neighborhood,
+      ]
+        .filter(Boolean)
+        .map((value) => escape(String(value)))
+        .join(" · ");
+
+      return [
+        "<li style=\"margin-bottom:16px;\">",
+        `<div><strong>${escape(title)}</strong>${judgment ? ` · score ${escape(String(judgment.score))}` : ""}</div>`,
+        priceLine ? `<div>${priceLine}</div>` : "",
+        summary ? `<div>${escape(summary)}</div>` : "",
+        judgment?.reasoning ? `<div><em>${escape(judgment.reasoning)}</em></div>` : "",
+        judgment?.redFlags?.length
+          ? `<div>⚠︎ ${judgment.redFlags.map(escape).join(" · ")}</div>`
+          : "",
+        reason ? `<div><em>${escape(reason)}</em></div>` : "",
+        `<div><a href="${escape(listing.url)}">View listing</a></div>`,
+        "</li>",
+      ]
+        .filter(Boolean)
+        .join("");
+    })
+    .join("");
+
+  return [
+    `<h3>New matches (${alerts.length})</h3>`,
+    `<ul style="padding-left:20px;">${items}</ul>`,
+  ].join("\n");
 }
 
 export async function sendAdminCostSummaryEmail(summary: AiUsageSummary): Promise<void> {

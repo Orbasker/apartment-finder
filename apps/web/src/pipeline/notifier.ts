@@ -1,41 +1,36 @@
-import { and, eq } from "drizzle-orm";
-import type { Judgment, NormalizedListing } from "@apartment-finder/shared";
-import { getDb } from "@/db";
-import { sentAlerts } from "@/db/schema";
 import { sendTelegramAlert } from "@/integrations/telegram";
 import { sendEmailAlert, isResendConfigured } from "@/integrations/resend";
+import {
+  hasAlertBeenSent,
+  recordAlertSent,
+  type AlertChannel,
+  type AlertEntry,
+} from "@/pipeline/sentAlerts";
 
-export type NotifyOptions = {
-  listingId: number;
-  listing: NormalizedListing;
-  summary?: string;
-  reason?: string;
-  judgment?: Judgment;
+export type { AlertChannel, AlertEntry } from "@/pipeline/sentAlerts";
+
+export type NotifyOptions = AlertEntry & {
+  channels?: AlertChannel[];
 };
 
 export async function notifyListing(opts: NotifyOptions): Promise<void> {
-  await Promise.all([
-    notifyChannel("telegram", opts, () => sendTelegramAlert(opts)),
-    isResendConfigured()
-      ? notifyChannel("email", opts, () => sendEmailAlert(opts))
-      : Promise.resolve(),
-  ]);
+  const channels = opts.channels ?? ["telegram", "email"];
+  const tasks: Promise<unknown>[] = [];
+  if (channels.includes("telegram")) {
+    tasks.push(notifyChannel("telegram", opts.listingId, () => sendTelegramAlert(opts)));
+  }
+  if (channels.includes("email") && isResendConfigured()) {
+    tasks.push(notifyChannel("email", opts.listingId, () => sendEmailAlert(opts)));
+  }
+  await Promise.all(tasks);
 }
 
 async function notifyChannel(
-  channel: "telegram" | "email",
-  opts: NotifyOptions,
+  channel: AlertChannel,
+  listingId: number,
   send: () => Promise<void>,
 ): Promise<void> {
-  const db = getDb();
-
-  const existing = await db
-    .select()
-    .from(sentAlerts)
-    .where(and(eq(sentAlerts.listingId, opts.listingId), eq(sentAlerts.channel, channel)))
-    .limit(1);
-
-  if (existing.length > 0) return;
+  if (await hasAlertBeenSent(listingId, channel)) return;
 
   try {
     await send();
@@ -44,8 +39,5 @@ async function notifyChannel(
     return;
   }
 
-  await db
-    .insert(sentAlerts)
-    .values({ listingId: opts.listingId, channel })
-    .onConflictDoNothing();
+  await recordAlertSent(listingId, channel);
 }
