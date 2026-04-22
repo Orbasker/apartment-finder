@@ -3,13 +3,26 @@ import type { NormalizedListing, Preferences } from "@apartment-finder/shared";
 import { ruleFilter } from "./ruleFilter";
 
 const basePrefs: Preferences = {
-  budget: { maxNis: 8000, flexibilityPct: 10 },
+  budget: { maxNis: 8000, minNis: 0, flexibilityPct: 10 },
   rooms: { min: 2, max: 4 },
   allowedNeighborhoods: [],
   blockedNeighborhoods: [],
   hardRequirements: [],
   niceToHaves: [],
   dealBreakers: [],
+  amenities: {
+    elevator: "any",
+    parking: "any",
+    balcony: "any",
+    airConditioning: "any",
+    furnished: "any",
+    renovated: "any",
+    petFriendly: "any",
+    safeRoom: "any",
+    storage: "any",
+    accessible: "any",
+    bars: "any",
+  },
   maxAgeHours: 24,
   ai: {
     scoreThreshold: 70,
@@ -54,6 +67,25 @@ describe("ruleFilter", () => {
 
   test("rejects a listing below the min room count", () => {
     const result = ruleFilter({ ...baseListing, rooms: 1 }, basePrefs);
+    expect(result.pass).toBe(false);
+  });
+
+  test("rejects a listing below the min price (spam)", () => {
+    const prefs = { ...basePrefs, budget: { ...basePrefs.budget, minNis: 3000 } };
+    const result = ruleFilter({ ...baseListing, priceNis: 500 }, prefs);
+    expect(result.pass).toBe(false);
+    if (!result.pass) expect(result.reason).toMatch(/spam/);
+  });
+
+  test("accepts a listing at or above the min price", () => {
+    const prefs = { ...basePrefs, budget: { ...basePrefs.budget, minNis: 3000 } };
+    const result = ruleFilter({ ...baseListing, priceNis: 3000 }, prefs);
+    expect(result.pass).toBe(true);
+  });
+
+  test("rejects a listing above the sqm max", () => {
+    const prefs = { ...basePrefs, sizeSqm: { max: 60 } };
+    const result = ruleFilter({ ...baseListing, sqm: 80 }, prefs);
     expect(result.pass).toBe(false);
   });
 });

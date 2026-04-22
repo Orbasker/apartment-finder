@@ -30,7 +30,7 @@ export async function addGroupAction(input: { url: string; label: string | null 
     });
   // Adder is auto-subscribed to groups they add.
   await setSubscription(user.id, input.url, true);
-  revalidatePath("/dashboard/groups");
+  revalidatePath("/groups");
 }
 
 export async function removeGroupAction(url: string) {
@@ -38,7 +38,7 @@ export async function removeGroupAction(url: string) {
   if (!isAdmin(user)) throw new Error("Only admins can delete groups from the catalog");
   const db = getDb();
   await db.delete(monitoredGroups).where(eq(monitoredGroups.url, url));
-  revalidatePath("/dashboard/groups");
+  revalidatePath("/groups");
 }
 
 export async function toggleGroupCatalogAction(url: string, enabled: boolean) {
@@ -47,11 +47,11 @@ export async function toggleGroupCatalogAction(url: string, enabled: boolean) {
     throw new Error("Only admins can enable/disable catalog groups");
   const db = getDb();
   await db.update(monitoredGroups).set({ enabled }).where(eq(monitoredGroups.url, url));
-  revalidatePath("/dashboard/groups");
+  revalidatePath("/groups");
 }
 
 export async function toggleSubscriptionAction(url: string, subscribed: boolean) {
   const user = await requireUser();
   await setSubscription(user.id, url, subscribed);
-  revalidatePath("/dashboard/groups");
+  revalidatePath("/groups");
 }

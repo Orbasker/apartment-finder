@@ -10,5 +10,5 @@ export async function savePreferencesAction(input: Preferences) {
   if (!user) throw new Error("Not authenticated");
   const parsed = PreferencesSchema.parse(input);
   await savePreferences(user.id, parsed);
-  revalidatePath("/dashboard");
+  revalidatePath("/");
 }

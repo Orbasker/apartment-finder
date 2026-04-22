@@ -5,8 +5,6 @@ export async function middleware(req: NextRequest) {
   const url = req.nextUrl.clone();
   const path = url.pathname;
 
-  if (!path.startsWith("/dashboard")) return NextResponse.next();
-
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnon =
     process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -46,5 +44,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/((?!api|auth|login|_next/static|_next/image|favicon.ico|icon.svg).*)"],
 };

@@ -41,19 +41,30 @@ export const listings = pgTable(
   (t) => ({
     sourceUnique: uniqueIndex("listings_source_unique").on(t.source, t.sourceId),
     sourceGroupUrlIdx: index("listings_source_group_url_idx").on(t.sourceGroupUrl),
+    ingestedAtIdx: index("listings_ingested_at_idx").on(t.ingestedAt.desc(), t.id.desc()),
+    sourceIdx: index("listings_source_idx").on(t.source),
+    priceIdx: index("listings_price_nis_idx").on(t.priceNis),
+    roomsIdx: index("listings_rooms_idx").on(t.rooms),
   }),
 );
 
-export const judgments = pgTable("judgments", {
-  listingId: integer("listing_id").primaryKey(),
-  score: integer("score"),
-  decision: text("decision"),
-  reasoning: text("reasoning"),
-  redFlags: jsonb("red_flags").$type<string[]>(),
-  positiveSignals: jsonb("positive_signals").$type<string[]>(),
-  model: text("model"),
-  judgedAt: timestamp("judged_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const judgments = pgTable(
+  "judgments",
+  {
+    listingId: integer("listing_id").primaryKey(),
+    score: integer("score"),
+    decision: text("decision"),
+    reasoning: text("reasoning"),
+    redFlags: jsonb("red_flags").$type<string[]>(),
+    positiveSignals: jsonb("positive_signals").$type<string[]>(),
+    model: text("model"),
+    judgedAt: timestamp("judged_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    decisionIdx: index("judgments_decision_idx").on(t.decision),
+    scoreIdx: index("judgments_score_idx").on(t.score),
+  }),
+);
 
 export const feedback = pgTable(
   "feedback",

@@ -1,14 +1,20 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  runDashboardJobAction,
-  type DashboardJobActionResult,
-  type DashboardJobId,
-} from "./actions";
+
+type DashboardJobId = "yad2" | "apify" | "adminCostSummary" | "aiTopPicks";
+
+type DashboardJobActionResult = {
+  job: DashboardJobId;
+  ok: boolean;
+  status: number;
+  summary: string;
+  payload: Record<string, unknown>;
+};
 
 const JOBS: Array<{
   id: DashboardJobId;
@@ -30,35 +36,54 @@ const JOBS: Array<{
     title: "Send admin cost email",
     description: "Email the last 24h AI cost summary to ADMIN_SUMMARY_EMAILS.",
   },
+  {
+    id: "aiTopPicks",
+    title: "AI top picks",
+    description: "Rank recent listings with AI and send the top 5 by email and Telegram.",
+  },
 ];
 
 export function RunJobsCard() {
-  const [pending, start] = useTransition();
-  const [activeJob, setActiveJob] = useState<DashboardJobId | null>(null);
-  const [results, setResults] = useState<Partial<Record<DashboardJobId, DashboardJobActionResult>>>({});
+  const router = useRouter();
+  const [running, setRunning] = useState<Set<DashboardJobId>>(new Set());
+  const [results, setResults] = useState<
+    Partial<Record<DashboardJobId, DashboardJobActionResult>>
+  >({});
 
-  function run(job: DashboardJobId) {
-    start(async () => {
-      setActiveJob(job);
-      try {
-        const result = await runDashboardJobAction(job);
-        setResults((current) => ({ ...current, [job]: result }));
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Job failed";
-        setResults((current) => ({
-          ...current,
-          [job]: {
-            job,
-            ok: false,
-            status: 500,
-            summary: message,
-            payload: { ok: false, error: message },
-          },
-        }));
-      } finally {
-        setActiveJob(null);
+  async function run(job: DashboardJobId) {
+    if (running.has(job)) return;
+    setRunning((prev) => new Set(prev).add(job));
+    try {
+      const response = await fetch("/api/dashboard/run-job", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ job }),
+      });
+      if (!response.ok) {
+        throw new Error(`Job failed (HTTP ${response.status})`);
       }
-    });
+      const result = (await response.json()) as DashboardJobActionResult;
+      setResults((current) => ({ ...current, [job]: result }));
+      if (result.ok) router.refresh();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Job failed";
+      setResults((current) => ({
+        ...current,
+        [job]: {
+          job,
+          ok: false,
+          status: 500,
+          summary: message,
+          payload: { ok: false, error: message },
+        },
+      }));
+    } finally {
+      setRunning((prev) => {
+        const next = new Set(prev);
+        next.delete(job);
+        return next;
+      });
+    }
   }
 
   return (
@@ -75,7 +100,7 @@ export function RunJobsCard() {
         <div className="grid gap-3 md:grid-cols-3">
           {JOBS.map((job) => {
             const result = results[job.id];
-            const isRunning = pending && activeJob === job.id;
+            const isRunning = running.has(job.id);
 
             return (
               <div key={job.id} className="rounded-md border p-4">
@@ -84,7 +109,7 @@ export function RunJobsCard() {
                   <p className="text-sm text-muted-foreground">{job.description}</p>
                 </div>
                 <div className="mt-4 flex items-center gap-3">
-                  <Button onClick={() => run(job.id)} disabled={pending}>
+                  <Button onClick={() => run(job.id)} disabled={isRunning}>
                     {isRunning && <Spinner className="mr-2" />}
                     {isRunning ? "Running…" : "Run now"}
                   </Button>

@@ -215,7 +215,7 @@ This migration changes primary keys on `preferences`, `feedback`, and `sent_aler
 **Order matters. Do this in one session.**
 
 1. **Promote the admin** (see "Admin access" above) so `auth.users` has at least one user with `raw_app_meta_data.is_admin = true`.
-2. **Open Supabase SQL editor** and paste the entire contents of `apps/web/drizzle/0003_multi_user.sql`. Run it. This:
+2. **Open Supabase SQL editor** and paste the entire contents of `apps/web/drizzle/manual_multi_user.sql`. Run it. This:
    - resolves the admin user id from `auth.users`
    - drops the old single-row PKs and adds `user_id` columns
    - backfills every existing `preferences` / `feedback` / `sent_alerts` row to the admin user

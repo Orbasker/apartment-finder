@@ -83,6 +83,15 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto grid min-h-screen max-w-md place-items-center p-6">
+      {pendingAction === "google" && (
+        <div
+          aria-live="polite"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm"
+        >
+          <Spinner className="h-8 w-8 text-primary" />
+          <p className="text-sm text-muted-foreground">Redirecting to Google…</p>
+        </div>
+      )}
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>

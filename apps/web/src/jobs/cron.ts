@@ -10,9 +10,17 @@ import {
   isResendConfigured,
   sendAdminCostSummaryEmail,
   sendRunSummaryEmail,
+  sendTopPicksEmail,
 } from "@/integrations/resend";
+import { sendTelegramTopPicks } from "@/integrations/telegram";
 import { getAiUsageSummary } from "@/lib/aiUsage";
 import { isApifyConfigured, startFacebookGroupsRun } from "@/integrations/apify";
+import { isGatewayConfigured } from "@/lib/gateway";
+import {
+  DEFAULT_HOURS_AGO,
+  DEFAULT_TOP_PICKS,
+  pickTopListings,
+} from "@/pipeline/topPicks";
 import { env } from "@/lib/env";
 
 export type JobRunResult = {
@@ -252,6 +260,78 @@ export async function runAdminCostSummaryJob(): Promise<JobRunResult> {
         ...payload,
         ok: false,
         error: err instanceof Error ? err.message : String(err),
+      },
+    };
+  }
+}
+
+export async function runAiTopPicksJob(options?: {
+  hoursAgo?: number;
+  topN?: number;
+}): Promise<JobRunResult> {
+  const startedAt = Date.now();
+  const hoursAgo = options?.hoursAgo ?? DEFAULT_HOURS_AGO;
+  const topN = options?.topN ?? DEFAULT_TOP_PICKS;
+
+  if (!isGatewayConfigured()) {
+    return {
+      status: 200,
+      payload: {
+        ok: false,
+        skipped: "AI_GATEWAY_API_KEY not set",
+        hoursAgo,
+        topN,
+      },
+    };
+  }
+
+  try {
+    const prefs = await loadAdminPreferences();
+    const result = await pickTopListings({ prefs, hoursAgo, topN });
+
+    await Promise.all([
+      sendTopPicksEmail({
+        picks: result.picks,
+        summary: result.summary,
+        hoursAgo: result.hoursAgo,
+        candidateCount: result.candidateCount,
+      }).catch((err) => console.error("send top picks email failed:", err)),
+      sendTelegramTopPicks({
+        picks: result.picks,
+        summary: result.summary,
+        hoursAgo: result.hoursAgo,
+        candidateCount: result.candidateCount,
+      }).catch((err) => console.error("send top picks telegram failed:", err)),
+    ]);
+
+    return {
+      status: 200,
+      payload: {
+        ok: true,
+        candidateCount: result.candidateCount,
+        picksReturned: result.picks.length,
+        hoursAgo: result.hoursAgo,
+        topN: result.topN,
+        summary: result.summary,
+        picks: result.picks.map((pick) => ({
+          rank: pick.rank,
+          listingId: pick.listingId,
+          headline: pick.headline,
+          url: pick.listing.url,
+        })),
+        durationMs: Date.now() - startedAt,
+      },
+    };
+  } catch (err) {
+    console.error("ai-top-picks failed:", err);
+    return {
+      status: 500,
+      payload: {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+        hoursAgo,
+        topN,
+        durationMs: Date.now() - startedAt,
       },
     };
   }

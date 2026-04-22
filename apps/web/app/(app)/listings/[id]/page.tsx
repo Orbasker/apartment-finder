@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatNis, relTime } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { FeedbackButtons } from "./feedback-buttons";
+import { RejudgeButton } from "./rejudge-button";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +108,9 @@ export default async function ListingDetailPage({
                 Not yet judged. Enable AI Gateway to see scoring.
               </p>
             )}
+            <div className="pt-2">
+              <RejudgeButton listingId={listing.id} />
+            </div>
           </CardContent>
         </Card>
 

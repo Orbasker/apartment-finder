@@ -69,7 +69,7 @@ function mergePreferences(
     budget: { ...current.budget, ...(patch.budget ?? {}) },
     rooms: { ...current.rooms, ...(patch.rooms ?? {}) },
     sizeSqm: patch.sizeSqm
-      ? { ...(current.sizeSqm ?? { min: 0 }), ...patch.sizeSqm }
+      ? { ...(current.sizeSqm ?? {}), ...patch.sizeSqm }
       : current.sizeSqm,
     allowedNeighborhoods:
       patch.allowedNeighborhoods ?? current.allowedNeighborhoods,
@@ -78,6 +78,7 @@ function mergePreferences(
     hardRequirements: patch.hardRequirements ?? current.hardRequirements,
     niceToHaves: patch.niceToHaves ?? current.niceToHaves,
     dealBreakers: patch.dealBreakers ?? current.dealBreakers,
+    amenities: { ...current.amenities, ...(patch.amenities ?? {}) },
     maxAgeHours: patch.maxAgeHours ?? current.maxAgeHours,
     ai: { ...current.ai, ...(patch.ai ?? {}) },
     alerts: {
