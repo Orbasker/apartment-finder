@@ -101,7 +101,7 @@ You should see a JSON response like `{ "ok": true, "fetched": 40, "inserted": 40
 
 ## 8. Wire Telegram to your deployed webhook
 
-After Vercel gives you a URL (e.g. `https://apartment-finder-xyz.vercel.app`):
+After Vercel gives you a production URL, use the stable production domain from the dashboard, not localhost and not a preview deployment URL.
 
 ```bash
 BOT=<your TELEGRAM_BOT_TOKEN>
@@ -114,6 +114,15 @@ curl -s "https://api.telegram.org/bot$BOT/setWebhook" \
 ```
 
 Expected: `{"ok":true,"result":true,"description":"Webhook was set"}`.
+
+You can also run:
+
+```bash
+TELEGRAM_BOT_TOKEN=... TELEGRAM_WEBHOOK_SECRET=... \
+  bun run telegram:webhook --url https://<your-production-domain>.vercel.app
+```
+
+Then verify with `getWebhookInfo`: `url` should be populated and `last_error_message` should be absent.
 
 ## 9. Register your chat for alerts
 
