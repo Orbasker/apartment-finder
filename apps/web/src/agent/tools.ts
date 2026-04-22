@@ -28,7 +28,7 @@ export function buildAgentTools(chatId: string) {
         limit: z.number().int().min(1).max(20).default(10),
       }),
       execute: async (args) => {
-        const rows = await searchListings({
+        const { rows } = await searchListings({
           neighborhood: args.neighborhood,
           maxPriceNis: args.maxPriceNis,
           minPriceNis: args.minPriceNis,
