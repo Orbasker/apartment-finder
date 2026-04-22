@@ -210,24 +210,17 @@ Alternative: Supabase Dashboard → Authentication → Users → click user → 
 
 ## Multi-user migration (one-time, when upgrading an existing single-user deploy)
 
-This migration changes primary keys on `preferences`, `feedback`, and `sent_alerts` to be per-user, and adds a `monitored_groups.added_by` column plus a new `user_group_subscriptions` table. Because the PK changes are destructive, you cannot just run `db:push` — the existing data has to be backfilled to the admin user first.
+`apps/web/drizzle/manual_multi_user.sql` changes primary keys on `preferences`, `feedback`, and `sent_alerts` to be per-user, adds `monitored_groups.added_by`, `listings.source_group_url`, and creates `user_group_subscriptions`. It's idempotent and now runs automatically before `drizzle-kit push`, so the normal flow is:
 
-**Order matters. Do this in one session.**
-
-1. **Promote the admin** (see "Admin access" above) so `auth.users` has at least one user with `raw_app_meta_data.is_admin = true`.
-2. **Open Supabase SQL editor** and paste the entire contents of `apps/web/drizzle/manual_multi_user.sql`. Run it. This:
-   - resolves the admin user id from `auth.users`
-   - drops the old single-row PKs and adds `user_id` columns
-   - backfills every existing `preferences` / `feedback` / `sent_alerts` row to the admin user
-   - adds the new composite PKs and FKs
-   - adds `monitored_groups.added_by`, `listings.source_group_url` + index
-   - creates `user_group_subscriptions` with a row per existing enabled group, subscribing the admin
-3. **Sync the rest of the schema:**
+1. **Promote the admin** (see "Admin access" above) so `auth.users` has at least one user with `raw_app_meta_data.is_admin = true`. **Skip this on a fresh DB with no data — the migration becomes a no-op.**
+2. **Sync the schema:**
    ```bash
-   bun run db:push
+   bun run db:push           # or db:push:auto in non-interactive terminals
    ```
-   This is a no-op if the SQL above completed, but it keeps Drizzle's internal state consistent with the TypeScript schema.
-4. Sign out of the dashboard and back in so the admin's JWT picks up `app_metadata.is_admin`.
+   This first runs `manual_multi_user.sql` (backfills existing rows to the admin, swaps PKs, creates new tables), then `drizzle-kit push` applies any remaining schema diffs. Both steps are no-ops on an already-migrated DB, so it's safe to re-run.
+3. Sign out of the dashboard and back in so the admin's JWT picks up `app_metadata.is_admin`.
+
+If you'd rather apply the SQL by hand (e.g. Supabase SQL editor) you can paste the contents of `manual_multi_user.sql` directly — same result.
 
 **What this does NOT migrate:** historical Facebook-sourced listings won't have `source_group_url` populated unless their `raw_json` had a `groupUrl` field at ingest time (the migration populates it from there). New FB posts ingested after the migration write the column directly.
 
