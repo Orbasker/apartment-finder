@@ -66,7 +66,7 @@ export default async function DashboardHomePage() {
                   </td>
                   <td className="p-2">
                     <Link
-                      href={`/dashboard/listings/${l.id}`}
+                      href={`/listings/${l.id}`}
                       className="text-sm underline hover:text-primary"
                     >
                       open
@@ -108,7 +108,7 @@ function ListingCard({ listing }: { listing: Awaited<ReturnType<typeof searchLis
         <div className="mt-3 flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{relTime(listing.ingestedAt)}</span>
           <Link
-            href={`/dashboard/listings/${listing.id}`}
+            href={`/listings/${listing.id}`}
             className="text-sm underline hover:text-primary"
           >
             open

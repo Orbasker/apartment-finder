@@ -14,17 +14,17 @@ export async function addGroupAction(input: { url: string; label: string | null 
       target: monitoredGroups.url,
       set: { label: input.label, enabled: true },
     });
-  revalidatePath("/dashboard/groups");
+  revalidatePath("/groups");
 }
 
 export async function removeGroupAction(url: string) {
   const db = getDb();
   await db.delete(monitoredGroups).where(eq(monitoredGroups.url, url));
-  revalidatePath("/dashboard/groups");
+  revalidatePath("/groups");
 }
 
 export async function toggleGroupAction(url: string, enabled: boolean) {
   const db = getDb();
   await db.update(monitoredGroups).set({ enabled }).where(eq(monitoredGroups.url, url));
-  revalidatePath("/dashboard/groups");
+  revalidatePath("/groups");
 }

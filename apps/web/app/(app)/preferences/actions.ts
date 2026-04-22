@@ -7,5 +7,5 @@ import { savePreferences } from "@/preferences/store";
 export async function savePreferencesAction(input: Preferences) {
   const parsed = PreferencesSchema.parse(input);
   await savePreferences(parsed);
-  revalidatePath("/dashboard");
+  revalidatePath("/");
 }
