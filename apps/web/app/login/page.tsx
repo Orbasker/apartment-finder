@@ -82,7 +82,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto grid min-h-screen max-w-md place-items-center p-6">
+    <main className="mx-auto grid w-full max-w-md flex-1 place-items-center p-6">
       {pendingAction === "google" && (
         <div
           aria-live="polite"

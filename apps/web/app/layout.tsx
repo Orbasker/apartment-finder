@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import "./globals.css";
+import { Footer } from "./footer";
 
 export const metadata = {
   title: "Apartment Finder",
@@ -23,8 +24,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-screen bg-background font-sans antialiased">
-        {children}
+      <body className="flex min-h-screen flex-col bg-background font-sans antialiased">
+        <div className="flex flex-1 flex-col">{children}</div>
+        <Footer />
       </body>
     </html>
   );
