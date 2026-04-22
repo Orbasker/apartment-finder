@@ -12,7 +12,7 @@ type Props = {
 const selectClass =
   "h-9 w-full rounded-md border bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-export function ListingsFiltersBar({ action = "/dashboard", values, hasActiveFilters }: Props) {
+export function ListingsFiltersBar({ action = "/", values, hasActiveFilters }: Props) {
   return (
     <form
       method="get"

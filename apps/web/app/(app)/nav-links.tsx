@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
 const links = [
-  { href: "/dashboard", label: "Listings" },
-  { href: "/dashboard/preferences", label: "Preferences" },
-  { href: "/dashboard/groups", label: "FB Groups" },
-  { href: "/dashboard/stats", label: "Stats" },
-  { href: "/dashboard/chat", label: "Chat" },
+  { href: "/", label: "Listings" },
+  { href: "/preferences", label: "Preferences" },
+  { href: "/groups", label: "FB Groups" },
+  { href: "/stats", label: "Stats" },
+  { href: "/chat", label: "Chat" },
 ] as const;
 
 export function DashboardNav() {
@@ -19,7 +19,7 @@ export function DashboardNav() {
     <nav className="flex gap-4">
       {links.map((l) => {
         const isActive =
-          l.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(l.href);
+          l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
         return (
           <Link
             key={l.href}
@@ -50,7 +50,7 @@ function LinkPendingIndicator() {
 export function HeaderBrandLink() {
   return (
     <Link
-      href="/dashboard"
+      href="/"
       prefetch
       className="inline-flex items-center gap-2 text-lg font-semibold"
     >

@@ -32,10 +32,10 @@ export default async function DashboardHomePage({
 
   const baseFiltersQs = buildFilterQueryString(filters);
   const nextHref = page.nextCursor
-    ? `/dashboard${buildFilterQueryString(filters, { cursor: page.nextCursor })}`
+    ? `/${buildFilterQueryString(filters, { cursor: page.nextCursor })}`
     : null;
   const resetCursorHref = filters.cursor
-    ? `/dashboard${buildFilterQueryString(filters, { cursor: undefined })}`
+    ? `/${buildFilterQueryString(filters, { cursor: undefined })}`
     : null;
 
   return (
@@ -109,7 +109,7 @@ export default async function DashboardHomePage({
                     </td>
                     <td className="p-2">
                       <Link
-                        href={`/dashboard/listings/${l.id}`}
+                        href={`/listings/${l.id}`}
                         className="text-sm underline hover:text-primary"
                       >
                         open
@@ -125,7 +125,7 @@ export default async function DashboardHomePage({
         <div className="flex items-center justify-between text-sm">
           <div className="text-muted-foreground">
             {filters.cursor ? (
-              <Link href={`/dashboard${baseFiltersQs}`} className="underline">
+              <Link href={`/${baseFiltersQs}`} className="underline">
                 ← Back to first page
               </Link>
             ) : (
@@ -214,7 +214,7 @@ function ListingCard({ listing }: { listing: ListingRow }) {
         <div className="mt-3 flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{relTime(listing.ingestedAt)}</span>
           <Link
-            href={`/dashboard/listings/${listing.id}`}
+            href={`/listings/${listing.id}`}
             className="text-sm underline hover:text-primary"
           >
             open
