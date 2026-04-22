@@ -12,11 +12,15 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "test": "bun test",
+    "deadcode": "DATABASE_URL=${DATABASE_URL:-postgres://ci:ci@localhost:5432/ci} knip --include files,binaries,duplicates,unlisted,unresolved",
     "db:generate": "bun run --filter @apartment-finder/web db:generate",
     "db:push": "bun run --filter @apartment-finder/web db:push",
-    "db:studio": "bun run --filter @apartment-finder/web db:studio"
+    "db:studio": "bun run --filter @apartment-finder/web db:studio",
+    "db:check": "bun run scripts/check-migrations.ts"
   },
   "devDependencies": {
+    "knip": "^5.40.0",
     "turbo": "^2.3.3",
     "typescript": "^5.7.2"
   }
