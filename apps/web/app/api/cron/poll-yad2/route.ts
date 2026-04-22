@@ -82,7 +82,7 @@ export async function GET(req: Request): Promise<Response> {
   } catch (err) {
     if (err instanceof Yad2UpstreamUnavailableError) {
       console.warn("poll-yad2 skipped:", err.message);
-      return Response.json({
+      const payload = {
         ok: true,
         fetched: 0,
         inserted: 0,
@@ -94,8 +94,15 @@ export async function GET(req: Request): Promise<Response> {
         unsure: 0,
         upstreamStatus: "unavailable",
         upstreamError: err.message,
+        localTime,
         durationMs: Date.now() - startedAt,
-      });
+      };
+      await sendRunSummaryEmail({
+        job: "Yad2 poll",
+        status: "skipped",
+        details: payload,
+      }).catch((error) => console.error("send Yad2 summary email failed:", error));
+      return Response.json(payload);
     }
 
     console.error("poll-yad2 failed:", err);
