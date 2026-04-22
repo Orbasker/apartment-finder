@@ -8,6 +8,13 @@
       "when": 1776866163434,
       "tag": "0000_warm_naoko",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776868673147,
+      "tag": "0001_cynical_prima",
+      "breakpoints": true
     }
   ]
 }

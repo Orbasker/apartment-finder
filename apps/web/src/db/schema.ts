@@ -9,6 +9,7 @@ import {
   smallint,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -36,10 +37,7 @@ export const listings = pgTable(
     textHash: text("text_hash"),
   },
   (t) => ({
-    sourceUnique: primaryKey({
-      name: "listings_source_unique",
-      columns: [t.source, t.sourceId],
-    }),
+    sourceUnique: uniqueIndex("listings_source_unique").on(t.source, t.sourceId),
   }),
 );
 
