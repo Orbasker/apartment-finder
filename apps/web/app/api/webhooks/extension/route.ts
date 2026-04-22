@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import {
+  EXTENSION_INGEST_HEADER,
+  ExtensionIngestPayloadSchema,
+  type ExtensionScrapedPost,
+} from "@apartment-finder/shared";
 import { env } from "@/lib/env";
-import { fetchDatasetItems } from "@/integrations/apify";
 import { normalizeFbPost } from "@/pipeline/fbNormalize";
 import { ingestNewListings } from "@/pipeline/dedup";
 import { ruleFilter } from "@/pipeline/ruleFilter";
@@ -12,29 +15,21 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const ApifyWebhookBody = z.object({
-  eventType: z.string(),
-  resource: z.object({
-    id: z.string(),
-    defaultDatasetId: z.string().optional(),
-  }),
-});
-
 export async function POST(req: Request): Promise<Response> {
-  const expected = env().APIFY_WEBHOOK_SECRET;
+  const expected = env().EXTENSION_INGEST_SECRET;
   if (!expected) {
     return NextResponse.json(
-      { ok: false, error: "APIFY_WEBHOOK_SECRET not set" },
+      { ok: false, error: "EXTENSION_INGEST_SECRET not set" },
       { status: 500 },
     );
   }
-  const given = req.headers.get("x-apify-webhook-secret");
+  const given = req.headers.get(EXTENSION_INGEST_HEADER);
   if (given !== expected) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
   const json = await req.json().catch(() => null);
-  const parsed = ApifyWebhookBody.safeParse(json);
+  const parsed = ExtensionIngestPayloadSchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json(
       { ok: false, error: "Invalid payload", issues: parsed.error.flatten() },
@@ -42,24 +37,12 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const { eventType, resource } = parsed.data;
-  if (eventType !== "ACTOR.RUN.SUCCEEDED") {
-    console.warn(`Apify run ${resource.id} eventType=${eventType} — skipping`);
-    return NextResponse.json({ ok: true, skipped: eventType });
-  }
-
-  const datasetId = resource.defaultDatasetId;
-  if (!datasetId) {
-    return NextResponse.json(
-      { ok: false, error: "No defaultDatasetId on run" },
-      { status: 400 },
-    );
-  }
-
-  const items = await fetchDatasetItems(datasetId);
-
   const normalized = (
-    await Promise.all(items.map((item) => normalizeFbPost(item)))
+    await Promise.all(
+      parsed.data.posts.map((p) =>
+        normalizeFbPost(toApifyShape(p), { source: "fb_ext" }),
+      ),
+    )
   ).filter((l): l is NonNullable<typeof l> => l !== null);
 
   const { inserted, skippedExisting } = await ingestNewListings(normalized);
@@ -88,9 +71,7 @@ export async function POST(req: Request): Promise<Response> {
 
   return NextResponse.json({
     ok: true,
-    runId: resource.id,
-    datasetId,
-    received: items.length,
+    received: parsed.data.posts.length,
     normalized: normalized.length,
     inserted: inserted.length,
     skippedExisting,
@@ -99,4 +80,18 @@ export async function POST(req: Request): Promise<Response> {
     skippedByAi,
     unsure,
   });
+}
+
+function toApifyShape(p: ExtensionScrapedPost): Record<string, unknown> {
+  return {
+    postId: p.postId,
+    facebookUrl: p.permalink,
+    text: p.text,
+    time: p.timestampIso ?? undefined,
+    groupUrl: p.groupUrl ?? undefined,
+    user: {
+      name: p.authorName ?? undefined,
+      profileUrl: p.authorUrl ?? undefined,
+    },
+  };
 }

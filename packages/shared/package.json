@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./preferences": "./src/preferences.ts",
     "./listing": "./src/listing.ts",
-    "./judgment": "./src/judgment.ts"
+    "./judgment": "./src/judgment.ts",
+    "./extension": "./src/extension.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
