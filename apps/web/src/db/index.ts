@@ -4,9 +4,7 @@ import { env } from "@/lib/env";
 import * as schema from "@/db/schema";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __apartmentFinderDb: ReturnType<typeof drizzle<typeof schema>> | undefined;
-  // eslint-disable-next-line no-var
   var __apartmentFinderSql: ReturnType<typeof postgres> | undefined;
 }
 

@@ -39,31 +39,63 @@ export type Yad2FetchOptions = {
   feedUrl?: string;
   /** Abort after N ms. */
   timeoutMs?: number;
+  /** Override fetch for tests. */
+  fetchImpl?: (input: string | URL, init?: RequestInit) => Promise<Response>;
 };
+
+export class Yad2UpstreamUnavailableError extends Error {
+  readonly status: number;
+  readonly contentType: string | null;
+  readonly bodyPreview: string;
+
+  constructor(message: string, opts: {
+    status: number;
+    contentType: string | null;
+    bodyPreview: string;
+    cause?: unknown;
+  }) {
+    super(message, opts.cause ? { cause: opts.cause } : undefined);
+    this.name = "Yad2UpstreamUnavailableError";
+    this.status = opts.status;
+    this.contentType = opts.contentType;
+    this.bodyPreview = opts.bodyPreview;
+  }
+}
 
 export async function fetchYad2Listings(
   opts: Yad2FetchOptions = {},
 ): Promise<NormalizedListing[]> {
   const url = opts.feedUrl ?? YAD2_FEED_URL;
+  const fetchImpl = opts.fetchImpl ?? fetch;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchImpl(url, {
       headers: {
         "User-Agent": UA,
         Accept: "application/json, text/plain, */*",
         "Accept-Language": "he-IL,he;q=0.9,en;q=0.8",
         Referer: "https://www.yad2.co.il/",
+        Origin: "https://www.yad2.co.il",
       },
       signal: controller.signal,
     });
 
+    const rawText = await res.text();
+
     if (!res.ok) {
-      throw new Error(`Yad2 feed returned ${res.status} ${res.statusText}`);
+      throw new Yad2UpstreamUnavailableError(
+        `Yad2 feed returned ${res.status} ${res.statusText}${formatResponseDetails(rawText, res)}`,
+        {
+          status: res.status,
+          contentType: res.headers.get("content-type"),
+          bodyPreview: buildBodyPreview(rawText),
+        },
+      );
     }
 
-    const json = (await res.json()) as Yad2Response;
+    const json = parseYad2Response(rawText, res);
     if (json.message && json.message !== "OK") {
       throw new Error(`Yad2 feed error: ${json.message}`);
     }
@@ -73,6 +105,46 @@ export async function fetchYad2Listings(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function parseYad2Response(rawText: string, res: Response): Yad2Response {
+  try {
+    return JSON.parse(rawText) as Yad2Response;
+  } catch (cause) {
+    throw new Yad2UpstreamUnavailableError(
+      `Yad2 feed returned a non-JSON response${formatResponseDetails(rawText, res)}`,
+      {
+        status: res.status,
+        contentType: res.headers.get("content-type"),
+        bodyPreview: buildBodyPreview(rawText),
+        cause,
+      },
+    );
+  }
+}
+
+function formatResponseDetails(rawText: string, res: Response): string {
+  const details = [`status=${res.status}`];
+  const contentType = res.headers.get("content-type");
+  if (contentType) {
+    details.push(`content-type=${contentType.split(";")[0]}`);
+  }
+
+  const title = rawText.match(/<title[^>]*>\s*([^<]+?)\s*<\/title>/i)?.[1]?.trim();
+  if (title) {
+    details.push(`title="${title}"`);
+  }
+
+  const preview = buildBodyPreview(rawText);
+  if (preview) {
+    details.push(`body="${preview}"`);
+  }
+
+  return ` (${details.join(", ")})`;
+}
+
+function buildBodyPreview(rawText: string): string {
+  return rawText.replace(/\s+/g, " ").trim().slice(0, 140);
 }
 
 export function normalizeYad2Item(raw: Yad2RawItem): NormalizedListing | null {

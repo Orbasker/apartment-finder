@@ -1,4 +1,4 @@
-import { fetchYad2Listings } from "@/scrapers/yad2";
+import { fetchYad2Listings, Yad2UpstreamUnavailableError } from "@/scrapers/yad2";
 import { ingestNewListings } from "@/pipeline/dedup";
 import { ruleFilter } from "@/pipeline/ruleFilter";
 import { runJudgeAndNotify } from "@/pipeline/pipeline";
@@ -56,6 +56,24 @@ export async function GET(req: Request): Promise<Response> {
       durationMs: Date.now() - startedAt,
     });
   } catch (err) {
+    if (err instanceof Yad2UpstreamUnavailableError) {
+      console.warn("poll-yad2 skipped:", err.message);
+      return Response.json({
+        ok: true,
+        fetched: 0,
+        inserted: 0,
+        skippedExisting: 0,
+        passed: 0,
+        filtered: 0,
+        alerted: 0,
+        skipped: 0,
+        unsure: 0,
+        upstreamStatus: "unavailable",
+        upstreamError: err.message,
+        durationMs: Date.now() - startedAt,
+      });
+    }
+
     console.error("poll-yad2 failed:", err);
     return Response.json(
       { ok: false, error: err instanceof Error ? err.message : String(err) },
