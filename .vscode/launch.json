@@ -1,0 +1,115 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "bun run dev",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run build",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "build"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run lint",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "lint"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run typecheck",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "typecheck"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run test",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "test"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run deadcode",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "deadcode"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run db:generate",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "db:generate"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run db:push",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "db:push"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run db:studio",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "db:studio"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run db:check",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "db:check"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "bun run telegram:webhook",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "/Users/orb/.bun/bin/bun",
+      "runtimeArgs": ["run", "telegram:webhook"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal"
+    }
+  ]
+}
