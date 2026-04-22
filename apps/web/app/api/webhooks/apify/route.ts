@@ -7,6 +7,8 @@ import { ingestNewListings } from "@/pipeline/dedup";
 import { ruleFilter } from "@/pipeline/ruleFilter";
 import { runJudgeAndNotify } from "@/pipeline/pipeline";
 import { loadPreferences } from "@/preferences/store";
+import { describeLocalSchedule } from "@/lib/schedule";
+import { sendRunSummaryEmail } from "@/integrations/resend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +23,7 @@ const ApifyWebhookBody = z.object({
 });
 
 export async function POST(req: Request): Promise<Response> {
+  const localTime = describeLocalSchedule();
   const expected = env().APIFY_WEBHOOK_SECRET;
   if (!expected) {
     return NextResponse.json(
@@ -45,13 +48,35 @@ export async function POST(req: Request): Promise<Response> {
   const { eventType, resource } = parsed.data;
   if (eventType !== "ACTOR.RUN.SUCCEEDED") {
     console.warn(`Apify run ${resource.id} eventType=${eventType} — skipping`);
-    return NextResponse.json({ ok: true, skipped: eventType });
+    const payload = {
+      ok: true,
+      skipped: eventType,
+      runId: resource.id,
+      localTime,
+    };
+    await sendRunSummaryEmail({
+      job: "Apify scan",
+      status: eventType === "ACTOR.RUN.FAILED" ? "error" : "skipped",
+      details: payload,
+    }).catch((err) => console.error("send Apify summary email failed:", err));
+    return NextResponse.json(payload);
   }
 
   const datasetId = resource.defaultDatasetId;
   if (!datasetId) {
+    const payload = {
+      ok: false,
+      error: "No defaultDatasetId on run",
+      runId: resource.id,
+      localTime,
+    };
+    await sendRunSummaryEmail({
+      job: "Apify scan",
+      status: "error",
+      details: payload,
+    }).catch((err) => console.error("send Apify summary email failed:", err));
     return NextResponse.json(
-      { ok: false, error: "No defaultDatasetId on run" },
+      payload,
       { status: 400 },
     );
   }
@@ -86,7 +111,7 @@ export async function POST(req: Request): Promise<Response> {
     else skippedByAi++;
   }
 
-  return NextResponse.json({
+  const payload = {
     ok: true,
     runId: resource.id,
     datasetId,
@@ -98,5 +123,12 @@ export async function POST(req: Request): Promise<Response> {
     alerted,
     skippedByAi,
     unsure,
-  });
+    localTime,
+  };
+  await sendRunSummaryEmail({
+    job: "Apify scan",
+    status: "ok",
+    details: payload,
+  }).catch((err) => console.error("send Apify summary email failed:", err));
+  return NextResponse.json(payload);
 }

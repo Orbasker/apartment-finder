@@ -23,7 +23,7 @@ export function ChatUI() {
       <div className="min-h-[50vh] space-y-3 rounded-md border p-4">
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            {`Try: "what did you find in florentin today?" or "raise budget to 9000"`}
+            {`Try: "what did you find in florentin today?" or "email me a summary after every run"`}
           </p>
         )}
         {messages.map((m) => (

@@ -77,7 +77,7 @@ export function buildAgentTools(chatId: string) {
 
     proposePreferencesPatch: tool({
       description:
-        "Stage a partial update to preferences. Does NOT apply until the user replies /confirm. Use this whenever the user wants to change budget, rooms, neighborhoods, deal-breakers, etc.",
+        "Stage a partial update to preferences. Does NOT apply until the user replies /confirm. Use this whenever the user wants to change budget, rooms, neighborhoods, deal-breakers, or alert settings such as the target email list and run-summary emails.",
       inputSchema: z.object({
         patch: PreferencesPatchSchema,
         humanSummary: z.string().describe("Short summary of what the patch changes, shown to the user."),

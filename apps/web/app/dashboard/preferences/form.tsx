@@ -7,7 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { savePreferencesAction } from "./actions";
 
-export function PreferencesForm({ initial }: { initial: Preferences }) {
+export function PreferencesForm({
+  initial,
+  userEmail,
+}: {
+  initial: Preferences;
+  userEmail: string | null;
+}) {
   const [prefs, setPrefs] = useState<Preferences>(initial);
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<string | null>(null);
@@ -150,6 +156,67 @@ export function PreferencesForm({ initial }: { initial: Preferences }) {
         />
       </Field>
 
+      <div className="space-y-4 rounded-md border p-4">
+        <div>
+          <h3 className="font-medium">Email alerts</h3>
+          <p className="text-sm text-muted-foreground">
+            Listing alerts and run summaries use the same target list. Your account
+            email is used by default until you change it.
+          </p>
+        </div>
+
+        <Field label="Target emails (comma-separated)">
+          <Input
+            type="text"
+            value={prefs.alerts.email.targets.join(", ")}
+            onChange={(e) =>
+              setPrefs({
+                ...prefs,
+                alerts: {
+                  ...prefs.alerts,
+                  email: {
+                    ...prefs.alerts.email,
+                    targets: e.target.value
+                      .split(",")
+                      .map((s) => s.trim().toLowerCase())
+                      .filter(Boolean),
+                  },
+                },
+              })
+            }
+            placeholder={userEmail ?? "you@example.com, teammate@example.com"}
+          />
+        </Field>
+
+        <CheckboxField
+          label="Send listing alert emails"
+          checked={prefs.alerts.email.enabled}
+          onChange={(checked) =>
+            setPrefs({
+              ...prefs,
+              alerts: {
+                ...prefs.alerts,
+                email: { ...prefs.alerts.email, enabled: checked },
+              },
+            })
+          }
+        />
+
+        <CheckboxField
+          label="Send a summary email after every run"
+          checked={prefs.alerts.email.runSummaryEnabled}
+          onChange={(checked) =>
+            setPrefs({
+              ...prefs,
+              alerts: {
+                ...prefs.alerts,
+                email: { ...prefs.alerts.email, runSummaryEnabled: checked },
+              },
+            })
+          }
+        />
+      </div>
+
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save"}
@@ -193,5 +260,26 @@ function ListField({
         }
       />
     </div>
+  );
+}
+
+function CheckboxField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-3 text-sm">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span>{label}</span>
+    </label>
   );
 }

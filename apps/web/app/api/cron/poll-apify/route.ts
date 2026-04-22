@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isApifyConfigured, startFacebookGroupsRun } from "@/integrations/apify";
 import { verifyCronRequest } from "@/lib/cronAuth";
 import { env } from "@/lib/env";
+import { describeLocalSchedule, shouldRunApifyPoll } from "@/lib/schedule";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,14 @@ export const maxDuration = 60;
 export async function GET(req: Request): Promise<Response> {
   const authFail = verifyCronRequest(req);
   if (authFail) return authFail;
+
+  if (!shouldRunApifyPoll()) {
+    return NextResponse.json({
+      ok: true,
+      skipped: "Outside Apify local schedule window",
+      localTime: describeLocalSchedule(),
+    });
+  }
 
   if (!isApifyConfigured()) {
     return NextResponse.json({
