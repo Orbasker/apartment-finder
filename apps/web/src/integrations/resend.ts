@@ -1,6 +1,8 @@
 import { Resend } from "resend";
 import type { Judgment, NormalizedListing } from "@apartment-finder/shared";
 import { env } from "@/lib/env";
+import type { AiUsageSummary } from "@/lib/aiUsage";
+import { getScheduleTimeZone } from "@/lib/schedule";
 import { getAlertEmailTargets, loadPreferences } from "@/preferences/store";
 
 let resendClient: Resend | undefined;
@@ -29,6 +31,10 @@ type RunSummaryEmailInput = {
   status: "ok" | "skipped" | "error";
   details: Record<string, unknown>;
 };
+
+export function hasAdminSummaryRecipients(): boolean {
+  return getAdminSummaryRecipients().length > 0;
+}
 
 export async function sendEmailAlert(input: EmailInput): Promise<void> {
   const prefs = await loadPreferences();
@@ -83,8 +89,44 @@ export async function sendRunSummaryEmail(input: RunSummaryEmailInput): Promise<
   });
 }
 
+export async function sendAdminCostSummaryEmail(summary: AiUsageSummary): Promise<void> {
+  const to = getAdminSummaryRecipients();
+  if (to.length === 0 || !isResendConfigured()) return;
+
+  const subject = `Apartment Finder admin cost summary · $${formatUsd(summary.estimatedCostUsd)}`;
+
+  await getClient().emails.send({
+    from: getFromAddress(),
+    to,
+    subject,
+    html: [
+      `<h2>Apartment Finder admin cost summary</h2>`,
+      `<p>${escape(formatWindow(summary.windowStart, summary.windowEnd))}</p>`,
+      renderMetricTable([
+        ["Estimated cost", `$${formatUsd(summary.estimatedCostUsd)}`],
+        ["AI calls", formatInteger(summary.totalCalls)],
+        ["Input tokens", formatInteger(summary.inputTokens)],
+        ["Output tokens", formatInteger(summary.outputTokens)],
+        ["Total tokens", formatInteger(summary.totalTokens)],
+        ["Unpriced calls", formatInteger(summary.unpricedCalls)],
+      ]),
+      `<h3>By feature</h3>`,
+      renderBreakdownTable(summary.byFeature),
+      `<h3>By model</h3>`,
+      renderBreakdownTable(summary.byModel),
+    ].join("\n"),
+  });
+}
+
 function getFromAddress(): string {
   return env().RESEND_FROM_EMAIL || "Apartment Finder <apartment-finder@orbasker.com>";
+}
+
+function getAdminSummaryRecipients(): string[] {
+  return (env().ADMIN_SUMMARY_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function escape(s: string): string {
@@ -107,4 +149,66 @@ function formatValue(value: unknown): string {
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   return JSON.stringify(value);
+}
+
+function formatWindow(start: Date, end: Date): string {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: getScheduleTimeZone(),
+  });
+
+  return `Window: ${fmt.format(start)} → ${fmt.format(end)} (${getScheduleTimeZone()})`;
+}
+
+function renderMetricTable(rows: Array<[string, string]>): string {
+  return `<table cellpadding="0" cellspacing="0">${rows
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:4px 12px 4px 0;"><strong>${escape(label)}</strong></td><td style="padding:4px 0;">${escape(value)}</td></tr>`,
+    )
+    .join("")}</table>`;
+}
+
+function renderBreakdownTable(
+  rows: Array<{
+    label: string;
+    calls: number;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    estimatedCostUsd: number;
+  }>,
+): string {
+  if (rows.length === 0) {
+    return "<p>No AI activity in this window.</p>";
+  }
+
+  return [
+    '<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">',
+    "<thead><tr>",
+    '<th align="left" style="padding:4px 16px 4px 0;">Name</th>',
+    '<th align="right" style="padding:4px 16px 4px 0;">Calls</th>',
+    '<th align="right" style="padding:4px 16px 4px 0;">Input</th>',
+    '<th align="right" style="padding:4px 16px 4px 0;">Output</th>',
+    '<th align="right" style="padding:4px 16px 4px 0;">Total</th>',
+    '<th align="right" style="padding:4px 0;">Est. cost</th>',
+    "</tr></thead>",
+    "<tbody>",
+    rows
+      .map(
+        (row) =>
+          `<tr><td style="padding:4px 16px 4px 0;">${escape(row.label)}</td><td align="right" style="padding:4px 16px 4px 0;">${escape(formatInteger(row.calls))}</td><td align="right" style="padding:4px 16px 4px 0;">${escape(formatInteger(row.inputTokens))}</td><td align="right" style="padding:4px 16px 4px 0;">${escape(formatInteger(row.outputTokens))}</td><td align="right" style="padding:4px 16px 4px 0;">${escape(formatInteger(row.totalTokens))}</td><td align="right" style="padding:4px 0;">$${escape(formatUsd(row.estimatedCostUsd))}</td></tr>`,
+      )
+      .join(""),
+    "</tbody></table>",
+  ].join("");
+}
+
+function formatInteger(value: number): string {
+  return new Intl.NumberFormat("en-US").format(value);
+}
+
+function formatUsd(value: number): string {
+  return value.toFixed(value >= 1 ? 2 : 4);
 }

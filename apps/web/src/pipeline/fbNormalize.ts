@@ -2,6 +2,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import type { ListingSource, NormalizedListing } from "@apartment-finder/shared";
 import { isGatewayConfigured, model } from "@/lib/gateway";
+import { recordAiUsage } from "@/lib/aiUsage";
 
 type FbPostRaw = {
   postId?: string;
@@ -84,7 +85,7 @@ function quickExtract(text: string): { priceNis: number | null; rooms: number | 
 
 async function llmExtract(text: string): Promise<z.infer<typeof ExtractedSchema>> {
   const trimmed = text.slice(0, 2000);
-  const { object } = await generateObject({
+  const result = await generateObject({
     model: model("anthropic/claude-haiku-4-5"),
     schema: ExtractedSchema,
     system: [
@@ -98,7 +99,14 @@ async function llmExtract(text: string): Promise<z.infer<typeof ExtractedSchema>
     ].join(" "),
     prompt: `<post>\n${trimmed}\n</post>`,
   });
-  return object;
+  await recordAiUsage({
+    feature: "pipeline.fb-normalize",
+    model: "anthropic/claude-haiku-4-5",
+    providerModel: result.response.modelId,
+    usage: result.usage,
+  }).catch((err) => console.error("record fb normalize AI usage failed:", err));
+
+  return result.object;
 }
 
 function hashIdFromUrl(url: string | undefined): string | null {
