@@ -161,13 +161,6 @@ export default function LoginPage() {
           </a>
         </section>
       </main>
-
-      <footer className="border-t">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-6 text-xs text-muted-foreground sm:flex-row">
-          <span>© {new Date().getFullYear()} Apartment Finder</span>
-          <span>Tel Aviv · Personal project</span>
-        </div>
-      </footer>
     </div>
   );
 }
