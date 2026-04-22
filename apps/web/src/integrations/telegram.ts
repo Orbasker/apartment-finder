@@ -1,7 +1,11 @@
 import { Bot, InlineKeyboard, webhookCallback } from "grammy";
 import type { Judgment, NormalizedListing } from "@apartment-finder/shared";
 import { env } from "@/lib/env";
-import { loadPreferences, savePreferences } from "@/preferences/store";
+import {
+  getAdminUserId,
+  loadAdminPreferences,
+  saveAdminPreferences,
+} from "@/preferences/store";
 import { recordFeedback } from "@/feedback/store";
 import { handleAgentMessage } from "@/agent/agent";
 
@@ -20,9 +24,9 @@ export function getBot(): Bot {
   bot.command("start", async (ctx) => {
     if (!(await enforceAllowedChat(ctx))) return;
     const chatId = String(ctx.chat.id);
-    const prefs = await loadPreferences();
+    const prefs = await loadAdminPreferences();
     if (!prefs.alerts.telegram.chatId) {
-      await savePreferences({
+      await saveAdminPreferences({
         ...prefs,
         alerts: {
           ...prefs.alerts,
@@ -77,7 +81,10 @@ export function getBot(): Bot {
     const [, direction, idStr] = match;
     const listingId = Number(idStr);
     const rating = direction === "up" ? 1 : -1;
-    await recordFeedback(listingId, rating);
+    const adminUserId = await getAdminUserId();
+    if (adminUserId) {
+      await recordFeedback(adminUserId, listingId, rating);
+    }
 
     await ctx.answerCallbackQuery({
       text: rating > 0 ? "Got it — 👍 recorded" : "Got it — 👎 recorded",
@@ -123,7 +130,7 @@ async function enforceAllowedChat(ctx: {
   chat: { id: number };
   reply: (text: string) => Promise<unknown>;
 }): Promise<boolean> {
-  const prefs = await loadPreferences();
+  const prefs = await loadAdminPreferences();
   const allowed =
     prefs.alerts.telegram.chatId ?? env().TELEGRAM_ALLOWED_CHAT_ID;
   if (!allowed) return true;
@@ -152,7 +159,7 @@ type AlertInput = {
 };
 
 export async function sendTelegramAlert(input: AlertInput): Promise<void> {
-  const prefs = await loadPreferences();
+  const prefs = await loadAdminPreferences();
   const chatId = prefs.alerts.telegram.chatId ?? env().TELEGRAM_ALLOWED_CHAT_ID;
   if (!prefs.alerts.telegram.enabled || !chatId) {
     console.warn("Telegram alerts disabled or no chat_id set — skipping");

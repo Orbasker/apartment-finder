@@ -19,6 +19,7 @@ export const NormalizedListingSchema = z.object({
   isAgency: z.boolean().nullable().optional(),
   authorName: z.string().nullable().optional(),
   authorProfile: z.string().nullable().optional(),
+  sourceGroupUrl: z.string().nullable().optional(),
   rawJson: z.unknown().optional(),
 });
 

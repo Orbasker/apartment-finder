@@ -178,3 +178,57 @@ To tune without the dashboard (which lands in Phase 4), open Supabase → Table 
 - [ ] Resend account + `RESEND_API_KEY` (for email alerts; verify your sending domain if going to prod)
 - [ ] Supabase Auth: enable Magic Link provider; add your email to the allowlist (Authentication → Providers → Email + Authentication → Users)
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` set in `.env` and Vercel (same values as the server-side ones — the `NEXT_PUBLIC_` prefix just ships them to the browser for the login page)
+
+---
+
+## Admin access (for `/dashboard/admin`)
+
+Admin role is stored in `auth.users.raw_app_meta_data.is_admin`. Supabase exposes this as
+`user.app_metadata.is_admin` and does not let clients modify it, so it's safe to use for gating.
+
+**Promote a user to admin** — Supabase Dashboard → SQL editor:
+
+```sql
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"is_admin": true}'::jsonb
+where email = 'orbasker@gmail.com';
+```
+
+**Revoke admin:**
+
+```sql
+update auth.users
+set raw_app_meta_data = raw_app_meta_data - 'is_admin'
+where email = 'orbasker@gmail.com';
+```
+
+Users need to sign out/in (or let their JWT refresh) for the change to take effect.
+
+Alternative: Supabase Dashboard → Authentication → Users → click user → edit `app_metadata` JSON.
+
+---
+
+## Multi-user migration (one-time, when upgrading an existing single-user deploy)
+
+This migration changes primary keys on `preferences`, `feedback`, and `sent_alerts` to be per-user, and adds a `monitored_groups.added_by` column plus a new `user_group_subscriptions` table. Because the PK changes are destructive, you cannot just run `db:push` — the existing data has to be backfilled to the admin user first.
+
+**Order matters. Do this in one session.**
+
+1. **Promote the admin** (see "Admin access" above) so `auth.users` has at least one user with `raw_app_meta_data.is_admin = true`.
+2. **Open Supabase SQL editor** and paste the entire contents of `apps/web/drizzle/0003_multi_user.sql`. Run it. This:
+   - resolves the admin user id from `auth.users`
+   - drops the old single-row PKs and adds `user_id` columns
+   - backfills every existing `preferences` / `feedback` / `sent_alerts` row to the admin user
+   - adds the new composite PKs and FKs
+   - adds `monitored_groups.added_by`, `listings.source_group_url` + index
+   - creates `user_group_subscriptions` with a row per existing enabled group, subscribing the admin
+3. **Sync the rest of the schema:**
+   ```bash
+   bun run db:push
+   ```
+   This is a no-op if the SQL above completed, but it keeps Drizzle's internal state consistent with the TypeScript schema.
+4. Sign out of the dashboard and back in so the admin's JWT picks up `app_metadata.is_admin`.
+
+**What this does NOT migrate:** historical Facebook-sourced listings won't have `source_group_url` populated unless their `raw_json` had a `groupUrl` field at ingest time (the migration populates it from there). New FB posts ingested after the migration write the column directly.
+
+**Telegram still talks only to the admin.** The bot reads/writes admin preferences and sends alerts to the admin chat. Per-user Telegram is a later phase.

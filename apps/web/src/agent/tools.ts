@@ -9,7 +9,7 @@ import {
   getListingById,
   searchListings,
 } from "@/listings/queries";
-import { loadPreferences } from "@/preferences/store";
+import { loadAdminPreferences } from "@/preferences/store";
 import { rejudgePastListings } from "@/pipeline/judge";
 import { stagePatch } from "@/agent/patches";
 
@@ -72,7 +72,7 @@ export function buildAgentTools(chatId: string) {
     getPreferences: tool({
       description: "Return the current stored user preferences.",
       inputSchema: z.object({}),
-      execute: async () => loadPreferences(),
+      execute: async () => loadAdminPreferences(),
     }),
 
     proposePreferencesPatch: tool({

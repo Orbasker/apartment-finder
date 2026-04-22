@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
 import {
   runAdminCostSummaryJob,
   runApifyPollJob,
@@ -24,6 +24,9 @@ export async function runDashboardJobAction(
   const user = await getCurrentUser();
   if (!user) {
     throw new Error("Unauthorized");
+  }
+  if (!isAdmin(user)) {
+    throw new Error("Only admins can trigger data collection runs");
   }
 
   const result = await runJob(job);

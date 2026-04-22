@@ -3,7 +3,11 @@ import type { Judgment, NormalizedListing } from "@apartment-finder/shared";
 import { env } from "@/lib/env";
 import type { AiUsageSummary } from "@/lib/aiUsage";
 import { getScheduleTimeZone } from "@/lib/schedule";
-import { getAlertEmailTargets, loadPreferences } from "@/preferences/store";
+import {
+  getAdminUserId,
+  getAlertEmailTargets,
+  loadAdminPreferences,
+} from "@/preferences/store";
 import {
   hasAlertBeenSent,
   recordAlertSent,
@@ -43,7 +47,7 @@ export function hasAdminSummaryRecipients(): boolean {
 }
 
 export async function sendEmailAlert(input: EmailInput): Promise<void> {
-  const prefs = await loadPreferences();
+  const prefs = await loadAdminPreferences();
   const to = getAlertEmailTargets(prefs);
   if (!prefs.alerts.email.enabled || to.length === 0) return;
 
@@ -75,7 +79,10 @@ export async function sendEmailAlert(input: EmailInput): Promise<void> {
 export async function sendRunSummaryEmail(input: RunSummaryEmailInput): Promise<void> {
   if (!isResendConfigured()) return;
 
-  const prefs = await loadPreferences();
+  const [prefs, adminUserId] = await Promise.all([
+    loadAdminPreferences(),
+    getAdminUserId(),
+  ]);
   const to = getAlertEmailTargets(prefs);
   if (to.length === 0) return;
 
@@ -114,16 +121,22 @@ export async function sendRunSummaryEmail(input: RunSummaryEmailInput): Promise<
     html,
   });
 
-  await Promise.all(
-    alertsToShow.map((entry) => recordAlertSent(entry.listingId, "email")),
-  );
+  if (adminUserId) {
+    await Promise.all(
+      alertsToShow.map((entry) =>
+        recordAlertSent(adminUserId, entry.listingId, "email"),
+      ),
+    );
+  }
 }
 
 async function filterUnsentEmailAlerts(alerts: AlertEntry[]): Promise<AlertEntry[]> {
+  const adminUserId = await getAdminUserId();
+  if (!adminUserId) return alerts;
   const results = await Promise.all(
     alerts.map(async (entry) => ({
       entry,
-      sent: await hasAlertBeenSent(entry.listingId, "email"),
+      sent: await hasAlertBeenSent(adminUserId, entry.listingId, "email"),
     })),
   );
   return results.filter((r) => !r.sent).map((r) => r.entry);

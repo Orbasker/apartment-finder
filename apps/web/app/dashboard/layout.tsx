@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { getCurrentUser } from "@/lib/supabase/server";
-import { seedAlertEmailTargets } from "@/preferences/store";
+import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
+import { loadPreferences, seedAlertEmailTargets } from "@/preferences/store";
+import { autoSubscribeToEnabledGroups } from "@/groups/subscriptions";
 
-const links = [
+const baseLinks = [
   { href: "/dashboard", label: "Listings" },
   { href: "/dashboard/preferences", label: "Preferences" },
   { href: "/dashboard/groups", label: "FB Groups" },
@@ -11,9 +12,17 @@ const links = [
   { href: "/dashboard/chat", label: "Chat" },
 ] as const;
 
+const adminLink = { href: "/dashboard/admin", label: "Admin" } as const;
+
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
-  await seedAlertEmailTargets(user?.email);
+  if (user) {
+    await loadPreferences(user.id);
+    await seedAlertEmailTargets(user.id, user.email);
+    await autoSubscribeToEnabledGroups(user.id);
+  }
+
+  const links = isAdmin(user) ? [...baseLinks, adminLink] : baseLinks;
 
   return (
     <div className="mx-auto max-w-7xl p-6">

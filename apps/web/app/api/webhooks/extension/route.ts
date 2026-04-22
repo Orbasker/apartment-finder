@@ -9,7 +9,7 @@ import { normalizeFbPost } from "@/pipeline/fbNormalize";
 import { ingestNewListings } from "@/pipeline/dedup";
 import { ruleFilter } from "@/pipeline/ruleFilter";
 import { runJudgeAndNotify } from "@/pipeline/pipeline";
-import { loadPreferences } from "@/preferences/store";
+import { getAdminUserId, loadAdminPreferences } from "@/preferences/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,7 +46,10 @@ export async function POST(req: Request): Promise<Response> {
   ).filter((l): l is NonNullable<typeof l> => l !== null);
 
   const { inserted, skippedExisting } = await ingestNewListings(normalized);
-  const prefs = await loadPreferences();
+  const [prefs, adminUserId] = await Promise.all([
+    loadAdminPreferences(),
+    getAdminUserId(),
+  ]);
 
   let alerted = 0;
   let filtered = 0;
@@ -59,10 +62,15 @@ export async function POST(req: Request): Promise<Response> {
       filtered++;
       continue;
     }
+    if (!adminUserId) {
+      skippedByAi++;
+      continue;
+    }
     const result = await runJudgeAndNotify({
       listingId: row.id,
       listing: row.listing,
       prefs,
+      notifyUserId: adminUserId,
     });
     if (result.outcome === "alert") alerted++;
     else if (result.outcome === "unsure") unsure++;

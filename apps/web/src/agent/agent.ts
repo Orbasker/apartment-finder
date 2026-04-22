@@ -1,6 +1,6 @@
 import { generateText, stepCountIs } from "ai";
 import { isGatewayConfigured, model } from "@/lib/gateway";
-import { loadPreferences } from "@/preferences/store";
+import { loadAdminPreferences } from "@/preferences/store";
 import { buildAgentTools } from "@/agent/tools";
 import { recordAiUsage } from "@/lib/aiUsage";
 
@@ -14,7 +14,7 @@ export async function handleAgentMessage(input: {
     return "AI agent is not configured (missing AI_GATEWAY_API_KEY). Ask the dashboard owner to set it.";
   }
 
-  const prefs = await loadPreferences();
+  const prefs = await loadAdminPreferences();
   const tools = buildAgentTools(input.chatId);
 
   const result = await generateText({

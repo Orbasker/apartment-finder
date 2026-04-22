@@ -36,9 +36,11 @@ export const listings = pgTable(
     authorProfile: text("author_profile"),
     rawJson: jsonb("raw_json"),
     textHash: text("text_hash"),
+    sourceGroupUrl: text("source_group_url"),
   },
   (t) => ({
     sourceUnique: uniqueIndex("listings_source_unique").on(t.source, t.sourceId),
+    sourceGroupUrlIdx: index("listings_source_group_url_idx").on(t.sourceGroupUrl),
   }),
 );
 
@@ -53,22 +55,30 @@ export const judgments = pgTable("judgments", {
   judgedAt: timestamp("judged_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const feedback = pgTable("feedback", {
-  listingId: integer("listing_id").primaryKey(),
-  rating: smallint("rating"),
-  note: text("note"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const feedback = pgTable(
+  "feedback",
+  {
+    listingId: integer("listing_id").notNull(),
+    userId: uuid("user_id").notNull(),
+    rating: smallint("rating"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.listingId, t.userId] }),
+  }),
+);
 
 export const sentAlerts = pgTable(
   "sent_alerts",
   {
     listingId: integer("listing_id").notNull(),
     channel: text("channel").notNull(),
+    userId: uuid("user_id").notNull(),
     sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
-    pk: primaryKey({ columns: [t.listingId, t.channel] }),
+    pk: primaryKey({ columns: [t.listingId, t.channel, t.userId] }),
   }),
 );
 
@@ -79,7 +89,7 @@ export const blockedAuthors = pgTable("blocked_authors", {
 });
 
 export const preferences = pgTable("preferences", {
-  id: integer("id").primaryKey().default(1),
+  userId: uuid("user_id").primaryKey(),
   data: jsonb("data").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -97,7 +107,20 @@ export const monitoredGroups = pgTable("monitored_groups", {
   label: text("label"),
   enabled: boolean("enabled").default(true).notNull(),
   addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
+  addedBy: uuid("added_by"),
 });
+
+export const userGroupSubscriptions = pgTable(
+  "user_group_subscriptions",
+  {
+    userId: uuid("user_id").notNull(),
+    groupUrl: text("group_url").notNull(),
+    subscribedAt: timestamp("subscribed_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.groupUrl] }),
+  }),
+);
 
 export const aiUsage = pgTable(
   "ai_usage",
@@ -129,3 +152,4 @@ export type JudgmentRow = typeof judgments.$inferSelect;
 export type NewJudgmentRow = typeof judgments.$inferInsert;
 export type AiUsageRow = typeof aiUsage.$inferSelect;
 export type NewAiUsageRow = typeof aiUsage.$inferInsert;
+export type UserGroupSubscription = typeof userGroupSubscriptions.$inferSelect;

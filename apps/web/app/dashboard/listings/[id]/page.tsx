@@ -3,6 +3,7 @@ import { getListingById } from "@/listings/queries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatNis, relTime } from "@/lib/utils";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { FeedbackButtons } from "./feedback-buttons";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,9 @@ export default async function ListingDetailPage({
   const { id } = await params;
   const listingId = Number(id);
   if (!Number.isFinite(listingId)) notFound();
-  const listing = await getListingById(listingId);
+  const user = await getCurrentUser();
+  if (!user) notFound();
+  const listing = await getListingById(listingId, user.id);
   if (!listing) notFound();
 
   return (

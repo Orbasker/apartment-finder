@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { feedback, judgments, listings, sentAlerts } from "@/db/schema";
 
@@ -12,6 +12,10 @@ export type ListingsFilter = {
   search?: string;
   limit?: number;
   offset?: number;
+  /** Scope the feedback join + group filter to this user. */
+  forUserId?: string;
+  /** Limit FB listings to these source_group_url values. Non-FB rows always pass. */
+  subscribedGroupUrls?: string[];
 };
 
 export async function searchListings(f: ListingsFilter = {}) {
@@ -33,6 +37,20 @@ export async function searchListings(f: ListingsFilter = {}) {
   if (f.search) {
     conds.push(ilike(listings.description, `%${f.search}%`));
   }
+  if (f.subscribedGroupUrls) {
+    const nonFb = inArray(listings.source, ["yad2"]);
+    if (f.subscribedGroupUrls.length === 0) {
+      conds.push(nonFb);
+    } else {
+      conds.push(
+        or(nonFb, inArray(listings.sourceGroupUrl, f.subscribedGroupUrls))!,
+      );
+    }
+  }
+
+  const feedbackJoinCond = f.forUserId
+    ? and(eq(feedback.listingId, listings.id), eq(feedback.userId, f.forUserId))!
+    : eq(feedback.listingId, listings.id);
 
   const query = db
     .select({
@@ -60,7 +78,7 @@ export async function searchListings(f: ListingsFilter = {}) {
     })
     .from(listings)
     .leftJoin(judgments, eq(judgments.listingId, listings.id))
-    .leftJoin(feedback, eq(feedback.listingId, listings.id));
+    .leftJoin(feedback, feedbackJoinCond);
 
   if (f.minScore != null) {
     conds.push(gte(judgments.score, f.minScore));
@@ -77,8 +95,11 @@ export async function searchListings(f: ListingsFilter = {}) {
     .offset(f.offset ?? 0);
 }
 
-export async function getListingById(id: number) {
+export async function getListingById(id: number, forUserId?: string) {
   const db = getDb();
+  const feedbackJoinCond = forUserId
+    ? and(eq(feedback.listingId, listings.id), eq(feedback.userId, forUserId))!
+    : eq(feedback.listingId, listings.id);
   const rows = await db
     .select({
       id: listings.id,
@@ -111,7 +132,7 @@ export async function getListingById(id: number) {
     })
     .from(listings)
     .leftJoin(judgments, eq(judgments.listingId, listings.id))
-    .leftJoin(feedback, eq(feedback.listingId, listings.id))
+    .leftJoin(feedback, feedbackJoinCond)
     .where(eq(listings.id, id))
     .limit(1);
   return rows[0] ?? null;

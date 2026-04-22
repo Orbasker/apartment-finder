@@ -1,21 +1,40 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { searchListings } from "@/listings/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatNis, relTime } from "@/lib/utils";
+import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
+import { loadPreferences } from "@/preferences/store";
+import { getSubscribedGroupUrls } from "@/groups/subscriptions";
+import { ruleFilter } from "@/pipeline/ruleFilter";
+import type { NormalizedListing } from "@apartment-finder/shared";
 import { RunJobsCard } from "./run-jobs-card";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardHomePage() {
-  const [alertsToday, recent] = await Promise.all([
-    searchListings({ decision: "alert", hoursAgo: 24, limit: 30 }),
-    searchListings({ limit: 50 }),
+  const user = await getCurrentUser();
+  if (!user) notFound();
+
+  const [prefs, subscribedGroupUrls] = await Promise.all([
+    loadPreferences(user.id),
+    getSubscribedGroupUrls(user.id),
   ]);
+
+  const scope = { forUserId: user.id, subscribedGroupUrls };
+  const [alertsTodayRaw, recentRaw] = await Promise.all([
+    searchListings({ ...scope, decision: "alert", hoursAgo: 24, limit: 60 }),
+    searchListings({ ...scope, limit: 100 }),
+  ]);
+  const applyUserRules = (rows: typeof alertsTodayRaw) =>
+    rows.filter((r) => ruleFilter(rowToListing(r), prefs).pass);
+  const alertsToday = applyUserRules(alertsTodayRaw).slice(0, 30);
+  const recent = applyUserRules(recentRaw).slice(0, 50);
 
   return (
     <div className="space-y-8">
-      <RunJobsCard />
+      {isAdmin(user) && <RunJobsCard />}
 
       <section>
         <h2 className="mb-3 text-xl font-semibold">
@@ -80,6 +99,30 @@ export default async function DashboardHomePage() {
       </section>
     </div>
   );
+}
+
+type ListingRow = Awaited<ReturnType<typeof searchListings>>[number];
+
+function rowToListing(r: ListingRow): NormalizedListing {
+  return {
+    source: r.source as NormalizedListing["source"],
+    sourceId: r.sourceId,
+    url: r.url,
+    title: r.title,
+    description: r.description,
+    priceNis: r.priceNis,
+    rooms: r.rooms,
+    sqm: r.sqm,
+    floor: null,
+    neighborhood: r.neighborhood,
+    street: r.street,
+    postedAt: r.postedAt,
+    isAgency: r.isAgency,
+    authorName: r.authorName,
+    authorProfile: null,
+    sourceGroupUrl: null,
+    rawJson: null,
+  };
 }
 
 function DecisionBadge({ decision }: { decision: string }) {
