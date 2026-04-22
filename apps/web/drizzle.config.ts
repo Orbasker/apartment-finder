@@ -36,9 +36,9 @@ loadEnvFile(path.join(configDir, ".env"));
 loadEnvFile(path.join(workspaceRoot, ".env.local"));
 loadEnvFile(path.join(workspaceRoot, ".env"));
 
-const url = process.env.DATABASE_URL;
+const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 if (!url) {
-  throw new Error("DATABASE_URL is required to run drizzle-kit. Copy .env.example to .env first.");
+  throw new Error("DIRECT_URL or DATABASE_URL is required to run drizzle-kit. Copy .env.example to .env first.");
 }
 
 export default defineConfig({
