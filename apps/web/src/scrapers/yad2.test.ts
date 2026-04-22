@@ -71,4 +71,32 @@ describe("fetchYad2Listings", () => {
       }),
     ).rejects.toThrow(/Access Denied/);
   });
+
+  test("wraps request timeouts as upstream unavailable errors", async () => {
+    await expect(
+      fetchYad2Listings({
+        feedUrl: "https://example.com/yad2",
+        timeoutMs: 5,
+        fetchImpl: async (_input, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(new DOMException("The operation was aborted.", "AbortError"));
+            });
+          }),
+      }),
+    ).rejects.toBeInstanceOf(Yad2UpstreamUnavailableError);
+
+    await expect(
+      fetchYad2Listings({
+        feedUrl: "https://example.com/yad2",
+        timeoutMs: 5,
+        fetchImpl: async (_input, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(new DOMException("The operation was aborted.", "AbortError"));
+            });
+          }),
+      }),
+    ).rejects.toThrow(/timed out after 5ms/);
+  });
 });

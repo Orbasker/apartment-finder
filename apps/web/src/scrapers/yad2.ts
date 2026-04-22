@@ -68,19 +68,25 @@ export async function fetchYad2Listings(
   const url = opts.feedUrl ?? YAD2_FEED_URL;
   const fetchImpl = opts.fetchImpl ?? fetch;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000);
+  const timeoutMs = opts.timeoutMs ?? 15_000;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetchImpl(url, {
-      headers: {
-        "User-Agent": UA,
-        Accept: "application/json, text/plain, */*",
-        "Accept-Language": "he-IL,he;q=0.9,en;q=0.8",
-        Referer: "https://www.yad2.co.il/",
-        Origin: "https://www.yad2.co.il",
-      },
-      signal: controller.signal,
-    });
+    let res: Response;
+    try {
+      res = await fetchImpl(url, {
+        headers: {
+          "User-Agent": UA,
+          Accept: "application/json, text/plain, */*",
+          "Accept-Language": "he-IL,he;q=0.9,en;q=0.8",
+          Referer: "https://www.yad2.co.il/",
+          Origin: "https://www.yad2.co.il",
+        },
+        signal: controller.signal,
+      });
+    } catch (cause) {
+      throw buildFetchFailureError(cause, timeoutMs);
+    }
 
     const rawText = await res.text();
 
@@ -121,6 +127,29 @@ function parseYad2Response(rawText: string, res: Response): Yad2Response {
       },
     );
   }
+}
+
+function buildFetchFailureError(cause: unknown, timeoutMs: number): Yad2UpstreamUnavailableError {
+  const aborted =
+    cause instanceof DOMException
+    && cause.name === "AbortError";
+
+  return new Yad2UpstreamUnavailableError(
+    aborted
+      ? `Yad2 feed request timed out after ${timeoutMs}ms`
+      : `Yad2 feed request failed: ${formatCauseMessage(cause)}`,
+    {
+      status: 0,
+      contentType: null,
+      bodyPreview: "",
+      cause,
+    },
+  );
+}
+
+function formatCauseMessage(cause: unknown): string {
+  if (cause instanceof Error && cause.message) return cause.message;
+  return String(cause);
 }
 
 function formatResponseDetails(rawText: string, res: Response): string {

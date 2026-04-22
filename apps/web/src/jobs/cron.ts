@@ -90,23 +90,27 @@ export async function runYad2PollJob(options?: {
   } catch (err) {
     if (err instanceof Yad2UpstreamUnavailableError) {
       console.warn("poll-yad2 skipped:", err.message);
-      return {
-        status: 200,
-        payload: {
-          ok: true,
-          fetched: 0,
-          inserted: 0,
-          skippedExisting: 0,
-          passed: 0,
-          filtered: 0,
-          alerted: 0,
-          skipped: 0,
-          unsure: 0,
-          upstreamStatus: "unavailable",
-          upstreamError: err.message,
-          durationMs: Date.now() - startedAt,
-        },
+      const payload = {
+        ok: true,
+        fetched: 0,
+        inserted: 0,
+        skippedExisting: 0,
+        passed: 0,
+        filtered: 0,
+        alerted: 0,
+        skipped: 0,
+        unsure: 0,
+        upstreamStatus: "unavailable",
+        upstreamError: err.message,
+        localTime,
+        durationMs: Date.now() - startedAt,
       };
+      await sendRunSummaryEmail({
+        job: "Yad2 poll",
+        status: "skipped",
+        details: payload,
+      }).catch((error) => console.error("send Yad2 summary email failed:", error));
+      return { status: 200, payload };
     }
 
     console.error("poll-yad2 failed:", err);
