@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   runAdminCostSummaryJob,
+  runAiTopPicksJob,
   runApifyPollJob,
   runYad2PollJob,
 } from "@/jobs/cron";
@@ -13,8 +14,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const BodySchema = z.object({
-  job: z.enum(["yad2", "apify", "adminCostSummary"]),
+  job: z.enum(["yad2", "apify", "adminCostSummary", "aiTopPicks"]),
 });
+
+type JobId = z.infer<typeof BodySchema>["job"];
 
 export async function POST(req: Request): Promise<Response> {
   const user = await getCurrentUser();
@@ -57,7 +60,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 }
 
-async function runJob(job: "yad2" | "apify" | "adminCostSummary") {
+async function runJob(job: JobId) {
   switch (job) {
     case "yad2":
       return runYad2PollJob({ enforceSchedule: false });
@@ -68,6 +71,8 @@ async function runJob(job: "yad2" | "apify" | "adminCostSummary") {
       });
     case "adminCostSummary":
       return runAdminCostSummaryJob();
+    case "aiTopPicks":
+      return runAiTopPicksJob();
   }
 }
 
@@ -82,7 +87,7 @@ async function getRequestOrigin(): Promise<string> {
 }
 
 function summarizeJobResult(
-  job: "yad2" | "apify" | "adminCostSummary",
+  job: JobId,
   payload: Record<string, unknown>,
 ): string {
   if (typeof payload.skipped === "string") {
@@ -108,6 +113,11 @@ function summarizeJobResult(
         `Summary sent for ${formatNumber(payload.totalCalls)} AI calls`,
         `${formatNumber(payload.totalTokens)} tokens`,
         `$${formatUsd(payload.estimatedCostUsd)}`,
+      ].join(", ");
+    case "aiTopPicks":
+      return [
+        `Scanned ${formatNumber(payload.candidateCount)} recent listings`,
+        `picked ${formatNumber(payload.picksReturned)} of ${formatNumber(payload.topN)}`,
       ].join(", ");
   }
 }

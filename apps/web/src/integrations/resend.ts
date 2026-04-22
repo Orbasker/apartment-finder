@@ -9,6 +9,7 @@ import {
   recordAlertSent,
   type AlertEntry,
 } from "@/pipeline/sentAlerts";
+import type { ResolvedTopPick } from "@/pipeline/topPicks";
 
 let resendClient: Resend | undefined;
 
@@ -166,6 +167,80 @@ function renderAlertsSection(alerts: AlertEntry[]): string {
     `<h3>New matches (${alerts.length})</h3>`,
     `<ul style="padding-left:20px;">${items}</ul>`,
   ].join("\n");
+}
+
+export type TopPicksEmailInput = {
+  picks: ResolvedTopPick[];
+  summary?: string;
+  hoursAgo: number;
+  candidateCount: number;
+};
+
+export async function sendTopPicksEmail(input: TopPicksEmailInput): Promise<void> {
+  if (!isResendConfigured()) return;
+  const prefs = await loadPreferences();
+  const to = getAlertEmailTargets(prefs);
+  if (to.length === 0) return;
+
+  const subject = input.picks.length > 0
+    ? `Apartment Finder: Top ${input.picks.length} picks · last ${input.hoursAgo}h`
+    : `Apartment Finder: No standout picks · last ${input.hoursAgo}h`;
+
+  const intro = input.summary
+    ? `<p>${escape(input.summary)}</p>`
+    : input.picks.length === 0
+      ? `<p>Nothing stood out across ${formatInteger(input.candidateCount)} recent listings.</p>`
+      : "";
+
+  const html = [
+    `<h2>Top picks · last ${escape(String(input.hoursAgo))}h</h2>`,
+    `<p><small>Scanned ${formatInteger(input.candidateCount)} recent listings.</small></p>`,
+    intro,
+    renderTopPicks(input.picks),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  await getClient().emails.send({
+    from: getFromAddress(),
+    to,
+    subject,
+    html,
+  });
+}
+
+function renderTopPicks(picks: ResolvedTopPick[]): string {
+  if (picks.length === 0) return "";
+  const items = picks
+    .map((pick) => {
+      const l = pick.listing;
+      const meta = [
+        l.priceNis ? `₪${formatInteger(l.priceNis)}` : null,
+        l.rooms != null ? `${l.rooms} rooms` : null,
+        l.sqm != null ? `${l.sqm} sqm` : null,
+        l.neighborhood,
+      ]
+        .filter(Boolean)
+        .map((v) => escape(String(v)))
+        .join(" · ");
+
+      return [
+        '<li style="margin-bottom:16px;">',
+        `<div><strong>#${escape(String(pick.rank))} · ${escape(pick.headline)}</strong>${l.score != null ? ` · score ${escape(String(l.score))}` : ""}</div>`,
+        meta ? `<div>${meta}</div>` : "",
+        `<div><em>${escape(pick.reasoning)}</em></div>`,
+        pick.concerns.length > 0
+          ? `<div>⚠︎ ${pick.concerns.map(escape).join(" · ")}</div>`
+          : "",
+        `<div><a href="${escape(l.url)}">View listing</a></div>`,
+        "</li>",
+      ]
+        .filter(Boolean)
+        .join("");
+    })
+    .join("");
+
+  return `<ol style="padding-left:20px;">${items}</ol>`;
 }
 
 export async function sendAdminCostSummaryEmail(summary: AiUsageSummary): Promise<void> {

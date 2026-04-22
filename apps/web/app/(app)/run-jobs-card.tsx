@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 
-type DashboardJobId = "yad2" | "apify" | "adminCostSummary";
+type DashboardJobId = "yad2" | "apify" | "adminCostSummary" | "aiTopPicks";
 
 type DashboardJobActionResult = {
   job: DashboardJobId;
@@ -35,6 +35,11 @@ const JOBS: Array<{
     id: "adminCostSummary",
     title: "Send admin cost email",
     description: "Email the last 24h AI cost summary to ADMIN_SUMMARY_EMAILS.",
+  },
+  {
+    id: "aiTopPicks",
+    title: "AI top picks",
+    description: "Rank recent listings with AI and send the top 5 by email and Telegram.",
   },
 ];
 

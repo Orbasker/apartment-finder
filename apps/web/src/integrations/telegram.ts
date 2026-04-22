@@ -173,6 +173,60 @@ export async function sendTelegramAlert(input: AlertInput): Promise<void> {
   });
 }
 
+type TopPicksTelegramInput = {
+  picks: import("@/pipeline/topPicks").ResolvedTopPick[];
+  summary?: string;
+  hoursAgo: number;
+  candidateCount: number;
+};
+
+export async function sendTelegramTopPicks(input: TopPicksTelegramInput): Promise<void> {
+  const prefs = await loadPreferences();
+  const chatId = prefs.alerts.telegram.chatId ?? env().TELEGRAM_ALLOWED_CHAT_ID;
+  if (!prefs.alerts.telegram.enabled || !chatId) {
+    console.warn("Telegram alerts disabled or no chat_id set — skipping top picks");
+    return;
+  }
+
+  const bot = getBot();
+  const text = renderTopPicksMessage(input);
+
+  await bot.api.sendMessage(chatId, text, {
+    parse_mode: "HTML",
+    link_preview_options: { is_disabled: true },
+  });
+}
+
+function renderTopPicksMessage(input: TopPicksTelegramInput): string {
+  const lines = [
+    `<b>Top ${input.picks.length || 0} picks · last ${input.hoursAgo}h</b>`,
+    `<i>Scanned ${input.candidateCount} recent listings.</i>`,
+  ];
+  if (input.summary) lines.push("", escapeHtml(input.summary));
+  if (input.picks.length === 0) {
+    lines.push("", "Nothing stood out.");
+    return lines.join("\n");
+  }
+  for (const pick of input.picks) {
+    const l = pick.listing;
+    const meta = [
+      l.priceNis != null ? `₪${l.priceNis.toLocaleString("en-US")}` : null,
+      l.rooms != null ? `${l.rooms}br` : null,
+      l.neighborhood,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    lines.push(
+      "",
+      `<b>#${pick.rank} · ${escapeHtml(pick.headline)}</b>`,
+      meta,
+      `<i>${escapeHtml(pick.reasoning)}</i>`,
+      l.url,
+    );
+  }
+  return lines.join("\n");
+}
+
 function renderAlert({ listing, summary, reason, judgment }: AlertInput): string {
   const priceStr =
     listing.priceNis != null
