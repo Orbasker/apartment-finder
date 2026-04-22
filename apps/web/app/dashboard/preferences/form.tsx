@@ -5,6 +5,7 @@ import type { Preferences } from "@apartment-finder/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import { savePreferencesAction } from "./actions";
 
 export function PreferencesForm({
@@ -219,6 +220,7 @@ export function PreferencesForm({
 
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending}>
+          {pending && <Spinner className="mr-2" />}
           {pending ? "Saving…" : "Save"}
         </Button>
         {status && <span className="text-sm text-muted-foreground">{status}</span>}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 function GoogleIcon({ className }: { className?: string }) {
@@ -33,11 +34,14 @@ function GoogleIcon({ className }: { className?: string }) {
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [pendingAction, setPendingAction] = useState<"google" | "magic" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const busy = status === "sending";
 
   async function sendMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setStatus("sending");
+    setPendingAction("magic");
     setError(null);
     try {
       const supabase = getSupabaseBrowserClient();
@@ -52,11 +56,14 @@ export default function LoginPage() {
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPendingAction(null);
     }
   }
 
   async function signInWithGoogle() {
     setStatus("sending");
+    setPendingAction("google");
     setError(null);
     try {
       const supabase = getSupabaseBrowserClient();
@@ -70,6 +77,7 @@ export default function LoginPage() {
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : String(err));
+      setPendingAction(null);
     }
   }
 
@@ -91,9 +99,13 @@ export default function LoginPage() {
                 variant="outline"
                 className="w-full"
                 onClick={signInWithGoogle}
-                disabled={status === "sending"}
+                disabled={busy}
               >
-                <GoogleIcon className="mr-2 h-4 w-4" />
+                {pendingAction === "google" ? (
+                  <Spinner className="mr-2" />
+                ) : (
+                  <GoogleIcon className="mr-2 h-4 w-4" />
+                )}
                 Continue with Google
               </Button>
               <div className="relative">
@@ -116,8 +128,9 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                   />
                 </div>
-                <Button type="submit" disabled={status === "sending"} className="w-full">
-                  {status === "sending" ? "Sending…" : "Send magic link"}
+                <Button type="submit" disabled={busy} className="w-full">
+                  {pendingAction === "magic" && <Spinner className="mr-2" />}
+                  {pendingAction === "magic" ? "Sending…" : "Send magic link"}
                 </Button>
               </form>
               {error && <p className="text-sm text-destructive">{error}</p>}
