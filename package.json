@@ -1,0 +1,23 @@
+{
+  "name": "apartment-finder",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "bun@1.3.9",
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "bun run --filter @apartment-finder/web db:generate",
+    "db:push": "bun run --filter @apartment-finder/web db:push",
+    "db:studio": "bun run --filter @apartment-finder/web db:studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}
