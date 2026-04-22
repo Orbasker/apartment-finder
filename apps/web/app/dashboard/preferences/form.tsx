@@ -1,12 +1,32 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { Preferences } from "@apartment-finder/shared";
+import {
+  AMENITY_KEYS,
+  AMENITY_LABELS,
+  type AmenityKey,
+  type AmenityPreference,
+  type Preferences,
+} from "@apartment-finder/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { savePreferencesAction } from "./actions";
+
+const AMENITY_STATES: AmenityPreference[] = [
+  "any",
+  "preferred",
+  "required",
+  "avoid",
+];
+
+const AMENITY_STATE_LABELS: Record<AmenityPreference, string> = {
+  any: "Any",
+  preferred: "Preferred",
+  required: "Required",
+  avoid: "Avoid",
+};
 
 export function PreferencesForm({
   initial,
@@ -40,6 +60,18 @@ export function PreferencesForm({
       }}
     >
       <div className="grid gap-4 md:grid-cols-2">
+        <Field label="Min rent (₪/mo) — filters spam / bait">
+          <Input
+            type="number"
+            value={prefs.budget.minNis ?? 0}
+            onChange={(e) =>
+              setPrefs({
+                ...prefs,
+                budget: { ...prefs.budget, minNis: Number(e.target.value) },
+              })
+            }
+          />
+        </Field>
         <Field label="Max rent (₪/mo)">
           <Input
             type="number"
@@ -97,14 +129,30 @@ export function PreferencesForm({
           <Input
             type="number"
             value={prefs.sizeSqm?.min ?? ""}
-            onChange={(e) =>
+            onChange={(e) => {
+              const v = e.target.value ? Number(e.target.value) : undefined;
+              const next = { ...(prefs.sizeSqm ?? {}), min: v };
               setPrefs({
                 ...prefs,
-                sizeSqm: e.target.value
-                  ? { min: Number(e.target.value) }
-                  : undefined,
-              })
-            }
+                sizeSqm:
+                  next.min == null && next.max == null ? undefined : next,
+              });
+            }}
+          />
+        </Field>
+        <Field label="Max size (sqm)">
+          <Input
+            type="number"
+            value={prefs.sizeSqm?.max ?? ""}
+            onChange={(e) => {
+              const v = e.target.value ? Number(e.target.value) : undefined;
+              const next = { ...(prefs.sizeSqm ?? {}), max: v };
+              setPrefs({
+                ...prefs,
+                sizeSqm:
+                  next.min == null && next.max == null ? undefined : next,
+              });
+            }}
           />
         </Field>
         <Field label="Max age (hours)">
@@ -143,6 +191,32 @@ export function PreferencesForm({
         value={prefs.dealBreakers}
         onChange={(v) => setPrefs({ ...prefs, dealBreakers: v })}
       />
+
+      <div className="space-y-3 rounded-md border p-4">
+        <div>
+          <h3 className="font-medium">Amenities</h3>
+          <p className="text-sm text-muted-foreground">
+            The AI judge uses these when scoring each listing. &quot;Required&quot; will
+            block alerts unless the feature is present; &quot;Avoid&quot; will demote or
+            skip listings that mention it.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {AMENITY_KEYS.map((key) => (
+            <AmenityRow
+              key={key}
+              amenityKey={key}
+              value={prefs.amenities[key] ?? "any"}
+              onChange={(v) =>
+                setPrefs({
+                  ...prefs,
+                  amenities: { ...prefs.amenities, [key]: v },
+                })
+              }
+            />
+          ))}
+        </div>
+      </div>
 
       <Field label="AI score threshold for alerts">
         <Input
@@ -261,6 +335,33 @@ function ListField({
           )
         }
       />
+    </div>
+  );
+}
+
+function AmenityRow({
+  amenityKey,
+  value,
+  onChange,
+}: {
+  amenityKey: AmenityKey;
+  value: AmenityPreference;
+  onChange: (next: AmenityPreference) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+      <span className="text-sm">{AMENITY_LABELS[amenityKey]}</span>
+      <select
+        className="rounded-md border bg-background px-2 py-1 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value as AmenityPreference)}
+      >
+        {AMENITY_STATES.map((state) => (
+          <option key={state} value={state}>
+            {AMENITY_STATE_LABELS[state]}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

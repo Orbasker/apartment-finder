@@ -15,6 +15,12 @@ export function ruleFilter(
     if (listing.priceNis > cap) {
       return { pass: false, reason: `price ${listing.priceNis} > ${cap}` };
     }
+    if (prefs.budget.minNis > 0 && listing.priceNis < prefs.budget.minNis) {
+      return {
+        pass: false,
+        reason: `price ${listing.priceNis} < min ${prefs.budget.minNis} (likely spam)`,
+      };
+    }
   }
 
   if (listing.rooms != null) {
@@ -26,9 +32,12 @@ export function ruleFilter(
     }
   }
 
-  if (prefs.sizeSqm?.min != null && listing.sqm != null) {
-    if (listing.sqm < prefs.sizeSqm.min) {
+  if (listing.sqm != null) {
+    if (prefs.sizeSqm?.min != null && listing.sqm < prefs.sizeSqm.min) {
       return { pass: false, reason: `sqm ${listing.sqm} < min ${prefs.sizeSqm.min}` };
+    }
+    if (prefs.sizeSqm?.max != null && listing.sqm > prefs.sizeSqm.max) {
+      return { pass: false, reason: `sqm ${listing.sqm} > max ${prefs.sizeSqm.max}` };
     }
   }
 
