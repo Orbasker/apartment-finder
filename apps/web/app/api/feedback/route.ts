@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { recordFeedback } from "@/feedback/store";
 
 export const runtime = "nodejs";
@@ -12,11 +13,20 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request): Promise<Response> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
   const json = await req.json().catch(() => null);
   const parsed = BodySchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  await recordFeedback(parsed.data.listingId, parsed.data.rating, parsed.data.note);
+  await recordFeedback(
+    user.id,
+    parsed.data.listingId,
+    parsed.data.rating,
+    parsed.data.note,
+  );
   return NextResponse.json({ ok: true });
 }

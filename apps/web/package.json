@@ -10,8 +10,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:push:auto": "DRIZZLE_PUSH_NO_STRICT=1 drizzle-kit push",
+    "db:manual": "bun scripts/apply-manual-migrations.ts",
+    "db:push": "bun run db:manual && drizzle-kit push",
+    "db:push:auto": "bun run db:manual && DRIZZLE_PUSH_NO_STRICT=1 drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

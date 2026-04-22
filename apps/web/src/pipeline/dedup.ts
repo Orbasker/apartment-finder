@@ -58,6 +58,7 @@ export async function ingestNewListings(
     isAgency: l.isAgency ?? null,
     authorName: l.authorName ?? null,
     authorProfile: l.authorProfile ?? null,
+    sourceGroupUrl: l.sourceGroupUrl ?? null,
     rawJson: l.rawJson ?? null,
     textHash: listingTextHash(l),
   }));

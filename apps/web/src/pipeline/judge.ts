@@ -249,8 +249,8 @@ export async function rejudgePastListings(limit = 200): Promise<number> {
 
   if (rows.length === 0) return 0;
 
-  const { loadPreferences } = await import("@/preferences/store");
-  const prefs = await loadPreferences();
+  const { loadAdminPreferences } = await import("@/preferences/store");
+  const prefs = await loadAdminPreferences();
 
   let ok = 0;
   for (const row of rows) {

@@ -3,7 +3,7 @@ import { PreferencesPatchSchema, PreferencesSchema } from "@apartment-finder/sha
 import type { Preferences, PreferencesPatch } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import { pendingPatches } from "@/db/schema";
-import { loadPreferences, savePreferences } from "@/preferences/store";
+import { loadAdminPreferences, saveAdminPreferences } from "@/preferences/store";
 
 export async function stagePatch(input: {
   chatId: string;
@@ -36,10 +36,10 @@ export async function confirmLatestPatch(chatId: string): Promise<string> {
     return "No pending changes to confirm.";
   }
 
-  const current = await loadPreferences();
+  const current = await loadAdminPreferences();
   const merged = mergePreferences(current, pending.patch as PreferencesPatch);
   const validated = PreferencesSchema.parse(merged);
-  await savePreferences(validated);
+  await saveAdminPreferences(validated);
 
   await db.delete(pendingPatches).where(eq(pendingPatches.chatId, chatId));
 

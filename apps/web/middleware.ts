@@ -34,6 +34,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (path.startsWith("/dashboard/admin") && user.app_metadata?.is_admin !== true) {
+    url.pathname = "/dashboard";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
   return response;
 }
 

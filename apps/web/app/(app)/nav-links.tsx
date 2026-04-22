@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
-const links = [
+const baseLinks = [
   { href: "/", label: "Listings" },
   { href: "/preferences", label: "Preferences" },
   { href: "/groups", label: "FB Groups" },
@@ -13,8 +13,11 @@ const links = [
   { href: "/chat", label: "Chat" },
 ] as const;
 
-export function DashboardNav() {
+const adminLink = { href: "/admin", label: "Admin" } as const;
+
+export function DashboardNav({ showAdmin = false }: { showAdmin?: boolean }) {
   const pathname = usePathname();
+  const links = showAdmin ? [...baseLinks, adminLink] : baseLinks;
   return (
     <nav className="flex gap-4">
       {links.map((l) => {

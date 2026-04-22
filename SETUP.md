@@ -178,3 +178,50 @@ To tune without the dashboard (which lands in Phase 4), open Supabase → Table 
 - [ ] Resend account + `RESEND_API_KEY` (for email alerts; verify your sending domain if going to prod)
 - [ ] Supabase Auth: enable Magic Link provider; add your email to the allowlist (Authentication → Providers → Email + Authentication → Users)
 - [ ] `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` set in `.env` and Vercel (same values as the server-side ones — the `NEXT_PUBLIC_` prefix just ships them to the browser for the login page)
+
+---
+
+## Admin access (for `/dashboard/admin`)
+
+Admin role is stored in `auth.users.raw_app_meta_data.is_admin`. Supabase exposes this as
+`user.app_metadata.is_admin` and does not let clients modify it, so it's safe to use for gating.
+
+**Promote a user to admin** — Supabase Dashboard → SQL editor:
+
+```sql
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"is_admin": true}'::jsonb
+where email = 'orbasker@gmail.com';
+```
+
+**Revoke admin:**
+
+```sql
+update auth.users
+set raw_app_meta_data = raw_app_meta_data - 'is_admin'
+where email = 'orbasker@gmail.com';
+```
+
+Users need to sign out/in (or let their JWT refresh) for the change to take effect.
+
+Alternative: Supabase Dashboard → Authentication → Users → click user → edit `app_metadata` JSON.
+
+---
+
+## Multi-user migration (one-time, when upgrading an existing single-user deploy)
+
+`apps/web/drizzle/manual_multi_user.sql` changes primary keys on `preferences`, `feedback`, and `sent_alerts` to be per-user, adds `monitored_groups.added_by`, `listings.source_group_url`, and creates `user_group_subscriptions`. It's idempotent and now runs automatically before `drizzle-kit push`, so the normal flow is:
+
+1. **Promote the admin** (see "Admin access" above) so `auth.users` has at least one user with `raw_app_meta_data.is_admin = true`. **Skip this on a fresh DB with no data — the migration becomes a no-op.**
+2. **Sync the schema:**
+   ```bash
+   bun run db:push           # or db:push:auto in non-interactive terminals
+   ```
+   This first runs `manual_multi_user.sql` (backfills existing rows to the admin, swaps PKs, creates new tables), then `drizzle-kit push` applies any remaining schema diffs. Both steps are no-ops on an already-migrated DB, so it's safe to re-run.
+3. Sign out of the dashboard and back in so the admin's JWT picks up `app_metadata.is_admin`.
+
+If you'd rather apply the SQL by hand (e.g. Supabase SQL editor) you can paste the contents of `manual_multi_user.sql` directly — same result.
+
+**What this does NOT migrate:** historical Facebook-sourced listings won't have `source_group_url` populated unless their `raw_json` had a `groupUrl` field at ingest time (the migration populates it from there). New FB posts ingested after the migration write the column directly.
+
+**Telegram still talks only to the admin.** The bot reads/writes admin preferences and sends alerts to the admin chat. Per-user Telegram is a later phase.
