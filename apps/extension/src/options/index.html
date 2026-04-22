@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Apartment Finder — Options</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 480px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        color: #111;
+      }
+      h1 { font-size: 1.25rem; }
+      label { display: block; margin-top: 1rem; font-weight: 600; }
+      input {
+        width: 100%;
+        padding: 0.5rem;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-top: 0.25rem;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 1.25rem;
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      .status { margin-top: 0.75rem; font-size: 0.9rem; }
+      .ok { color: #0a7f3f; }
+      .err { color: #b00020; }
+    </style>
+  </head>
+  <body>
+    <h1>Apartment Finder — Extension Settings</h1>
+    <label for="ingestUrl">Ingest URL</label>
+    <input id="ingestUrl" type="url" placeholder="http://localhost:3000/api/webhooks/extension" />
+    <label for="secret">Shared secret (EXTENSION_INGEST_SECRET)</label>
+    <input id="secret" type="password" placeholder="paste the same value from .env" />
+    <button id="save">Save</button>
+    <button id="ping">Test connection</button>
+    <div id="status" class="status"></div>
+    <script type="module" src="./options.ts"></script>
+  </body>
+</html>

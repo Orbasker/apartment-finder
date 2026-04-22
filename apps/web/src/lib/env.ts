@@ -25,6 +25,8 @@ const EnvSchema = z.object({
   APIFY_TOKEN: z.string().optional(),
   APIFY_WEBHOOK_SECRET: z.string().optional(),
 
+  EXTENSION_INGEST_SECRET: z.string().optional(),
+
   RESEND_API_KEY: z.string().optional(),
 });
 

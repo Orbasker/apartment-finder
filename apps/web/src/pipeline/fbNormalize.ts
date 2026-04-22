@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import { z } from "zod";
-import type { NormalizedListing } from "@apartment-finder/shared";
+import type { ListingSource, NormalizedListing } from "@apartment-finder/shared";
 import { isGatewayConfigured, model } from "@/lib/gateway";
 
 type FbPostRaw = {
@@ -12,6 +12,8 @@ type FbPostRaw = {
   groupUrl?: string;
   user?: { name?: string; profileUrl?: string };
 };
+
+type NormalizeOpts = { source?: Extract<ListingSource, "fb_apify" | "fb_ext"> };
 
 const PRICE_RE = /(\d{1,2}[,.]?\d{3})\s*(?:₪|NIS|ש"?ח|שח)/i;
 const ROOMS_RE = /(\d+(?:\.\d)?)\s*(?:rooms?|חדרים|חד'?)/i;
@@ -25,7 +27,10 @@ const ExtractedSchema = z.object({
   isAgency: z.boolean(),
 });
 
-export async function normalizeFbPost(raw: unknown): Promise<NormalizedListing | null> {
+export async function normalizeFbPost(
+  raw: unknown,
+  opts: NormalizeOpts = {},
+): Promise<NormalizedListing | null> {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as FbPostRaw;
   const sourceId = r.postId ?? hashIdFromUrl(r.facebookUrl ?? r.url);
@@ -45,7 +50,7 @@ export async function normalizeFbPost(raw: unknown): Promise<NormalizedListing |
   const isAgency = enriched?.isAgency ?? false;
 
   return {
-    source: "fb_apify",
+    source: opts.source ?? "fb_apify",
     sourceId,
     url,
     title: description.split("\n")[0]?.slice(0, 140) ?? null,
