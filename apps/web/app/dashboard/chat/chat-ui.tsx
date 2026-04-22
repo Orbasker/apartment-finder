@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 
 export function ChatUI() {
   const { messages, sendMessage, status, error } = useChat();
@@ -49,6 +50,12 @@ export function ChatUI() {
             </div>
           </div>
         ))}
+        {busy && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Spinner className="h-3 w-3" />
+            <span>{status === "submitted" ? "Thinking…" : "Responding…"}</span>
+          </div>
+        )}
         {error && (
           <div className="text-xs text-destructive">
             Error: {error.message}
@@ -64,7 +71,8 @@ export function ChatUI() {
           disabled={busy}
         />
         <Button type="submit" disabled={busy || !input.trim()}>
-          {busy ? "…" : "Send"}
+          {busy && <Spinner className="mr-2" />}
+          Send
         </Button>
       </form>
     </div>
