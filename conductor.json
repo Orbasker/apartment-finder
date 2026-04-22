@@ -1,0 +1,9 @@
+{
+  "$schema": "https://conductor.build/schema.json",
+  "scripts": {
+    "setup": "bun install",
+    "run": "bun run dev",
+    "archive": ""
+  },
+  "copyFiles": [".env"]
+}
