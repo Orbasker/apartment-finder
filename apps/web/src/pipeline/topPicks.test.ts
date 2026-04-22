@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { resolvePicks, type CandidateListing, type TopPick } from "./topPicks";
+import { resolvePicks, type CandidateListing, type TopPick } from "./topPicks-core";
 
 function candidate(id: number, overrides: Partial<CandidateListing> = {}): CandidateListing {
   return {
