@@ -5,13 +5,14 @@ import type {
   Preferences,
 } from "@apartment-finder/shared";
 import { model } from "@/lib/gateway";
+import { recordAiUsage } from "@/lib/aiUsage";
 
 export async function summarizeForAlert(
   listing: NormalizedListing,
   judgment: Judgment,
   prefs: Preferences,
 ): Promise<string> {
-  const { text } = await generateText({
+  const result = await generateText({
     model: model(prefs.ai.primaryModel),
     system: [
       "Write a single-line alert summary (max 160 chars) for a matching Tel Aviv apartment.",
@@ -30,5 +31,12 @@ export async function summarizeForAlert(
       .filter(Boolean)
       .join(" "),
   });
-  return text.trim().replace(/\s+/g, " ").slice(0, 200);
+  await recordAiUsage({
+    feature: "pipeline.summarize",
+    model: prefs.ai.primaryModel,
+    providerModel: result.response.modelId,
+    usage: result.totalUsage,
+  }).catch((err) => console.error("record summarize AI usage failed:", err));
+
+  return result.text.trim().replace(/\s+/g, " ").slice(0, 200);
 }

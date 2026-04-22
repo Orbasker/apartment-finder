@@ -1,5 +1,5 @@
 import { verifyCronRequest } from "@/lib/cronAuth";
-import { runYad2PollJob } from "@/jobs/cron";
+import { runAdminCostSummaryJob } from "@/jobs/cron";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +8,6 @@ export const maxDuration = 60;
 export async function GET(req: Request): Promise<Response> {
   const authFail = verifyCronRequest(req);
   if (authFail) return authFail;
-  const result = await runYad2PollJob({ enforceSchedule: true });
+  const result = await runAdminCostSummaryJob();
   return Response.json(result.payload, { status: result.status });
 }

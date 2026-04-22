@@ -1,6 +1,7 @@
 import {
   bigserial,
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -98,9 +99,33 @@ export const monitoredGroups = pgTable("monitored_groups", {
   addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    feature: text("feature").notNull(),
+    model: text("model").notNull(),
+    providerModel: text("provider_model"),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    totalTokens: integer("total_tokens").notNull(),
+    reasoningTokens: integer("reasoning_tokens"),
+    cachedInputTokens: integer("cached_input_tokens"),
+    estimatedCostUsd: real("estimated_cost_usd").notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    createdAtIdx: index("ai_usage_created_at_idx").on(t.createdAt),
+    featureIdx: index("ai_usage_feature_idx").on(t.feature),
+  }),
+);
+
 export type MonitoredGroup = typeof monitoredGroups.$inferSelect;
 
 export type Listing = typeof listings.$inferSelect;
 export type NewListing = typeof listings.$inferInsert;
 export type JudgmentRow = typeof judgments.$inferSelect;
 export type NewJudgmentRow = typeof judgments.$inferInsert;
+export type AiUsageRow = typeof aiUsage.$inferSelect;
+export type NewAiUsageRow = typeof aiUsage.$inferInsert;

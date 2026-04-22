@@ -3,6 +3,7 @@ import { searchListings } from "@/listings/queries";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatNis, relTime } from "@/lib/utils";
+import { RunJobsCard } from "./run-jobs-card";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,8 @@ export default async function DashboardHomePage() {
 
   return (
     <div className="space-y-8">
+      <RunJobsCard />
+
       <section>
         <h2 className="mb-3 text-xl font-semibold">
           {`Today's alerts (${alertsToday.length})`}

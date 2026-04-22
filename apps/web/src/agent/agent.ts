@@ -2,6 +2,7 @@ import { generateText, stepCountIs } from "ai";
 import { isGatewayConfigured, model } from "@/lib/gateway";
 import { loadPreferences } from "@/preferences/store";
 import { buildAgentTools } from "@/agent/tools";
+import { recordAiUsage } from "@/lib/aiUsage";
 
 const AGENT_MODEL = "anthropic/claude-sonnet-4-6";
 
@@ -16,15 +17,22 @@ export async function handleAgentMessage(input: {
   const prefs = await loadPreferences();
   const tools = buildAgentTools(input.chatId);
 
-  const { text } = await generateText({
+  const result = await generateText({
     model: model(AGENT_MODEL),
     system: buildAgentSystem(prefs.budget.maxNis),
     prompt: input.text,
     tools,
     stopWhen: stepCountIs(8),
   });
+  await recordAiUsage({
+    feature: "agent.chat",
+    model: AGENT_MODEL,
+    providerModel: result.response.modelId,
+    usage: result.totalUsage,
+    metadata: { toolCalls: result.toolCalls.length },
+  }).catch((err) => console.error("record agent AI usage failed:", err));
 
-  return text.trim() || "(no reply)";
+  return result.text.trim() || "(no reply)";
 }
 
 export function buildAgentSystem(budgetNis: number): string {

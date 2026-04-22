@@ -9,6 +9,7 @@ import {
 import { getDb } from "@/db";
 import { feedback, judgments, listings } from "@/db/schema";
 import { model } from "@/lib/gateway";
+import { recordAiUsage } from "@/lib/aiUsage";
 
 const RECENT_FEEDBACK_LIMIT = 20;
 
@@ -32,6 +33,12 @@ export async function judgeListing(
     system,
     prompt,
   });
+  await recordAiUsage({
+    feature: "pipeline.judge.primary",
+    model: prefs.ai.primaryModel,
+    providerModel: primary.response.modelId,
+    usage: primary.usage,
+  }).catch((err) => console.error("record primary judge AI usage failed:", err));
 
   const shouldEscalate =
     primary.object.decision === "unsure" && primary.object.score >= 60;
@@ -50,6 +57,12 @@ export async function judgeListing(
     system,
     prompt,
   });
+  await recordAiUsage({
+    feature: "pipeline.judge.escalation",
+    model: prefs.ai.escalationModel,
+    providerModel: escalation.response.modelId,
+    usage: escalation.usage,
+  }).catch((err) => console.error("record escalation judge AI usage failed:", err));
 
   return {
     judgment: escalation.object,
