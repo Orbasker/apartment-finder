@@ -3,6 +3,7 @@
   "globalDependencies": [".env"],
   "globalEnv": [
     "AI_GATEWAY_API_KEY",
+    "APP_PUBLIC_ORIGIN",
     "APIFY_TOKEN",
     "APIFY_WEBHOOK_SECRET",
     "CRON_SECRET",

@@ -25,6 +25,7 @@ import {
   pickTopListings,
 } from "@/pipeline/topPicks";
 import { env } from "@/lib/env";
+import { isLoopbackOrigin, resolveAppPublicOrigin } from "@/lib/appOrigin";
 
 export type JobRunResult = {
   status: number;
@@ -203,7 +204,19 @@ export async function runApifyPollJob(options: {
     };
   }
 
-  const webhookUrl = `${options.origin}/api/webhooks/apify`;
+  const origin = resolveAppPublicOrigin(options.origin);
+  if (isLoopbackOrigin(origin)) {
+    return {
+      status: 400,
+      payload: {
+        ok: false,
+        error:
+          "Apify cannot call webhooks on localhost. Set APP_PUBLIC_ORIGIN in .env to a public https origin (your Vercel URL, or a tunnel like ngrok pointing at this dev server).",
+      },
+    };
+  }
+
+  const webhookUrl = new URL("/api/webhooks/apify", origin).toString();
 
   try {
     const result = await startFacebookGroupsRun({
