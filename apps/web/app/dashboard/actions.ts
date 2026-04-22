@@ -4,11 +4,12 @@ import { headers } from "next/headers";
 import { getCurrentUser } from "@/lib/supabase/server";
 import {
   runAdminCostSummaryJob,
+  runAiTopPicksJob,
   runApifyPollJob,
   runYad2PollJob,
 } from "@/jobs/cron";
 
-export type DashboardJobId = "yad2" | "apify" | "adminCostSummary";
+export type DashboardJobId = "yad2" | "apify" | "adminCostSummary" | "aiTopPicks";
 
 export type DashboardJobActionResult = {
   job: DashboardJobId;
@@ -48,6 +49,8 @@ async function runJob(job: DashboardJobId) {
       });
     case "adminCostSummary":
       return runAdminCostSummaryJob();
+    case "aiTopPicks":
+      return runAiTopPicksJob();
   }
 }
 
@@ -88,6 +91,11 @@ function summarizeJobResult(
         `Summary sent for ${formatNumber(payload.totalCalls)} AI calls`,
         `${formatNumber(payload.totalTokens)} tokens`,
         `$${formatUsd(payload.estimatedCostUsd)}`,
+      ].join(", ");
+    case "aiTopPicks":
+      return [
+        `Scanned ${formatNumber(payload.candidateCount)} recent listings`,
+        `picked ${formatNumber(payload.picksReturned)} of ${formatNumber(payload.topN)}`,
       ].join(", ");
   }
 }

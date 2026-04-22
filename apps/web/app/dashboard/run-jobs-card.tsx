@@ -30,6 +30,11 @@ const JOBS: Array<{
     title: "Send admin cost email",
     description: "Email the last 24h AI cost summary to ADMIN_SUMMARY_EMAILS.",
   },
+  {
+    id: "aiTopPicks",
+    title: "AI top picks",
+    description: "Rank recent listings with AI and send the top 5 by email and Telegram.",
+  },
 ];
 
 export function RunJobsCard() {
