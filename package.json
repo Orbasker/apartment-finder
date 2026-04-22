@@ -16,6 +16,7 @@
     "deadcode": "DATABASE_URL=${DATABASE_URL:-postgres://ci:ci@localhost:5432/ci} knip --include files,binaries,duplicates,unlisted,unresolved",
     "db:generate": "bun run --filter @apartment-finder/web db:generate",
     "db:push": "bun run --filter @apartment-finder/web db:push",
+    "db:push:auto": "bun run --filter @apartment-finder/web db:push:auto",
     "db:studio": "bun run --filter @apartment-finder/web db:studio",
     "db:check": "bun run scripts/check-migrations.ts",
     "telegram:webhook": "bun run scripts/register-telegram-webhook.ts"
