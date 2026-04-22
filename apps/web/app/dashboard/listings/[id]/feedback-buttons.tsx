@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 export function FeedbackButtons({
   listingId,
@@ -11,16 +12,22 @@ export function FeedbackButtons({
   initial: number | null;
 }) {
   const [current, setCurrent] = useState<number | null>(initial);
+  const [pendingRating, setPendingRating] = useState<1 | -1 | null>(null);
   const [pending, start] = useTransition();
 
   function submit(rating: 1 | -1) {
     start(async () => {
-      const res = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ listingId, rating }),
-      });
-      if (res.ok) setCurrent(rating);
+      setPendingRating(rating);
+      try {
+        const res = await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ listingId, rating }),
+        });
+        if (res.ok) setCurrent(rating);
+      } finally {
+        setPendingRating(null);
+      }
     });
   }
 
@@ -32,7 +39,8 @@ export function FeedbackButtons({
         disabled={pending}
         onClick={() => submit(1)}
       >
-        👍 Good match
+        {pendingRating === 1 ? <Spinner className="mr-2 h-3 w-3" /> : <span className="mr-1">👍</span>}
+        Good match
       </Button>
       <Button
         variant={current === -1 ? "destructive" : "outline"}
@@ -40,7 +48,8 @@ export function FeedbackButtons({
         disabled={pending}
         onClick={() => submit(-1)}
       >
-        👎 Not for me
+        {pendingRating === -1 ? <Spinner className="mr-2 h-3 w-3" /> : <span className="mr-1">👎</span>}
+        Not for me
       </Button>
     </div>
   );

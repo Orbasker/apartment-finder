@@ -2,6 +2,7 @@ import { fetchYad2Listings, Yad2UpstreamUnavailableError } from "@/scrapers/yad2
 import { ingestNewListings } from "@/pipeline/dedup";
 import { ruleFilter } from "@/pipeline/ruleFilter";
 import { runJudgeAndNotify } from "@/pipeline/pipeline";
+import type { AlertEntry } from "@/pipeline/sentAlerts";
 import { loadPreferences } from "@/preferences/store";
 import { describeLocalSchedule, shouldRunApifyPoll, shouldRunYad2Poll } from "@/lib/schedule";
 import {
@@ -50,6 +51,7 @@ export async function runYad2PollJob(options?: {
     let alerted = 0;
     let skipped = 0;
     let unsure = 0;
+    const alerts: AlertEntry[] = [];
 
     for (const row of inserted) {
       const verdict = ruleFilter(row.listing, prefs);
@@ -58,13 +60,16 @@ export async function runYad2PollJob(options?: {
         continue;
       }
       passed++;
-      const outcome = await runJudgeAndNotify({
+      const result = await runJudgeAndNotify({
         listingId: row.id,
         listing: row.listing,
         prefs,
+        channels: ["telegram"],
       });
-      if (outcome === "alert") alerted++;
-      else if (outcome === "unsure") unsure++;
+      if (result.outcome === "alert") {
+        alerted++;
+        if (result.alert) alerts.push(result.alert);
+      } else if (result.outcome === "unsure") unsure++;
       else skipped++;
     }
 
@@ -85,6 +90,7 @@ export async function runYad2PollJob(options?: {
       job: "Yad2 poll",
       status: "ok",
       details: payload,
+      alerts,
     }).catch((err) => console.error("send Yad2 summary email failed:", err));
     return { status: 200, payload };
   } catch (err) {

@@ -59,13 +59,13 @@ export async function POST(req: Request): Promise<Response> {
       filtered++;
       continue;
     }
-    const outcome = await runJudgeAndNotify({
+    const result = await runJudgeAndNotify({
       listingId: row.id,
       listing: row.listing,
       prefs,
     });
-    if (outcome === "alert") alerted++;
-    else if (outcome === "unsure") unsure++;
+    if (result.outcome === "alert") alerted++;
+    else if (result.outcome === "unsure") unsure++;
     else skippedByAi++;
   }
 

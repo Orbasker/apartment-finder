@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import {
   runDashboardJobAction,
   type DashboardJobActionResult,
@@ -84,6 +85,7 @@ export function RunJobsCard() {
                 </div>
                 <div className="mt-4 flex items-center gap-3">
                   <Button onClick={() => run(job.id)} disabled={pending}>
+                    {isRunning && <Spinner className="mr-2" />}
                     {isRunning ? "Running…" : "Run now"}
                   </Button>
                 </div>
