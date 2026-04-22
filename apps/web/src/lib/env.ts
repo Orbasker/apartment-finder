@@ -24,6 +24,8 @@ const EnvSchema = z.object({
 
   APIFY_TOKEN: z.string().optional(),
   APIFY_WEBHOOK_SECRET: z.string().optional(),
+  /** Public https origin for webhooks (Vercel URL, ngrok, etc.). Required for Apify when not using a public deployment URL. */
+  APP_PUBLIC_ORIGIN: z.string().url().optional(),
 
   EXTENSION_INGEST_SECRET: z.string().optional(),
 

@@ -82,7 +82,13 @@ async function getRequestOrigin(): Promise<string> {
   if (!host) {
     throw new Error("Could not determine app origin");
   }
-  const proto = requestHeaders.get("x-forwarded-proto") ?? "https";
+  const hostLower = host.split(":")[0]?.toLowerCase() ?? host.toLowerCase();
+  const isLocal =
+    hostLower === "localhost" ||
+    hostLower === "127.0.0.1" ||
+    hostLower === "::1";
+  const proto =
+    requestHeaders.get("x-forwarded-proto") ?? (isLocal ? "http" : "https");
   return `${proto}://${host}`;
 }
 
