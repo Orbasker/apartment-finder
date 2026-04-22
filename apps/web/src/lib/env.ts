@@ -30,6 +30,9 @@ const EnvSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
   ADMIN_SUMMARY_EMAILS: z.string().optional(),
+
+  YAD2_PROXY_URL: z.string().url().optional(),
+  YAD2_PROXY_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

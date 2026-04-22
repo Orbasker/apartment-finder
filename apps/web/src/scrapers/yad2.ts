@@ -66,7 +66,7 @@ export async function fetchYad2Listings(
   opts: Yad2FetchOptions = {},
 ): Promise<NormalizedListing[]> {
   const url = opts.feedUrl ?? YAD2_FEED_URL;
-  const fetchImpl = opts.fetchImpl ?? fetch;
+  const fetchImpl = opts.fetchImpl ?? buildDefaultYad2Fetch();
   const controller = new AbortController();
   const timeoutMs = opts.timeoutMs ?? 15_000;
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -174,6 +174,30 @@ function formatResponseDetails(rawText: string, res: Response): string {
 
 function buildBodyPreview(rawText: string): string {
   return rawText.replace(/\s+/g, " ").trim().slice(0, 140);
+}
+
+/**
+ * When `YAD2_PROXY_URL` + `YAD2_PROXY_SECRET` are set, route Yad2 fetches
+ * through a Cloud Run proxy in me-west1 so Yad2 sees an Israeli egress IP.
+ * Vercel's serverless regions are outside Israel and Yad2 blocks them.
+ */
+export function buildDefaultYad2Fetch(): (
+  input: string | URL,
+  init?: RequestInit,
+) => Promise<Response> {
+  const proxyUrl = process.env.YAD2_PROXY_URL?.replace(/\/$/, "");
+  const proxySecret = process.env.YAD2_PROXY_SECRET;
+  if (!proxyUrl || !proxySecret) return fetch;
+
+  return async (input, init) => {
+    const target = typeof input === "string" ? input : input.toString();
+    const proxied = `${proxyUrl}/fetch?url=${encodeURIComponent(target)}`;
+    return fetch(proxied, {
+      method: init?.method ?? "GET",
+      headers: { "x-proxy-secret": proxySecret },
+      signal: init?.signal,
+    });
+  };
 }
 
 export function normalizeYad2Item(raw: Yad2RawItem): NormalizedListing | null {
