@@ -1,7 +1,5 @@
 import type { LanguageModelUsage } from "ai";
 import { desc, gte, sql } from "drizzle-orm";
-import { getDb } from "@/db";
-import { aiUsage } from "@/db/schema";
 
 type Pricing = {
   inputUsdPerMillion: number;
@@ -85,7 +83,7 @@ export function estimateCostUsd(
 }
 
 export async function recordAiUsage(input: UsageRecordInput): Promise<void> {
-  const db = getDb();
+  const { db, aiUsage } = await loadAiUsageDb();
   const pricedModel = input.providerModel ?? input.model;
   const estimatedCostUsd = estimateCostUsd(pricedModel, input.usage);
 
@@ -106,7 +104,7 @@ export async function recordAiUsage(input: UsageRecordInput): Promise<void> {
 }
 
 export async function getAiUsageSummary(hoursAgo = 24): Promise<AiUsageSummary> {
-  const db = getDb();
+  const { db, aiUsage } = await loadAiUsageDb();
   const windowEnd = new Date();
   const windowStart = new Date(windowEnd.getTime() - hoursAgo * 3_600_000);
 
@@ -176,4 +174,16 @@ function getPricing(modelId: string): Pricing | null {
   }
 
   return null;
+}
+
+async function loadAiUsageDb() {
+  const [{ getDb }, { aiUsage }] = await Promise.all([
+    import("../db"),
+    import("../db/schema"),
+  ]);
+
+  return {
+    db: getDb(),
+    aiUsage,
+  };
 }
