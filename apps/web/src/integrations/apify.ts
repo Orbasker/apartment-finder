@@ -1,4 +1,9 @@
 import { ApifyClient } from "apify-client";
+// apify-client loads proxy-agent via a variable-specifier require() that
+// Vercel's file tracer cannot follow, so the dep gets dropped from the
+// serverless bundle. Keep a static import here so NFT traces proxy-agent
+// (and its transitive deps) and ships them alongside apify-client.
+import "proxy-agent";
 import { eq } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { getDb } from "@/db";
