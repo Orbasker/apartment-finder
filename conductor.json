@@ -1,9 +1,9 @@
 {
   "$schema": "https://conductor.build/schema.json",
   "scripts": {
-    "setup": "bun install",
+    "setup": "cp -n /Users/orb/Desktop/personal/apartment-finder/.env .env && bun install",
     "run": "bun run dev",
     "archive": ""
   },
-  "copyFiles": ["~/Users/orb/Desktop/personal/apartment-finderr/.env"]
+  "copyFiles": ["/Users/orb/Desktop/personal/apartment-finder/.env"]
 }
