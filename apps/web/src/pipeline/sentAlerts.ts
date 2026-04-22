@@ -3,7 +3,7 @@ import type { Judgment, NormalizedListing } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import { sentAlerts } from "@/db/schema";
 
-export type AlertChannel = "telegram" | "email";
+export type AlertChannel = "email";
 
 export type AlertEntry = {
   listingId: number;

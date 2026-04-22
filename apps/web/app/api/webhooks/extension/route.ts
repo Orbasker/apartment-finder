@@ -7,9 +7,7 @@ import {
 import { env } from "@/lib/env";
 import { normalizeFbPost } from "@/pipeline/fbNormalize";
 import { ingestNewListings } from "@/pipeline/dedup";
-import { ruleFilter } from "@/pipeline/ruleFilter";
-import { runJudgeAndNotify } from "@/pipeline/pipeline";
-import { getAdminUserId, loadAdminPreferences } from "@/preferences/store";
+import { fanOutToUsers } from "@/jobs/cron";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,36 +44,7 @@ export async function POST(req: Request): Promise<Response> {
   ).filter((l): l is NonNullable<typeof l> => l !== null);
 
   const { inserted, skippedExisting } = await ingestNewListings(normalized);
-  const [prefs, adminUserId] = await Promise.all([
-    loadAdminPreferences(),
-    getAdminUserId(),
-  ]);
-
-  let alerted = 0;
-  let filtered = 0;
-  let skippedByAi = 0;
-  let unsure = 0;
-
-  for (const row of inserted) {
-    const verdict = ruleFilter(row.listing, prefs);
-    if (!verdict.pass) {
-      filtered++;
-      continue;
-    }
-    if (!adminUserId) {
-      skippedByAi++;
-      continue;
-    }
-    const result = await runJudgeAndNotify({
-      listingId: row.id,
-      listing: row.listing,
-      prefs,
-      notifyUserId: adminUserId,
-    });
-    if (result.outcome === "alert") alerted++;
-    else if (result.outcome === "unsure") unsure++;
-    else skippedByAi++;
-  }
+  const stats = await fanOutToUsers(inserted, "Extension upload");
 
   return NextResponse.json({
     ok: true,
@@ -83,10 +52,11 @@ export async function POST(req: Request): Promise<Response> {
     normalized: normalized.length,
     inserted: inserted.length,
     skippedExisting,
-    filtered,
-    alerted,
-    skippedByAi,
-    unsure,
+    notifiedUsers: stats.perUser,
+    filtered: stats.filtered,
+    alerted: stats.alerted,
+    skippedByAi: stats.skipped,
+    unsure: stats.unsure,
   });
 }
 

@@ -1,4 +1,3 @@
-import { sendTelegramAlert } from "@/integrations/telegram";
 import { sendEmailAlert, isResendConfigured } from "@/integrations/resend";
 import {
   hasAlertBeenSent,
@@ -15,19 +14,12 @@ export type NotifyOptions = AlertEntry & {
 };
 
 export async function notifyListing(opts: NotifyOptions): Promise<void> {
-  const channels = opts.channels ?? ["telegram", "email"];
+  const channels = opts.channels ?? ["email"];
   const tasks: Promise<unknown>[] = [];
-  if (channels.includes("telegram")) {
-    tasks.push(
-      notifyChannel(opts.userId, "telegram", opts.listingId, () =>
-        sendTelegramAlert(opts),
-      ),
-    );
-  }
   if (channels.includes("email") && isResendConfigured()) {
     tasks.push(
       notifyChannel(opts.userId, "email", opts.listingId, () =>
-        sendEmailAlert(opts),
+        sendEmailAlert(opts.userId, opts),
       ),
     );
   }

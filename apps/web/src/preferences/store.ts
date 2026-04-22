@@ -115,6 +115,60 @@ export async function seedAlertEmailTargets(
   });
 }
 
+export async function getUserAuthEmail(userId: string): Promise<string | null> {
+  const db = getDb();
+  const rows = await db.execute<{ email: string | null }>(
+    sql`SELECT email FROM auth.users WHERE id = ${userId} LIMIT 1`,
+  );
+  const email = (rows as unknown as { email: string | null }[])[0]?.email;
+  return email?.trim().toLowerCase() || null;
+}
+
+/**
+ * Returns the email recipients for a given user's alerts.
+ * Falls back to the user's Supabase auth email when no explicit targets are
+ * configured, so new signups get alerts without touching preferences.
+ */
+export async function getUserAlertRecipients(
+  userId: string,
+  prefs: Preferences,
+): Promise<string[]> {
+  const configured = getAlertEmailTargets(prefs);
+  if (configured.length > 0) return configured;
+  const authEmail = await getUserAuthEmail(userId);
+  return authEmail ? [authEmail] : [];
+}
+
+/**
+ * Returns users who have opted into email alerts in their preferences.
+ * Crons fan out over this list so each user gets alerts against their own rules.
+ */
+export async function getActiveEmailAlertUsers(): Promise<string[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ userId: preferences.userId, data: preferences.data })
+    .from(preferences);
+  return rows
+    .filter((r) => {
+      const parsed = PreferencesSchema.safeParse(r.data);
+      return parsed.success && parsed.data.alerts.email.enabled;
+    })
+    .map((r) => r.userId);
+}
+
+export async function getActiveTopPicksUsers(): Promise<string[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ userId: preferences.userId, data: preferences.data })
+    .from(preferences);
+  return rows
+    .filter((r) => {
+      const parsed = PreferencesSchema.safeParse(r.data);
+      return parsed.success && parsed.data.alerts.email.topPicksEnabled;
+    })
+    .map((r) => r.userId);
+}
+
 export function getAlertEmailTargets(prefs: Preferences): string[] {
   const raw = [
     ...(prefs.alerts.email.targets ?? []),

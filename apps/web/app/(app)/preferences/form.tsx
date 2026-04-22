@@ -290,6 +290,20 @@ export function PreferencesForm({
             })
           }
         />
+
+        <CheckboxField
+          label="Send daily top-picks email"
+          checked={prefs.alerts.email.topPicksEnabled}
+          onChange={(checked) =>
+            setPrefs({
+              ...prefs,
+              alerts: {
+                ...prefs.alerts,
+                email: { ...prefs.alerts.email, topPicksEnabled: checked },
+              },
+            })
+          }
+        />
       </div>
 
       <div className="flex items-center gap-3">

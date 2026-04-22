@@ -9,11 +9,12 @@ import {
   getListingById,
   searchListings,
 } from "@/listings/queries";
-import { loadAdminPreferences } from "@/preferences/store";
+import { loadPreferences } from "@/preferences/store";
+import { getSubscribedGroupUrls } from "@/groups/subscriptions";
 import { rejudgePastListings } from "@/pipeline/judge";
 import { stagePatch } from "@/agent/patches";
 
-export function buildAgentTools(chatId: string) {
+export function buildAgentTools(userId: string) {
   return {
     searchListings: tool({
       description:
@@ -28,6 +29,7 @@ export function buildAgentTools(chatId: string) {
         limit: z.number().int().min(1).max(20).default(10),
       }),
       execute: async (args) => {
+        const subscribedGroupUrls = await getSubscribedGroupUrls(userId);
         const { rows } = await searchListings({
           neighborhood: args.neighborhood,
           maxPriceNis: args.maxPriceNis,
@@ -36,6 +38,8 @@ export function buildAgentTools(chatId: string) {
           decision: args.decision,
           hoursAgo: args.hoursAgo ?? 168,
           limit: args.limit,
+          forUserId: userId,
+          subscribedGroupUrls,
         });
         return rows.map((r) => ({
           id: r.id,
@@ -55,7 +59,7 @@ export function buildAgentTools(chatId: string) {
       description: "Fetch a single listing by its numeric id.",
       inputSchema: z.object({ id: z.number().int() }),
       execute: async ({ id }) => {
-        const row = await getListingById(id);
+        const row = await getListingById(id, userId);
         if (!row) return { error: "not found" };
         return row;
       },
@@ -72,18 +76,18 @@ export function buildAgentTools(chatId: string) {
     getPreferences: tool({
       description: "Return the current stored user preferences.",
       inputSchema: z.object({}),
-      execute: async () => loadAdminPreferences(),
+      execute: async () => loadPreferences(userId),
     }),
 
     proposePreferencesPatch: tool({
       description:
-        "Stage a partial update to preferences. Does NOT apply until the user replies /confirm. Use this whenever the user wants to change budget, rooms, neighborhoods, deal-breakers, or alert settings such as the target email list and run-summary emails.",
+        "Stage a partial update to preferences. Does NOT apply until the user replies /confirm. Use this whenever the user wants to change budget, rooms, neighborhoods, deal-breakers, or alert settings such as the target email list, run-summary emails, or top-picks emails.",
       inputSchema: z.object({
         patch: PreferencesPatchSchema,
         humanSummary: z.string().describe("Short summary of what the patch changes, shown to the user."),
       }),
       execute: async ({ patch, humanSummary }, { toolCallId }) => {
-        await stagePatch({ chatId, toolCallId, patch });
+        await stagePatch({ userId, toolCallId, patch });
         return {
           staged: true,
           summary: humanSummary,
@@ -94,12 +98,12 @@ export function buildAgentTools(chatId: string) {
 
     rejudgeRecent: tool({
       description:
-        "Re-run the AI judge over recent listings. Use after preferences change if the user wants fresh scores.",
+        "Re-run the AI judge over recent listings using the current user's preferences. Use after preferences change if the user wants fresh scores.",
       inputSchema: z.object({
         limit: z.number().int().min(1).max(500).default(100),
       }),
       execute: async ({ limit }) => {
-        const count = await rejudgePastListings(limit);
+        const count = await rejudgePastListings(limit, userId);
         return { rejudged: count };
       },
     }),

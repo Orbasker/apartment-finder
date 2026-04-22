@@ -3,10 +3,10 @@ import { PreferencesPatchSchema, PreferencesSchema } from "@apartment-finder/sha
 import type { Preferences, PreferencesPatch } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import { pendingPatches } from "@/db/schema";
-import { loadAdminPreferences, saveAdminPreferences } from "@/preferences/store";
+import { loadPreferences, savePreferences } from "@/preferences/store";
 
 export async function stagePatch(input: {
-  chatId: string;
+  userId: string;
   toolCallId: string;
   patch: PreferencesPatch;
 }): Promise<string> {
@@ -15,7 +15,7 @@ export async function stagePatch(input: {
   const [row] = await db
     .insert(pendingPatches)
     .values({
-      chatId: input.chatId,
+      chatId: input.userId,
       toolCallId: input.toolCallId,
       patch: parsed,
     })
@@ -23,12 +23,12 @@ export async function stagePatch(input: {
   return row?.id ?? "";
 }
 
-export async function confirmLatestPatch(chatId: string): Promise<string> {
+export async function confirmLatestPatch(userId: string): Promise<string> {
   const db = getDb();
   const [pending] = await db
     .select()
     .from(pendingPatches)
-    .where(eq(pendingPatches.chatId, chatId))
+    .where(eq(pendingPatches.chatId, userId))
     .orderBy(desc(pendingPatches.createdAt))
     .limit(1);
 
@@ -36,21 +36,21 @@ export async function confirmLatestPatch(chatId: string): Promise<string> {
     return "No pending changes to confirm.";
   }
 
-  const current = await loadAdminPreferences();
+  const current = await loadPreferences(userId);
   const merged = mergePreferences(current, pending.patch as PreferencesPatch);
   const validated = PreferencesSchema.parse(merged);
-  await saveAdminPreferences(validated);
+  await savePreferences(userId, validated);
 
-  await db.delete(pendingPatches).where(eq(pendingPatches.chatId, chatId));
+  await db.delete(pendingPatches).where(eq(pendingPatches.chatId, userId));
 
   return "Preferences updated. I'll use these for future alerts.";
 }
 
-export async function cancelLatestPatch(chatId: string): Promise<string> {
+export async function cancelLatestPatch(userId: string): Promise<string> {
   const db = getDb();
   const result = await db
     .delete(pendingPatches)
-    .where(eq(pendingPatches.chatId, chatId))
+    .where(eq(pendingPatches.chatId, userId))
     .returning({ id: pendingPatches.id });
 
   if (result.length === 0) {
@@ -84,17 +84,9 @@ function mergePreferences(
     alerts: {
       ...current.alerts,
       ...(patch.alerts ?? {}),
-      telegram: {
-        ...current.alerts.telegram,
-        ...(patch.alerts?.telegram ?? {}),
-      },
       email: {
         ...current.alerts.email,
         ...(patch.alerts?.email ?? {}),
-      },
-      whatsapp: {
-        ...current.alerts.whatsapp,
-        ...(patch.alerts?.whatsapp ?? {}),
       },
     },
   };
