@@ -29,6 +29,7 @@
     "lucide-react": "1.8.0",
     "next": "^15.5.0",
     "postgres": "^3.4.5",
+    "proxy-agent": "^6.5.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "resend": "6.12.2",
