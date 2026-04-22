@@ -1,0 +1,48 @@
+name: Deploy yad2-proxy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/yad2-proxy/**'
+      - '.github/workflows/deploy-yad2-proxy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-yad2-proxy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy to Cloud Run
+    runs-on: ubuntu-latest
+    env:
+      GCP_REGION: me-west1
+      CLOUD_RUN_SERVICE: yad2-proxy
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy
+        working-directory: services/yad2-proxy
+        run: |
+          gcloud run deploy "$CLOUD_RUN_SERVICE" \
+            --source . \
+            --region "$GCP_REGION" \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 256Mi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 2 \
+            --concurrency 40 \
+            --timeout 30s \
+            --set-env-vars "PROXY_SECRET=${{ secrets.PROXY_SECRET }}" \
+            --quiet
