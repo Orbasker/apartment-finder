@@ -95,7 +95,6 @@ export function getBot(): Bot {
   });
 
   bot.on("message:text", async (ctx, next) => {
-    if (!(await enforceAllowedChat(ctx))) return;
     if (ctx.message.text.startsWith("/")) return next();
     const chatId = String(ctx.chat.id);
     try {
