@@ -6,6 +6,7 @@ import { normalizeFbPost } from "@/pipeline/fbNormalize";
 import { ingestNewListings } from "@/pipeline/dedup";
 import { ruleFilter } from "@/pipeline/ruleFilter";
 import { runJudgeAndNotify } from "@/pipeline/pipeline";
+import type { AlertEntry } from "@/pipeline/sentAlerts";
 import { loadPreferences } from "@/preferences/store";
 import { describeLocalSchedule } from "@/lib/schedule";
 import { sendRunSummaryEmail } from "@/integrations/resend";
@@ -94,6 +95,7 @@ export async function POST(req: Request): Promise<Response> {
   let filtered = 0;
   let skippedByAi = 0;
   let unsure = 0;
+  const alerts: AlertEntry[] = [];
 
   for (const row of inserted) {
     const verdict = ruleFilter(row.listing, prefs);
@@ -101,13 +103,16 @@ export async function POST(req: Request): Promise<Response> {
       filtered++;
       continue;
     }
-    const outcome = await runJudgeAndNotify({
+    const result = await runJudgeAndNotify({
       listingId: row.id,
       listing: row.listing,
       prefs,
+      channels: ["telegram"],
     });
-    if (outcome === "alert") alerted++;
-    else if (outcome === "unsure") unsure++;
+    if (result.outcome === "alert") {
+      alerted++;
+      if (result.alert) alerts.push(result.alert);
+    } else if (result.outcome === "unsure") unsure++;
     else skippedByAi++;
   }
 
@@ -129,6 +134,7 @@ export async function POST(req: Request): Promise<Response> {
     job: "Apify scan",
     status: "ok",
     details: payload,
+    alerts,
   }).catch((err) => console.error("send Apify summary email failed:", err));
   return NextResponse.json(payload);
 }
