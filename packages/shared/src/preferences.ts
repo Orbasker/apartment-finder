@@ -39,7 +39,9 @@ export const PreferencesSchema = z.object({
     email: z
       .object({
         enabled: z.boolean().default(false),
+        targets: z.array(z.string().email()).default([]),
         to: z.string().email().optional(),
+        runSummaryEnabled: z.boolean().default(false),
       })
       .default({ enabled: false }),
     whatsapp: z
@@ -71,7 +73,7 @@ export const defaultPreferences: Preferences = PreferencesSchema.parse({
   },
   alerts: {
     telegram: { enabled: true },
-    email: { enabled: false },
+    email: { enabled: false, targets: [], runSummaryEnabled: false },
     whatsapp: { enabled: false },
   },
 });

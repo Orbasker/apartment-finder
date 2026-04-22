@@ -4,6 +4,8 @@ import { ruleFilter } from "@/pipeline/ruleFilter";
 import { runJudgeAndNotify } from "@/pipeline/pipeline";
 import { loadPreferences } from "@/preferences/store";
 import { verifyCronRequest } from "@/lib/cronAuth";
+import { describeLocalSchedule, shouldRunYad2Poll } from "@/lib/schedule";
+import { sendRunSummaryEmail } from "@/integrations/resend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +16,21 @@ export async function GET(req: Request): Promise<Response> {
   if (authFail) return authFail;
 
   const startedAt = Date.now();
+  const localTime = describeLocalSchedule();
+
+  if (!shouldRunYad2Poll()) {
+    const payload = {
+      ok: true,
+      skipped: "Outside Yad2 local schedule window",
+      localTime,
+    };
+    await sendRunSummaryEmail({
+      job: "Yad2 poll",
+      status: "skipped",
+      details: payload,
+    }).catch((err) => console.error("send Yad2 summary email failed:", err));
+    return Response.json(payload);
+  }
 
   try {
     const listings = await fetchYad2Listings();
@@ -43,7 +60,7 @@ export async function GET(req: Request): Promise<Response> {
       else skipped++;
     }
 
-    return Response.json({
+    const payload = {
       ok: true,
       fetched: listings.length,
       inserted: inserted.length,
@@ -53,12 +70,30 @@ export async function GET(req: Request): Promise<Response> {
       alerted,
       skipped,
       unsure,
+      localTime,
       durationMs: Date.now() - startedAt,
-    });
+    };
+    await sendRunSummaryEmail({
+      job: "Yad2 poll",
+      status: "ok",
+      details: payload,
+    }).catch((err) => console.error("send Yad2 summary email failed:", err));
+    return Response.json(payload);
   } catch (err) {
     console.error("poll-yad2 failed:", err);
+    const payload = {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+      localTime,
+      durationMs: Date.now() - startedAt,
+    };
+    await sendRunSummaryEmail({
+      job: "Yad2 poll",
+      status: "error",
+      details: payload,
+    }).catch((error) => console.error("send Yad2 summary email failed:", error));
     return Response.json(
-      { ok: false, error: err instanceof Error ? err.message : String(err) },
+      payload,
       { status: 500 },
     );
   }

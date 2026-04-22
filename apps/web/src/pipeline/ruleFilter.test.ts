@@ -18,7 +18,7 @@ const basePrefs: Preferences = {
   },
   alerts: {
     telegram: { enabled: true },
-    email: { enabled: false },
+    email: { enabled: false, targets: [], runSummaryEnabled: false },
     whatsapp: { enabled: false },
   },
 };

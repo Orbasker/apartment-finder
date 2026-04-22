@@ -28,6 +28,7 @@ const EnvSchema = z.object({
   EXTENSION_INGEST_SECRET: z.string().optional(),
 
   RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

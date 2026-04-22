@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/cron/poll-yad2", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/poll-apify", "schedule": "*/20 * * * *" }
+    { "path": "/api/cron/poll-yad2", "schedule": "0,30 5-22 * * *" },
+    { "path": "/api/cron/poll-apify", "schedule": "0 5,6,8,9,11,12,14,15,17,18 * * *" }
   ]
 }
