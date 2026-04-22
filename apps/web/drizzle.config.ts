@@ -41,11 +41,14 @@ if (!url) {
   throw new Error("DIRECT_URL or DATABASE_URL is required to run drizzle-kit. Copy .env.example to .env first.");
 }
 
+/** Set DRIZZLE_PUSH_NO_STRICT=1 when the terminal cannot drive the Yes/No prompt (e.g. integrated terminal). */
+const strict = process.env.DRIZZLE_PUSH_NO_STRICT !== "1";
+
 export default defineConfig({
   schema: path.join(configDir, "src/db/schema.ts"),
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: { url },
-  strict: true,
+  strict,
   verbose: true,
 });

@@ -54,7 +54,7 @@ export async function rejudgeListingAction(
     const prefs = await loadPreferences();
     const result = await judgeListing(listing, prefs);
     await persistJudgment(listingId, result);
-    revalidatePath(`/dashboard/listings/${listingId}`);
+    revalidatePath(`/listings/${listingId}`);
     return {
       ok: true,
       score: result.judgment.score,

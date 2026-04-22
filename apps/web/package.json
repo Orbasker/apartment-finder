@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
+    "db:push:auto": "DRIZZLE_PUSH_NO_STRICT=1 drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "lucide-react": "1.8.0",
     "next": "^15.5.0",
     "postgres": "^3.4.5",
+    "proxy-agent": "^6.5.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "resend": "6.12.2",

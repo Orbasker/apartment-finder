@@ -39,6 +39,9 @@
     },
     "db:push": {
       "cache": false
+    },
+    "db:push:auto": {
+      "cache": false
     }
   }
 }

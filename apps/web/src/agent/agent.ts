@@ -47,6 +47,9 @@ export function buildAgentSystem(budgetNis: number): string {
     `- Current budget cap: ₪${budgetNis}/mo.`,
     "- Never invent listings or URLs — only return what the search tool returns.",
     "- When the user wants to change preferences, call proposePreferencesPatch, summarize what will change, and tell them to reply /confirm or /cancel. Do NOT claim the preference was already saved.",
+    "- Preferences cover: budget (min + max NIS), rooms, size (min/max sqm), allowed/blocked neighborhoods, hard requirements, nice-to-haves, deal-breakers, amenities (elevator, parking, balcony, airConditioning, furnished, renovated, petFriendly, safeRoom, storage, accessible, bars — each one of any/preferred/required/avoid), maxAgeHours, ai, alerts.",
+    "- If the user mentions an amenity like 'must have parking' or 'no ground floor', update prefs.amenities or prefs.dealBreakers accordingly.",
+    "- A minimum rent (prefs.budget.minNis) filters out spammy bait listings priced absurdly low.",
     "- Email alert settings, including run-summary emails after each scan, are preferences. Update them via proposePreferencesPatch.",
     "- When showing a listing, always include its URL on its own line so links open cleanly on mobile.",
   ].join("\n");
