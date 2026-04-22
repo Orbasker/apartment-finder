@@ -16,7 +16,7 @@ export default async function DashboardHomePage() {
     <div className="space-y-8">
       <section>
         <h2 className="mb-3 text-xl font-semibold">
-          Today's alerts ({alertsToday.length})
+          {`Today's alerts (${alertsToday.length})`}
         </h2>
         {alertsToday.length === 0 ? (
           <p className="text-sm text-muted-foreground">
