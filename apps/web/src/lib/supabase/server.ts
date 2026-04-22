@@ -1,9 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { env } from "@/lib/env";
 
-export async function getSupabaseServerClient() {
+/** One client + auth round-trip per incoming request (dedupes layout + pages). */
+export const getSupabaseServerClient = cache(async () => {
   const cookieStore = await cookies();
   const url = env().SUPABASE_URL;
   const anon = env().SUPABASE_ANON_KEY;
@@ -22,9 +24,9 @@ export async function getSupabaseServerClient() {
       },
     },
   });
-}
+});
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async () => {
   try {
     const supabase = await getSupabaseServerClient();
     const {
@@ -34,7 +36,7 @@ export async function getCurrentUser() {
   } catch {
     return null;
   }
-}
+});
 
 export function isAdmin(user: User | null | undefined): boolean {
   return user?.app_metadata?.is_admin === true;
