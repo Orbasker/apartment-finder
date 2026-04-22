@@ -79,21 +79,13 @@ export const PreferencesSchema = z.object({
       escalationModel: "anthropic/claude-sonnet-4-6",
     }),
   alerts: z.object({
-    telegram: z.object({
-      enabled: z.boolean().default(true),
-      chatId: z.string().optional(),
-    }),
     email: z
       .object({
         enabled: z.boolean().default(false),
         targets: z.array(z.string().email()).default([]),
         to: z.string().email().optional(),
         runSummaryEnabled: z.boolean().default(false),
-      })
-      .default({ enabled: false }),
-    whatsapp: z
-      .object({
-        enabled: z.boolean().default(false),
+        topPicksEnabled: z.boolean().default(false),
       })
       .default({ enabled: false }),
   }),
@@ -120,8 +112,11 @@ export const defaultPreferences: Preferences = PreferencesSchema.parse({
     escalationModel: "anthropic/claude-sonnet-4-6",
   },
   alerts: {
-    telegram: { enabled: true },
-    email: { enabled: false, targets: [], runSummaryEnabled: false },
-    whatsapp: { enabled: false },
+    email: {
+      enabled: false,
+      targets: [],
+      runSummaryEnabled: false,
+      topPicksEnabled: false,
+    },
   },
 });

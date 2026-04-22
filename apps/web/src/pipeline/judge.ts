@@ -221,7 +221,10 @@ function renderListing(listing: NormalizedListing): string {
   return parts.join("\n");
 }
 
-export async function rejudgePastListings(limit = 200): Promise<number> {
+export async function rejudgePastListings(
+  limit = 200,
+  userId?: string,
+): Promise<number> {
   const db = getDb();
 
   const rows = await db
@@ -249,8 +252,12 @@ export async function rejudgePastListings(limit = 200): Promise<number> {
 
   if (rows.length === 0) return 0;
 
-  const { loadAdminPreferences } = await import("@/preferences/store");
-  const prefs = await loadAdminPreferences();
+  const { loadAdminPreferences, loadPreferences } = await import(
+    "@/preferences/store"
+  );
+  const prefs = userId
+    ? await loadPreferences(userId)
+    : await loadAdminPreferences();
 
   let ok = 0;
   for (const row of rows) {

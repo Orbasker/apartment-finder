@@ -18,7 +18,9 @@ const EnvSchema = z.object({
 
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
-  TELEGRAM_ALLOWED_CHAT_ID: z.string().optional(),
+  TELEGRAM_BOT_USERNAME: z.string().optional(),
+  NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string().optional(),
+  NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
 
   CRON_SECRET: z.string().optional(),
 

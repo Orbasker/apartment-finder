@@ -4,9 +4,8 @@ import { env } from "@/lib/env";
 import type { AiUsageSummary } from "@/lib/aiUsage";
 import { getScheduleTimeZone } from "@/lib/schedule";
 import {
-  getAdminUserId,
-  getAlertEmailTargets,
-  loadAdminPreferences,
+  getUserAlertRecipients,
+  loadPreferences,
 } from "@/preferences/store";
 import {
   hasAlertBeenSent,
@@ -29,6 +28,16 @@ function getClient(): Resend {
   return resendClient;
 }
 
+function getSiteUrl(): string {
+  return (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+}
+
+function listingPageUrl(listingId: number): string | null {
+  const base = getSiteUrl();
+  if (!base) return null;
+  return `${base}/listings/${listingId}`;
+}
+
 type EmailInput = {
   listingId: number;
   listing: NormalizedListing;
@@ -37,6 +46,7 @@ type EmailInput = {
 };
 
 type RunSummaryEmailInput = {
+  userId: string;
   job: string;
   status: "ok" | "skipped" | "error";
   details: Record<string, unknown>;
@@ -47,14 +57,21 @@ export function hasAdminSummaryRecipients(): boolean {
   return getAdminSummaryRecipients().length > 0;
 }
 
-export async function sendEmailAlert(input: EmailInput): Promise<void> {
-  const prefs = await loadAdminPreferences();
-  const to = getAlertEmailTargets(prefs);
-  if (!prefs.alerts.email.enabled || to.length === 0) return;
+export async function sendEmailAlert(
+  userId: string,
+  input: EmailInput,
+): Promise<void> {
+  if (!isResendConfigured()) return;
+  const prefs = await loadPreferences(userId);
+  if (!prefs.alerts.email.enabled) return;
+  const to = await getUserAlertRecipients(userId, prefs);
+  if (to.length === 0) return;
 
   const subject = input.listing.title
     ? `TA apt: ${input.listing.title.slice(0, 80)}`
     : `TA apt: ${input.listing.neighborhood ?? ""} ₪${input.listing.priceNis ?? "?"}`;
+
+  const siteLink = listingPageUrl(input.listingId);
 
   const parts: string[] = [
     `<h2>${escape(subject)}</h2>`,
@@ -66,7 +83,11 @@ export async function sendEmailAlert(input: EmailInput): Promise<void> {
     input.judgment?.redFlags.length
       ? `<p>⚠︎ ${input.judgment.redFlags.map(escape).join(" · ")}</p>`
       : "",
-    `<p><a href="${escape(input.listing.url)}">View listing</a></p>`,
+    `<p><a href="${escape(input.listing.url)}">View source listing</a>${
+      siteLink
+        ? ` · <a href="${escape(siteLink)}">Open on dashboard</a>`
+        : ""
+    }</p>`,
   ];
 
   await getClient().emails.send({
@@ -80,14 +101,11 @@ export async function sendEmailAlert(input: EmailInput): Promise<void> {
 export async function sendRunSummaryEmail(input: RunSummaryEmailInput): Promise<void> {
   if (!isResendConfigured()) return;
 
-  const [prefs, adminUserId] = await Promise.all([
-    loadAdminPreferences(),
-    getAdminUserId(),
-  ]);
-  const to = getAlertEmailTargets(prefs);
+  const prefs = await loadPreferences(input.userId);
+  const to = await getUserAlertRecipients(input.userId, prefs);
   if (to.length === 0) return;
 
-  const freshAlerts = await filterUnsentEmailAlerts(input.alerts ?? []);
+  const freshAlerts = await filterUnsentEmailAlerts(input.userId, input.alerts ?? []);
   const hasAlerts = freshAlerts.length > 0;
   const alertEmailsEnabled = prefs.alerts.email.enabled;
   const runSummaryEnabled = prefs.alerts.email.runSummaryEnabled;
@@ -122,22 +140,21 @@ export async function sendRunSummaryEmail(input: RunSummaryEmailInput): Promise<
     html,
   });
 
-  if (adminUserId) {
-    await Promise.all(
-      alertsToShow.map((entry) =>
-        recordAlertSent(adminUserId, entry.listingId, "email"),
-      ),
-    );
-  }
+  await Promise.all(
+    alertsToShow.map((entry) =>
+      recordAlertSent(input.userId, entry.listingId, "email"),
+    ),
+  );
 }
 
-async function filterUnsentEmailAlerts(alerts: AlertEntry[]): Promise<AlertEntry[]> {
-  const adminUserId = await getAdminUserId();
-  if (!adminUserId) return alerts;
+async function filterUnsentEmailAlerts(
+  userId: string,
+  alerts: AlertEntry[],
+): Promise<AlertEntry[]> {
   const results = await Promise.all(
     alerts.map(async (entry) => ({
       entry,
-      sent: await hasAlertBeenSent(adminUserId, entry.listingId, "email"),
+      sent: await hasAlertBeenSent(userId, entry.listingId, "email"),
     })),
   );
   return results.filter((r) => !r.sent).map((r) => r.entry);
@@ -158,6 +175,8 @@ function renderAlertsSection(alerts: AlertEntry[]): string {
         .map((value) => escape(String(value)))
         .join(" · ");
 
+      const siteLink = listingPageUrl(entry.listingId);
+
       return [
         "<li style=\"margin-bottom:16px;\">",
         `<div><strong>${escape(title)}</strong>${judgment ? ` · score ${escape(String(judgment.score))}` : ""}</div>`,
@@ -168,7 +187,9 @@ function renderAlertsSection(alerts: AlertEntry[]): string {
           ? `<div>⚠︎ ${judgment.redFlags.map(escape).join(" · ")}</div>`
           : "",
         reason ? `<div><em>${escape(reason)}</em></div>` : "",
-        `<div><a href="${escape(listing.url)}">View listing</a></div>`,
+        `<div><a href="${escape(listing.url)}">View source</a>${
+          siteLink ? ` · <a href="${escape(siteLink)}">Open on dashboard</a>` : ""
+        }</div>`,
         "</li>",
       ]
         .filter(Boolean)
@@ -183,6 +204,7 @@ function renderAlertsSection(alerts: AlertEntry[]): string {
 }
 
 export type TopPicksEmailInput = {
+  userId: string;
   picks: ResolvedTopPick[];
   summary?: string;
   hoursAgo: number;
@@ -191,8 +213,9 @@ export type TopPicksEmailInput = {
 
 export async function sendTopPicksEmail(input: TopPicksEmailInput): Promise<void> {
   if (!isResendConfigured()) return;
-  const prefs = await loadAdminPreferences();
-  const to = getAlertEmailTargets(prefs);
+  const prefs = await loadPreferences(input.userId);
+  if (!prefs.alerts.email.topPicksEnabled) return;
+  const to = await getUserAlertRecipients(input.userId, prefs);
   if (to.length === 0) return;
 
   const subject = input.picks.length > 0
@@ -205,11 +228,17 @@ export async function sendTopPicksEmail(input: TopPicksEmailInput): Promise<void
       ? `<p>Nothing stood out across ${formatInteger(input.candidateCount)} recent listings.</p>`
       : "";
 
+  const siteBase = getSiteUrl();
+  const dashboardLink = siteBase
+    ? `<p><a href="${escape(siteBase)}">View full dashboard</a></p>`
+    : "";
+
   const html = [
     `<h2>Top picks · last ${escape(String(input.hoursAgo))}h</h2>`,
     `<p><small>Scanned ${formatInteger(input.candidateCount)} recent listings.</small></p>`,
     intro,
     renderTopPicks(input.picks),
+    dashboardLink,
   ]
     .filter(Boolean)
     .join("\n");
@@ -237,6 +266,8 @@ function renderTopPicks(picks: ResolvedTopPick[]): string {
         .map((v) => escape(String(v)))
         .join(" · ");
 
+      const siteLink = listingPageUrl(pick.listingId);
+
       return [
         '<li style="margin-bottom:16px;">',
         `<div><strong>#${escape(String(pick.rank))} · ${escape(pick.headline)}</strong>${l.score != null ? ` · score ${escape(String(l.score))}` : ""}</div>`,
@@ -245,7 +276,9 @@ function renderTopPicks(picks: ResolvedTopPick[]): string {
         pick.concerns.length > 0
           ? `<div>⚠︎ ${pick.concerns.map(escape).join(" · ")}</div>`
           : "",
-        `<div><a href="${escape(l.url)}">View listing</a></div>`,
+        `<div><a href="${escape(l.url)}">View source</a>${
+          siteLink ? ` · <a href="${escape(siteLink)}">Open on dashboard</a>` : ""
+        }</div>`,
         "</li>",
       ]
         .filter(Boolean)

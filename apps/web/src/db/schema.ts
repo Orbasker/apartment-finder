@@ -133,6 +133,32 @@ export const userGroupSubscriptions = pgTable(
   }),
 );
 
+export const telegramLinks = pgTable(
+  "telegram_links",
+  {
+    chatId: text("chat_id").primaryKey(),
+    userId: uuid("user_id").notNull(),
+    linkedAt: timestamp("linked_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    userIdIdx: index("telegram_links_user_id_idx").on(t.userId),
+  }),
+);
+
+export const telegramLinkTokens = pgTable(
+  "telegram_link_tokens",
+  {
+    token: text("token").primaryKey(),
+    userId: uuid("user_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+  },
+  (t) => ({
+    userIdIdx: index("telegram_link_tokens_user_id_idx").on(t.userId),
+  }),
+);
+
 export const aiUsage = pgTable(
   "ai_usage",
   {
@@ -164,3 +190,5 @@ export type NewJudgmentRow = typeof judgments.$inferInsert;
 export type AiUsageRow = typeof aiUsage.$inferSelect;
 export type NewAiUsageRow = typeof aiUsage.$inferInsert;
 export type UserGroupSubscription = typeof userGroupSubscriptions.$inferSelect;
+export type TelegramLink = typeof telegramLinks.$inferSelect;
+export type TelegramLinkToken = typeof telegramLinkTokens.$inferSelect;

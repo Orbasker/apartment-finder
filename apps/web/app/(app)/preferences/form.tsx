@@ -318,6 +318,23 @@ export function PreferencesForm({
               })
             }
           />
+          <ToggleRow
+            label="Send daily top-picks email"
+            description="Once a day, email the highest-scoring recent listings."
+            checked={prefs.alerts.email.topPicksEnabled}
+            onChange={(checked) =>
+              setPrefs({
+                ...prefs,
+                alerts: {
+                  ...prefs.alerts,
+                  email: {
+                    ...prefs.alerts.email,
+                    topPicksEnabled: checked,
+                  },
+                },
+              })
+            }
+          />
         </div>
       </Section>
 

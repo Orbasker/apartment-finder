@@ -4,12 +4,8 @@ import { env } from "@/lib/env";
 import { fetchDatasetItems } from "@/integrations/apify";
 import { normalizeFbPost } from "@/pipeline/fbNormalize";
 import { ingestNewListings } from "@/pipeline/dedup";
-import { ruleFilter } from "@/pipeline/ruleFilter";
-import { runJudgeAndNotify } from "@/pipeline/pipeline";
-import type { AlertEntry } from "@/pipeline/sentAlerts";
-import { getAdminUserId, loadAdminPreferences } from "@/preferences/store";
+import { fanOutToUsers } from "@/jobs/cron";
 import { describeLocalSchedule } from "@/lib/schedule";
-import { sendRunSummaryEmail } from "@/integrations/resend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,35 +45,23 @@ export async function POST(req: Request): Promise<Response> {
   const { eventType, resource } = parsed.data;
   if (eventType !== "ACTOR.RUN.SUCCEEDED") {
     console.warn(`Apify run ${resource.id} eventType=${eventType} — skipping`);
-    const payload = {
+    return NextResponse.json({
       ok: true,
       skipped: eventType,
       runId: resource.id,
       localTime,
-    };
-    await sendRunSummaryEmail({
-      job: "Apify scan",
-      status: eventType === "ACTOR.RUN.FAILED" ? "error" : "skipped",
-      details: payload,
-    }).catch((err) => console.error("send Apify summary email failed:", err));
-    return NextResponse.json(payload);
+    });
   }
 
   const datasetId = resource.defaultDatasetId;
   if (!datasetId) {
-    const payload = {
-      ok: false,
-      error: "No defaultDatasetId on run",
-      runId: resource.id,
-      localTime,
-    };
-    await sendRunSummaryEmail({
-      job: "Apify scan",
-      status: "error",
-      details: payload,
-    }).catch((err) => console.error("send Apify summary email failed:", err));
     return NextResponse.json(
-      payload,
+      {
+        ok: false,
+        error: "No defaultDatasetId on run",
+        runId: resource.id,
+        localTime,
+      },
       { status: 400 },
     );
   }
@@ -89,42 +73,9 @@ export async function POST(req: Request): Promise<Response> {
   ).filter((l): l is NonNullable<typeof l> => l !== null);
 
   const { inserted, skippedExisting } = await ingestNewListings(normalized);
-  const [prefs, adminUserId] = await Promise.all([
-    loadAdminPreferences(),
-    getAdminUserId(),
-  ]);
+  const stats = await fanOutToUsers(inserted, "Apify scan");
 
-  let alerted = 0;
-  let filtered = 0;
-  let skippedByAi = 0;
-  let unsure = 0;
-  const alerts: AlertEntry[] = [];
-
-  for (const row of inserted) {
-    const verdict = ruleFilter(row.listing, prefs);
-    if (!verdict.pass) {
-      filtered++;
-      continue;
-    }
-    if (!adminUserId) {
-      skippedByAi++;
-      continue;
-    }
-    const result = await runJudgeAndNotify({
-      listingId: row.id,
-      listing: row.listing,
-      prefs,
-      notifyUserId: adminUserId,
-      channels: ["telegram"],
-    });
-    if (result.outcome === "alert") {
-      alerted++;
-      if (result.alert) alerts.push(result.alert);
-    } else if (result.outcome === "unsure") unsure++;
-    else skippedByAi++;
-  }
-
-  const payload = {
+  return NextResponse.json({
     ok: true,
     runId: resource.id,
     datasetId,
@@ -132,17 +83,11 @@ export async function POST(req: Request): Promise<Response> {
     normalized: normalized.length,
     inserted: inserted.length,
     skippedExisting,
-    filtered,
-    alerted,
-    skippedByAi,
-    unsure,
+    notifiedUsers: stats.perUser,
+    filtered: stats.filtered,
+    alerted: stats.alerted,
+    skippedByAi: stats.skipped,
+    unsure: stats.unsure,
     localTime,
-  };
-  await sendRunSummaryEmail({
-    job: "Apify scan",
-    status: "ok",
-    details: payload,
-    alerts,
-  }).catch((err) => console.error("send Apify summary email failed:", err));
-  return NextResponse.json(payload);
+  });
 }

@@ -1,13 +1,12 @@
-import { Bot, InlineKeyboard, webhookCallback } from "grammy";
-import type { Judgment, NormalizedListing } from "@apartment-finder/shared";
+import { Bot, webhookCallback } from "grammy";
 import { env } from "@/lib/env";
-import {
-  getAdminUserId,
-  loadAdminPreferences,
-  saveAdminPreferences,
-} from "@/preferences/store";
 import { recordFeedback } from "@/feedback/store";
 import { handleAgentMessage } from "@/agent/agent";
+import {
+  consumeLinkToken,
+  getUserIdForChat,
+} from "@/integrations/telegramLinks";
+import { cancelLatestPatch, confirmLatestPatch } from "@/agent/patches";
 
 let botInstance: Bot | undefined;
 
@@ -22,56 +21,85 @@ export function getBot(): Bot {
   const bot = new Bot(token);
 
   bot.command("start", async (ctx) => {
-    if (!(await enforceAllowedChat(ctx))) return;
     const chatId = String(ctx.chat.id);
-    const prefs = await loadAdminPreferences();
-    if (!prefs.alerts.telegram.chatId) {
-      await saveAdminPreferences({
-        ...prefs,
-        alerts: {
-          ...prefs.alerts,
-          telegram: { ...prefs.alerts.telegram, enabled: true, chatId },
-        },
-      });
+    const argToken = ctx.match?.trim() ?? "";
+
+    if (!argToken) {
+      const existing = await getUserIdForChat(chatId);
+      if (existing) {
+        await ctx.reply(
+          "This chat is already linked. Ask me anything about listings — e.g. 'what did you find in florentin today?'",
+        );
+        return;
+      }
       await ctx.reply(
-        `Registered this chat for alerts.\nChat ID: ${chatId}\n\nI'll DM you when a matching apartment shows up. Ask me anything ("what did you find in florentin today?") and I'll search for you.`,
+        "This bot is private. Open the dashboard → Preferences → Connect Telegram, then tap the link there to finish authentication.",
       );
-    } else if (prefs.alerts.telegram.chatId === chatId) {
-      await ctx.reply("Already registered. Ask me anything about listings.");
-    } else {
-      await ctx.reply(
-        "A different chat is registered. Change via the dashboard.",
-      );
+      return;
     }
+
+    const result = await consumeLinkToken(argToken, chatId);
+    if (!result.ok) {
+      const msg =
+        result.reason === "expired"
+          ? "That link has expired. Generate a new one on the dashboard."
+          : result.reason === "already_used"
+            ? "That link was already used. Generate a new one if you need to re-link."
+            : "Invalid link. Open Preferences → Connect Telegram on the dashboard to get a fresh one.";
+      await ctx.reply(msg);
+      return;
+    }
+
+    await ctx.reply(
+      "Linked. You can now ask me about listings (e.g. 'show me 3-room under 7500 in florentin'), or reply /confirm or /cancel when I propose a preference change.",
+    );
   });
 
   bot.command("ping", async (ctx) => {
-    if (!(await enforceAllowedChat(ctx))) return;
+    if (!(await requireLinkedUser(ctx))) return;
     await ctx.reply("pong");
   });
 
   bot.command("whoami", async (ctx) => {
-    if (!(await enforceAllowedChat(ctx))) return;
-    await ctx.reply(
-      `chat_id: ${ctx.chat.id}\nuser: ${ctx.from?.username ?? "—"}`,
-    );
+    const userId = await requireLinkedUser(ctx);
+    if (!userId) return;
+    await ctx.reply(`Linked user: ${userId}`);
+  });
+
+  bot.command("unlink", async (ctx) => {
+    const chatId = String(ctx.chat.id);
+    const userId = await getUserIdForChat(chatId);
+    if (!userId) {
+      await ctx.reply("This chat isn't linked.");
+      return;
+    }
+    const { unlinkUser } = await import("@/integrations/telegramLinks");
+    await unlinkUser(userId);
+    await ctx.reply("Unlinked. Generate a new link on the dashboard to reconnect.");
   });
 
   bot.command("confirm", async (ctx) => {
-    if (!(await enforceAllowedChat(ctx))) return;
-    const { confirmLatestPatch } = await import("@/agent/patches");
-    const result = await confirmLatestPatch(String(ctx.chat.id));
+    const userId = await requireLinkedUser(ctx);
+    if (!userId) return;
+    const result = await confirmLatestPatch(userId);
     await ctx.reply(result);
   });
 
   bot.command("cancel", async (ctx) => {
-    if (!(await enforceAllowedChat(ctx))) return;
-    const { cancelLatestPatch } = await import("@/agent/patches");
-    const result = await cancelLatestPatch(String(ctx.chat.id));
+    const userId = await requireLinkedUser(ctx);
+    if (!userId) return;
+    const result = await cancelLatestPatch(userId);
     await ctx.reply(result);
   });
 
   bot.on("callback_query:data", async (ctx) => {
+    const chatId = String(ctx.chat?.id ?? "");
+    const userId = chatId ? await getUserIdForChat(chatId) : null;
+    if (!userId) {
+      await ctx.answerCallbackQuery({ text: "Chat not linked." });
+      return;
+    }
+
     const data = ctx.callbackQuery.data;
     const match = /^fb:(up|down):(\d+)$/.exec(data);
     if (!match) {
@@ -81,10 +109,7 @@ export function getBot(): Bot {
     const [, direction, idStr] = match;
     const listingId = Number(idStr);
     const rating = direction === "up" ? 1 : -1;
-    const adminUserId = await getAdminUserId();
-    if (adminUserId) {
-      await recordFeedback(adminUserId, listingId, rating);
-    }
+    await recordFeedback(userId, listingId, rating);
 
     await ctx.answerCallbackQuery({
       text: rating > 0 ? "Got it — 👍 recorded" : "Got it — 👎 recorded",
@@ -103,13 +128,17 @@ export function getBot(): Bot {
 
   bot.on("message:text", async (ctx, next) => {
     if (ctx.message.text.startsWith("/")) return next();
-    const chatId = String(ctx.chat.id);
+    const userId = await requireLinkedUser(ctx);
+    if (!userId) return;
     try {
       const reply = await handleAgentMessage({
-        chatId,
+        userId,
         text: ctx.message.text,
       });
-      await ctx.reply(reply, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
+      await ctx.reply(reply, {
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: true },
+      });
     } catch (err) {
       console.error("agent failed:", err);
       await ctx.reply(
@@ -126,19 +155,19 @@ export function getBot(): Bot {
   return bot;
 }
 
-async function enforceAllowedChat(ctx: {
+async function requireLinkedUser(ctx: {
   chat: { id: number };
   reply: (text: string) => Promise<unknown>;
-}): Promise<boolean> {
-  const prefs = await loadAdminPreferences();
-  const allowed =
-    prefs.alerts.telegram.chatId ?? env().TELEGRAM_ALLOWED_CHAT_ID;
-  if (!allowed) return true;
-  if (String(ctx.chat.id) !== allowed) {
-    await ctx.reply("This bot is private. Go away.");
-    return false;
+}): Promise<string | null> {
+  const chatId = String(ctx.chat.id);
+  const userId = await getUserIdForChat(chatId);
+  if (!userId) {
+    await ctx.reply(
+      "This chat isn't linked to a user yet. Open Preferences → Connect Telegram on the dashboard to finish auth.",
+    );
+    return null;
   }
-  return true;
+  return userId;
 }
 
 export function telegramWebhookHandler() {
@@ -148,124 +177,4 @@ export function telegramWebhookHandler() {
     timeoutMilliseconds: 55_000,
     onTimeout: "return",
   });
-}
-
-type AlertInput = {
-  listingId: number;
-  listing: NormalizedListing;
-  summary?: string;
-  reason?: string;
-  judgment?: Judgment;
-};
-
-export async function sendTelegramAlert(input: AlertInput): Promise<void> {
-  const prefs = await loadAdminPreferences();
-  const chatId = prefs.alerts.telegram.chatId ?? env().TELEGRAM_ALLOWED_CHAT_ID;
-  if (!prefs.alerts.telegram.enabled || !chatId) {
-    console.warn("Telegram alerts disabled or no chat_id set — skipping");
-    return;
-  }
-
-  const bot = getBot();
-  const text = renderAlert(input);
-
-  const keyboard = new InlineKeyboard()
-    .text("👍", `fb:up:${input.listingId}`)
-    .text("👎", `fb:down:${input.listingId}`);
-
-  await bot.api.sendMessage(chatId, text, {
-    parse_mode: "HTML",
-    link_preview_options: { is_disabled: false },
-    reply_markup: keyboard,
-  });
-}
-
-type TopPicksTelegramInput = {
-  picks: import("@/pipeline/topPicks").ResolvedTopPick[];
-  summary?: string;
-  hoursAgo: number;
-  candidateCount: number;
-};
-
-export async function sendTelegramTopPicks(input: TopPicksTelegramInput): Promise<void> {
-  const prefs = await loadAdminPreferences();
-  const chatId = prefs.alerts.telegram.chatId ?? env().TELEGRAM_ALLOWED_CHAT_ID;
-  if (!prefs.alerts.telegram.enabled || !chatId) {
-    console.warn("Telegram alerts disabled or no chat_id set — skipping top picks");
-    return;
-  }
-
-  const bot = getBot();
-  const text = renderTopPicksMessage(input);
-
-  await bot.api.sendMessage(chatId, text, {
-    parse_mode: "HTML",
-    link_preview_options: { is_disabled: true },
-  });
-}
-
-function renderTopPicksMessage(input: TopPicksTelegramInput): string {
-  const lines = [
-    `<b>Top ${input.picks.length || 0} picks · last ${input.hoursAgo}h</b>`,
-    `<i>Scanned ${input.candidateCount} recent listings.</i>`,
-  ];
-  if (input.summary) lines.push("", escapeHtml(input.summary));
-  if (input.picks.length === 0) {
-    lines.push("", "Nothing stood out.");
-    return lines.join("\n");
-  }
-  for (const pick of input.picks) {
-    const l = pick.listing;
-    const meta = [
-      l.priceNis != null ? `₪${l.priceNis.toLocaleString("en-US")}` : null,
-      l.rooms != null ? `${l.rooms}br` : null,
-      l.neighborhood,
-    ]
-      .filter(Boolean)
-      .join(" · ");
-    lines.push(
-      "",
-      `<b>#${pick.rank} · ${escapeHtml(pick.headline)}</b>`,
-      meta,
-      `<i>${escapeHtml(pick.reasoning)}</i>`,
-      l.url,
-    );
-  }
-  return lines.join("\n");
-}
-
-function renderAlert({ listing, summary, reason, judgment }: AlertInput): string {
-  const priceStr =
-    listing.priceNis != null
-      ? `₪${listing.priceNis.toLocaleString("en-US")}`
-      : "price ?";
-  const roomsStr = listing.rooms != null ? `${listing.rooms}br` : "";
-  const neighborhood = listing.neighborhood ?? "";
-  const street = listing.street ?? "";
-
-  const header =
-    [neighborhood, street].filter(Boolean).join(" · ") ||
-    (listing.title ?? "New listing");
-
-  const lines = [
-    `<b>${escapeHtml(header)}</b>`,
-    [priceStr, roomsStr].filter(Boolean).join(" · "),
-  ];
-
-  if (judgment) {
-    lines.push("", `<i>score ${judgment.score}</i>`);
-  }
-  if (summary) lines.push("", escapeHtml(summary));
-  if (reason) lines.push("", `<i>${escapeHtml(reason)}</i>`);
-
-  if (judgment && judgment.redFlags.length > 0) {
-    lines.push("", `⚠︎ ${judgment.redFlags.slice(0, 3).map(escapeHtml).join(" · ")}`);
-  }
-
-  lines.push("", listing.url);
-  return lines.join("\n");
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

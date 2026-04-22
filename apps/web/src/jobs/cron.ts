@@ -1,9 +1,13 @@
 import { fetchYad2Listings, Yad2UpstreamUnavailableError } from "@/scrapers/yad2";
-import { ingestNewListings } from "@/pipeline/dedup";
+import { ingestNewListings, type InsertedListing } from "@/pipeline/dedup";
 import { ruleFilter } from "@/pipeline/ruleFilter";
 import { runJudgeAndNotify } from "@/pipeline/pipeline";
 import type { AlertEntry } from "@/pipeline/sentAlerts";
-import { getAdminUserId, loadAdminPreferences } from "@/preferences/store";
+import {
+  getActiveEmailAlertUsers,
+  getActiveTopPicksUsers,
+  loadPreferences,
+} from "@/preferences/store";
 import { describeLocalSchedule, shouldRunApifyPoll, shouldRunYad2Poll } from "@/lib/schedule";
 import {
   hasAdminSummaryRecipients,
@@ -12,7 +16,6 @@ import {
   sendRunSummaryEmail,
   sendTopPicksEmail,
 } from "@/integrations/resend";
-import { sendTelegramTopPicks } from "@/integrations/telegram";
 import { getAiUsageSummary } from "@/lib/aiUsage";
 import { isApifyConfigured, startFacebookGroupsRun } from "@/integrations/apify";
 import { isGatewayConfigured } from "@/lib/gateway";
@@ -28,6 +31,74 @@ export type JobRunResult = {
   payload: Record<string, unknown>;
 };
 
+type FanOutStats = {
+  perUser: number;
+  passed: number;
+  filtered: number;
+  alerted: number;
+  skipped: number;
+  unsure: number;
+};
+
+async function fanOutToUsers(
+  inserted: InsertedListing[],
+  jobLabel: string,
+): Promise<FanOutStats> {
+  const stats: FanOutStats = {
+    perUser: 0,
+    passed: 0,
+    filtered: 0,
+    alerted: 0,
+    skipped: 0,
+    unsure: 0,
+  };
+  if (inserted.length === 0) return stats;
+
+  const userIds = await getActiveEmailAlertUsers();
+  stats.perUser = userIds.length;
+  if (userIds.length === 0) return stats;
+
+  for (const userId of userIds) {
+    const prefs = await loadPreferences(userId);
+    const userAlerts: AlertEntry[] = [];
+
+    for (const row of inserted) {
+      const verdict = ruleFilter(row.listing, prefs);
+      if (!verdict.pass) {
+        stats.filtered++;
+        continue;
+      }
+      stats.passed++;
+      const result = await runJudgeAndNotify({
+        listingId: row.id,
+        listing: row.listing,
+        prefs,
+        notifyUserId: userId,
+        channels: ["email"],
+      });
+      if (result.outcome === "alert") {
+        stats.alerted++;
+        if (result.alert) userAlerts.push(result.alert);
+      } else if (result.outcome === "unsure") stats.unsure++;
+      else stats.skipped++;
+    }
+
+    await sendRunSummaryEmail({
+      userId,
+      job: jobLabel,
+      status: "ok",
+      details: {
+        candidates: inserted.length,
+        alertsForYou: userAlerts.length,
+      },
+      alerts: userAlerts,
+    }).catch((err) =>
+      console.error(`send ${jobLabel} summary email for user ${userId} failed:`, err),
+    );
+  }
+  return stats;
+}
+
 export async function runYad2PollJob(options?: {
   enforceSchedule?: boolean;
 }): Promise<JobRunResult> {
@@ -41,74 +112,28 @@ export async function runYad2PollJob(options?: {
       skipped: "Outside Yad2 local schedule window",
       localTime,
     };
-    await sendRunSummaryEmail({
-      job: "Yad2 poll",
-      status: "skipped",
-      details: payload,
-    }).catch((err) => console.error("send Yad2 summary email failed:", err));
     return { status: 200, payload };
   }
 
   try {
     const listings = await fetchYad2Listings();
     const { inserted, skippedExisting } = await ingestNewListings(listings);
-    const [prefs, adminUserId] = await Promise.all([
-      loadAdminPreferences(),
-      getAdminUserId(),
-    ]);
-
-    let passed = 0;
-    let filtered = 0;
-    let alerted = 0;
-    let skipped = 0;
-    let unsure = 0;
-    const alerts: AlertEntry[] = [];
-
-    for (const row of inserted) {
-      const verdict = ruleFilter(row.listing, prefs);
-      if (!verdict.pass) {
-        filtered++;
-        continue;
-      }
-      passed++;
-      if (!adminUserId) {
-        // Without an admin user we can't attribute notifications; skip notify.
-        skipped++;
-        continue;
-      }
-      const result = await runJudgeAndNotify({
-        listingId: row.id,
-        listing: row.listing,
-        prefs,
-        notifyUserId: adminUserId,
-        channels: ["telegram"],
-      });
-      if (result.outcome === "alert") {
-        alerted++;
-        if (result.alert) alerts.push(result.alert);
-      } else if (result.outcome === "unsure") unsure++;
-      else skipped++;
-    }
+    const stats = await fanOutToUsers(inserted, "Yad2 poll");
 
     const payload = {
       ok: true,
       fetched: listings.length,
       inserted: inserted.length,
       skippedExisting,
-      passed,
-      filtered,
-      alerted,
-      skipped,
-      unsure,
+      notifiedUsers: stats.perUser,
+      passed: stats.passed,
+      filtered: stats.filtered,
+      alerted: stats.alerted,
+      skipped: stats.skipped,
+      unsure: stats.unsure,
       localTime,
       durationMs: Date.now() - startedAt,
     };
-    await sendRunSummaryEmail({
-      job: "Yad2 poll",
-      status: "ok",
-      details: payload,
-      alerts,
-    }).catch((err) => console.error("send Yad2 summary email failed:", err));
     return { status: 200, payload };
   } catch (err) {
     if (err instanceof Yad2UpstreamUnavailableError) {
@@ -118,6 +143,7 @@ export async function runYad2PollJob(options?: {
         fetched: 0,
         inserted: 0,
         skippedExisting: 0,
+        notifiedUsers: 0,
         passed: 0,
         filtered: 0,
         alerted: 0,
@@ -128,11 +154,6 @@ export async function runYad2PollJob(options?: {
         localTime,
         durationMs: Date.now() - startedAt,
       };
-      await sendRunSummaryEmail({
-        job: "Yad2 poll",
-        status: "skipped",
-        details: payload,
-      }).catch((error) => console.error("send Yad2 summary email failed:", error));
       return { status: 200, payload };
     }
 
@@ -143,11 +164,6 @@ export async function runYad2PollJob(options?: {
       localTime,
       durationMs: Date.now() - startedAt,
     };
-    await sendRunSummaryEmail({
-      job: "Yad2 poll",
-      status: "error",
-      details: payload,
-    }).catch((error) => console.error("send Yad2 summary email failed:", error));
     return { status: 500, payload };
   }
 }
@@ -285,54 +301,64 @@ export async function runAiTopPicksJob(options?: {
     };
   }
 
-  try {
-    const prefs = await loadAdminPreferences();
-    const result = await pickTopListings({ prefs, hoursAgo, topN });
-
-    await Promise.all([
-      sendTopPicksEmail({
-        picks: result.picks,
-        summary: result.summary,
-        hoursAgo: result.hoursAgo,
-        candidateCount: result.candidateCount,
-      }).catch((err) => console.error("send top picks email failed:", err)),
-      sendTelegramTopPicks({
-        picks: result.picks,
-        summary: result.summary,
-        hoursAgo: result.hoursAgo,
-        candidateCount: result.candidateCount,
-      }).catch((err) => console.error("send top picks telegram failed:", err)),
-    ]);
-
+  const userIds = await getActiveTopPicksUsers();
+  if (userIds.length === 0) {
     return {
       status: 200,
       payload: {
         ok: true,
-        candidateCount: result.candidateCount,
-        picksReturned: result.picks.length,
-        hoursAgo: result.hoursAgo,
-        topN: result.topN,
-        summary: result.summary,
-        picks: result.picks.map((pick) => ({
-          rank: pick.rank,
-          listingId: pick.listingId,
-          headline: pick.headline,
-          url: pick.listing.url,
-        })),
-        durationMs: Date.now() - startedAt,
-      },
-    };
-  } catch (err) {
-    console.error("ai-top-picks failed:", err);
-    return {
-      status: 500,
-      payload: {
-        ok: false,
-        error: err instanceof Error ? err.message : String(err),
+        skipped: "No users have opted into top-picks emails",
         hoursAgo,
         topN,
-        durationMs: Date.now() - startedAt,
       },
     };
   }
+
+  const perUser: Array<{
+    userId: string;
+    candidateCount: number;
+    picks: number;
+    error?: string;
+  }> = [];
+
+  for (const userId of userIds) {
+    try {
+      const prefs = await loadPreferences(userId);
+      const result = await pickTopListings({ prefs, hoursAgo, topN });
+      await sendTopPicksEmail({
+        userId,
+        picks: result.picks,
+        summary: result.summary,
+        hoursAgo: result.hoursAgo,
+        candidateCount: result.candidateCount,
+      });
+      perUser.push({
+        userId,
+        candidateCount: result.candidateCount,
+        picks: result.picks.length,
+      });
+    } catch (err) {
+      console.error(`ai-top-picks failed for user ${userId}:`, err);
+      perUser.push({
+        userId,
+        candidateCount: 0,
+        picks: 0,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return {
+    status: 200,
+    payload: {
+      ok: true,
+      hoursAgo,
+      topN,
+      users: perUser.length,
+      results: perUser,
+      durationMs: Date.now() - startedAt,
+    },
+  };
 }
+
+export { fanOutToUsers };

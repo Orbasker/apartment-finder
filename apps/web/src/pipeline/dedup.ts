@@ -4,8 +4,10 @@ import { getDb } from "@/db";
 import { listings } from "@/db/schema";
 import { listingTextHash } from "@/pipeline/normalize";
 
+export type InsertedListing = { id: number; listing: NormalizedListing };
+
 export type IngestResult = {
-  inserted: Array<{ id: number; listing: NormalizedListing }>;
+  inserted: InsertedListing[];
   skippedExisting: number;
 };
 

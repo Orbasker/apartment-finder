@@ -30,9 +30,12 @@ const basePrefs: Preferences = {
     escalationModel: "anthropic/claude-sonnet-4-6",
   },
   alerts: {
-    telegram: { enabled: true },
-    email: { enabled: false, targets: [], runSummaryEnabled: false },
-    whatsapp: { enabled: false },
+    email: {
+      enabled: false,
+      targets: [],
+      runSummaryEnabled: false,
+      topPicksEnabled: false,
+    },
   },
 };
 
