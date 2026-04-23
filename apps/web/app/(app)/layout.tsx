@@ -9,9 +9,11 @@ import { UserMenu } from "./user-menu";
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
   if (user) {
-    await loadPreferences(user.id);
-    await seedAlertEmailTargets(user.id, user.email);
-    await autoSubscribeToEnabledGroups(user.id);
+    await Promise.all([
+      loadPreferences(user.id),
+      seedAlertEmailTargets(user.id, user.email),
+      autoSubscribeToEnabledGroups(user.id),
+    ]);
   }
   const admin = isAdmin(user);
 
