@@ -38,14 +38,23 @@ export function PreferencesForm({
   function save() {
     start(async () => {
       setStatus(null);
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error("Save timed out after 30s — try again")),
+          30_000,
+        );
+      });
       try {
-        await savePreferencesAction(prefs);
+        await Promise.race([savePreferencesAction(prefs), timeout]);
         setStatus({ kind: "ok", msg: "Saved." });
       } catch (err) {
         setStatus({
           kind: "err",
           msg: err instanceof Error ? err.message : "Error",
         });
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
       }
     });
   }

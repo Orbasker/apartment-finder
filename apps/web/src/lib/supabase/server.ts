@@ -38,6 +38,26 @@ export const getCurrentUser = cache(async () => {
   }
 });
 
+/**
+ * Cookie-only user read — no network call to Supabase auth. Trustable within
+ * routes gated by middleware (which already ran `auth.getUser()` on the way in
+ * and rejected unauthenticated requests). Use on hot paths like server actions
+ * where shaving the auth round-trip matters. Falls back to `getCurrentUser`
+ * when the cookie session is missing.
+ */
+export const getRequestUser = cache(async () => {
+  try {
+    const supabase = await getSupabaseServerClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session?.user) return session.user;
+    return await getCurrentUser();
+  } catch {
+    return null;
+  }
+});
+
 export function isAdmin(user: User | null | undefined): boolean {
   return user?.app_metadata?.is_admin === true;
 }

@@ -1,3 +1,4 @@
+import { cache as reactCache } from "react";
 import { eq, sql } from "drizzle-orm";
 import {
   PreferencesSchema,
@@ -10,7 +11,7 @@ import { preferences } from "@/db/schema";
 const cache = new Map<string, Preferences>();
 let adminUserIdCache: string | null | undefined;
 
-export async function loadPreferences(userId: string): Promise<Preferences> {
+async function loadPreferencesUncached(userId: string): Promise<Preferences> {
   const cached = cache.get(userId);
   if (cached) return cached;
 
@@ -37,12 +38,14 @@ export async function loadPreferences(userId: string): Promise<Preferences> {
   return value;
 }
 
+export const loadPreferences = reactCache(loadPreferencesUncached);
+
 export async function savePreferences(
   userId: string,
   next: Preferences,
 ): Promise<void> {
   const db = getDb();
-  const parsed = normalizePreferences(PreferencesSchema.parse(next));
+  const parsed = normalizePreferences(next);
   await db
     .insert(preferences)
     .values({ userId, data: parsed, updatedAt: new Date() })
