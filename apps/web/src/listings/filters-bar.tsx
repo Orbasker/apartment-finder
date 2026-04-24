@@ -7,18 +7,33 @@ type Props = {
   action?: string;
   values: ParsedListingFilters;
   hasActiveFilters: boolean;
+  prefsSeeded?: boolean;
 };
 
 const selectClass =
   "h-9 w-full rounded-md border bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
-export function ListingsFiltersBar({ action = "/", values, hasActiveFilters }: Props) {
+export function ListingsFiltersBar({
+  action = "/",
+  values,
+  hasActiveFilters,
+  prefsSeeded = false,
+}: Props) {
   return (
     <form
       method="get"
       action={action}
       className="space-y-3 rounded-lg border bg-card p-4"
     >
+      {prefsSeeded && (
+        <p className="text-xs text-muted-foreground">
+          Pre-filled from your saved preferences —{" "}
+          <Link href="/preferences" className="underline hover:text-foreground">
+            edit preferences
+          </Link>
+          .
+        </p>
+      )}
       <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted-foreground">
