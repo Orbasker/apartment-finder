@@ -30,11 +30,13 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-export function LoginForm() {
+export function LoginForm({ initialError = null }: { initialError?: string | null } = {}) {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
+    initialError ? "error" : "idle",
+  );
   const [pendingAction, setPendingAction] = useState<"google" | "magic" | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
   const busy = status === "sending";
 
   async function sendMagicLink(e: React.FormEvent) {

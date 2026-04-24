@@ -8,7 +8,13 @@ export const metadata = {
     "Aggregates Yad2 and Facebook groups, filters listings against your preferences with AI, and pings you on Telegram the moment something matches.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; error_description?: string }>;
+}) {
+  const sp = await searchParams;
+  const urlError = sp.error_description ?? sp.error ?? null;
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
@@ -65,7 +71,7 @@ export default function LoginPage() {
                 </p>
               </CardHeader>
               <CardContent>
-                <LoginForm />
+                <LoginForm initialError={urlError} />
               </CardContent>
             </Card>
           </div>
