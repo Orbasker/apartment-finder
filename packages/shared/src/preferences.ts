@@ -70,13 +70,13 @@ export const PreferencesSchema = z.object({
   ai: z
     .object({
       scoreThreshold: z.number().min(0).max(100).default(70),
-      primaryModel: z.string().default("anthropic/claude-haiku-4-5"),
-      escalationModel: z.string().default("anthropic/claude-sonnet-4-6"),
+      primaryModel: z.string().default("google/gemini-2.5-flash"),
+      escalationModel: z.string().default("google/gemini-2.5-flash"),
     })
     .default({
       scoreThreshold: 70,
-      primaryModel: "anthropic/claude-haiku-4-5",
-      escalationModel: "anthropic/claude-sonnet-4-6",
+      primaryModel: "google/gemini-2.5-flash",
+      escalationModel: "google/gemini-2.5-flash",
     }),
   alerts: z.object({
     email: z
@@ -108,8 +108,8 @@ export const defaultPreferences: Preferences = PreferencesSchema.parse({
   maxAgeHours: 24,
   ai: {
     scoreThreshold: 70,
-    primaryModel: "anthropic/claude-haiku-4-5",
-    escalationModel: "anthropic/claude-sonnet-4-6",
+    primaryModel: "google/gemini-2.5-flash",
+    escalationModel: "google/gemini-2.5-flash",
   },
   alerts: {
     email: {

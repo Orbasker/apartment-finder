@@ -13,12 +13,12 @@ describe("estimateCostUsd", () => {
 
   test("applies cached-input pricing when cached tokens are present", () => {
     expect(
-      estimateCostUsd("anthropic/claude-haiku-4-5", {
+      estimateCostUsd("google/gemini-2.5-flash", {
         inputTokens: 100_000,
         cachedInputTokens: 40_000,
         outputTokens: 10_000,
       }),
-    ).toBeCloseTo(0.0912, 5);
+    ).toBeCloseTo(0.046, 5);
   });
 
   test("returns zero for unknown models", () => {

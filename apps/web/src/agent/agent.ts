@@ -4,7 +4,7 @@ import { loadPreferences } from "@/preferences/store";
 import { buildAgentTools } from "@/agent/tools";
 import { recordAiUsage } from "@/lib/aiUsage";
 
-const AGENT_MODEL = "anthropic/claude-sonnet-4-6";
+const AGENT_MODEL = "google/gemini-2.5-flash";
 
 export async function handleAgentMessage(input: {
   userId: string;

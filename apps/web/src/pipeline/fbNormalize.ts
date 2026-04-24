@@ -87,7 +87,7 @@ function quickExtract(text: string): { priceNis: number | null; rooms: number | 
 async function llmExtract(text: string): Promise<z.infer<typeof ExtractedSchema>> {
   const trimmed = text.slice(0, 2000);
   const result = await generateObject({
-    model: model("anthropic/claude-haiku-4-5"),
+    model: model("google/gemini-2.5-flash"),
     schema: ExtractedSchema,
     system: [
       "Extract rental listing fields from an unstructured Facebook post.",
@@ -102,7 +102,7 @@ async function llmExtract(text: string): Promise<z.infer<typeof ExtractedSchema>
   });
   await recordAiUsage({
     feature: "pipeline.fb-normalize",
-    model: "anthropic/claude-haiku-4-5",
+    model: "google/gemini-2.5-flash",
     providerModel: result.response.modelId,
     usage: result.usage,
   }).catch((err) => console.error("record fb normalize AI usage failed:", err));

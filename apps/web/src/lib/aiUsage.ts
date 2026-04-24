@@ -38,10 +38,23 @@ export type AiUsageSummary = {
   byModel: UsageSummaryRow[];
 };
 
-// Pricing source: Anthropic's published Claude pricing. Family aliases are
-// mapped to the nearest matching current public tier when the provider returns
-// a custom gateway id instead of an official Anthropic model id.
+// Pricing source: Anthropic's published Claude pricing and Google's published
+// Gemini pricing. Family aliases are mapped to the nearest matching current
+// public tier when the provider returns a custom gateway id instead of an
+// official provider model id.
 const PRICING_BY_MODEL: Array<{ match: RegExp; pricing: Pricing }> = [
+  {
+    match: /gemini-2\.5-pro/i,
+    pricing: { inputUsdPerMillion: 1.25, outputUsdPerMillion: 10, cachedInputUsdPerMillion: 0.31 },
+  },
+  {
+    match: /gemini-2\.5-flash-lite/i,
+    pricing: { inputUsdPerMillion: 0.1, outputUsdPerMillion: 0.4, cachedInputUsdPerMillion: 0.025 },
+  },
+  {
+    match: /gemini-2\.5-flash|gemini-2\.0-flash/i,
+    pricing: { inputUsdPerMillion: 0.3, outputUsdPerMillion: 2.5, cachedInputUsdPerMillion: 0.075 },
+  },
   {
     match: /claude-opus-4|claude-opus-4-1/i,
     pricing: { inputUsdPerMillion: 15, outputUsdPerMillion: 75, cachedInputUsdPerMillion: 1.5 },
