@@ -8,13 +8,14 @@ import {
 import { getDb } from "@/db";
 import { preferences } from "@/db/schema";
 
-const cache = new Map<string, Preferences>();
 let adminUserIdCache: string | null | undefined;
 
+// NOTE: deliberately no cross-request cache here. A module-level Map persists
+// per lambda instance, so a Save on lambda A does not invalidate stale entries
+// on lambda B, and refreshes routed to B would render old prefs even though
+// Postgres has the new ones. The pkey lookup below is ~1-2ms; that's cheap
+// enough that correctness wins. `reactCache` still dedupes within one render.
 async function loadPreferencesUncached(userId: string): Promise<Preferences> {
-  const cached = cache.get(userId);
-  if (cached) return cached;
-
   const db = getDb();
   const rows = await db
     .select()
@@ -28,14 +29,11 @@ async function loadPreferencesUncached(userId: string): Promise<Preferences> {
       .insert(preferences)
       .values({ userId, data: defaults })
       .onConflictDoNothing();
-    cache.set(userId, defaults);
     return defaults;
   }
 
   const parsed = PreferencesSchema.safeParse(row.data);
-  const value = parsed.success ? normalizePreferences(parsed.data) : defaultPreferences;
-  cache.set(userId, value);
-  return value;
+  return parsed.success ? normalizePreferences(parsed.data) : defaultPreferences;
 }
 
 export const loadPreferences = reactCache(loadPreferencesUncached);
@@ -53,12 +51,6 @@ export async function savePreferences(
       target: preferences.userId,
       set: { data: parsed, updatedAt: new Date() },
     });
-  cache.set(userId, parsed);
-}
-
-export function clearPreferencesCache(userId?: string): void {
-  if (userId) cache.delete(userId);
-  else cache.clear();
 }
 
 /**
