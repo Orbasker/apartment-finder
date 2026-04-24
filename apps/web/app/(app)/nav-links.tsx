@@ -9,7 +9,6 @@ const baseLinks = [
   { href: "/", label: "Listings" },
   { href: "/preferences", label: "Preferences" },
   { href: "/groups", label: "FB Groups" },
-  { href: "/stats", label: "Stats" },
   { href: "/chat", label: "Chat" },
 ] as const;
 
