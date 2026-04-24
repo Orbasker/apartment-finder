@@ -18,7 +18,7 @@ import { ListingsFiltersBar } from "@/listings/filters-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatNis, relTime } from "@/lib/utils";
-import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
+import { getRequestUser, isAdmin } from "@/lib/supabase/server";
 import { loadPreferences } from "@/preferences/store";
 import { getSubscribedGroupUrls } from "@/groups/subscriptions";
 import { ruleFilter } from "@/pipeline/ruleFilter";
@@ -35,18 +35,18 @@ export default async function DashboardHomePage({
   const filters = parseListingFilters(rawParams);
   const urlActive = hasActiveFilters(filters);
 
-  const user = await getCurrentUser();
+  const user = await getRequestUser();
   const admin = isAdmin(user);
 
+  const [prefs, subscribedGroupUrls] = user
+    ? await Promise.all([
+        loadPreferences(user.id),
+        getSubscribedGroupUrls(user.id),
+      ])
+    : [null, undefined];
   const scope: Pick<ListingsFilter, "forUserId" | "subscribedGroupUrls"> = user
-    ? {
-        forUserId: user.id,
-        subscribedGroupUrls: await getSubscribedGroupUrls(user.id),
-      }
+    ? { forUserId: user.id, subscribedGroupUrls }
     : {};
-  const prefs = user ? await loadPreferences(user.id) : null;
-  const applyUserRules = (rows: ListingRow[]): ListingRow[] =>
-    prefs ? rows.filter((r) => ruleFilter(rowToListing(r), prefs).pass) : rows;
 
   const effectiveFilters: ParsedListingFilters =
     !urlActive && prefs ? seedFiltersFromPreferences(filters, prefs) : filters;
@@ -60,6 +60,8 @@ export default async function DashboardHomePage({
       ? countListings({ ...toListingsFilter(effectiveFilters), ...scope })
       : Promise.resolve<number | null>(null),
   ]);
+  const applyUserRules = (rows: ListingRow[]): ListingRow[] =>
+    prefs ? rows.filter((r) => ruleFilter(rowToListing(r), prefs).pass) : rows;
   const alertsTodayRows = applyUserRules(alertsToday.rows);
   const pageRows = applyUserRules(page.rows);
 

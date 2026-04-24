@@ -1,8 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { cache } from "react";
 import { env } from "@/lib/env";
+
+/**
+ * Minimal user shape populated either from middleware-forwarded request
+ * headers (hot path) or from a full `auth.getUser()` fallback. Only the
+ * fields the dashboard actually consumes are carried through.
+ */
+export type RequestUser = {
+  id: string;
+  email: string | null;
+  app_metadata: { is_admin: boolean };
+};
 
 /** One client + auth round-trip per incoming request (dedupes layout + pages). */
 export const getSupabaseServerClient = cache(async () => {
@@ -39,27 +50,37 @@ export const getCurrentUser = cache(async () => {
 });
 
 /**
- * Cookie-only user read — no network call to Supabase auth. Trustable within
- * routes gated by middleware (which already ran `auth.getUser()` on the way in
- * and rejected unauthenticated requests). Use on hot paths like server actions
- * where shaving the auth round-trip matters. Falls back to `getCurrentUser`
- * when the cookie session is missing.
+ * Header-based user read — no network call and no `getSession()` cookie read
+ * (which logs a noisy "insecure" warning). Trustable within routes gated by
+ * middleware, which validated the user via `auth.getUser()` and forwarded the
+ * resolved id/email/admin-flag as request headers. Falls back to
+ * `getCurrentUser()` for routes not covered by the middleware matcher.
  */
-export const getRequestUser = cache(async () => {
+export const getRequestUser = cache(async (): Promise<RequestUser | null> => {
   try {
-    const supabase = await getSupabaseServerClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session?.user) return session.user;
-    return await getCurrentUser();
+    const h = await headers();
+    const id = h.get("x-user-id");
+    if (id) {
+      return {
+        id,
+        email: h.get("x-user-email"),
+        app_metadata: { is_admin: h.get("x-user-is-admin") === "1" },
+      };
+    }
+    const user = await getCurrentUser();
+    if (!user) return null;
+    return {
+      id: user.id,
+      email: user.email ?? null,
+      app_metadata: { is_admin: user.app_metadata?.is_admin === true },
+    };
   } catch {
     return null;
   }
 });
 
-export function isAdmin(user: User | null | undefined): boolean {
-  return user?.app_metadata?.is_admin === true;
+export function isAdmin(user: User | RequestUser | null | undefined): boolean {
+  return (user?.app_metadata as { is_admin?: unknown } | undefined)?.is_admin === true;
 }
 
 export async function getCurrentAdmin(): Promise<User | null> {

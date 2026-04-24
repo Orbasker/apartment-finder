@@ -12,13 +12,17 @@ export async function middleware(req: NextRequest) {
   // If Supabase not configured yet (Phase 1 deploys), allow access — dashboard is single-user.
   if (!supabaseUrl || !supabaseAnon) return NextResponse.next();
 
-  const response = NextResponse.next();
+  const cookieUpdates: Array<{
+    name: string;
+    value: string;
+    options: Parameters<NextResponse["cookies"]["set"]>[2];
+  }> = [];
   const supabase = createServerClient(supabaseUrl, supabaseAnon, {
     cookies: {
       getAll: () => req.cookies.getAll(),
       setAll: (all) => {
         for (const { name, value, options } of all) {
-          response.cookies.set(name, value, options);
+          cookieUpdates.push({ name, value, options });
         }
       },
     },
@@ -40,6 +44,20 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Forward the validated user to server components via request headers so they
+  // don't need to call supabase.auth.getSession() (which logs an "insecure"
+  // warning) or re-run the full getUser() network round-trip.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-user-id", user.id);
+  if (user.email) requestHeaders.set("x-user-email", user.email);
+  if (user.app_metadata?.is_admin === true) {
+    requestHeaders.set("x-user-is-admin", "1");
+  }
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  for (const { name, value, options } of cookieUpdates) {
+    response.cookies.set(name, value, options);
+  }
   return response;
 }
 
