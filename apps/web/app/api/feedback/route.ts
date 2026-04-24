@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { recordFeedback } from "@/feedback/store";
+import { withApiLog, errorMessage } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,20 +14,38 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request): Promise<Response> {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
-  const json = await req.json().catch(() => null);
-  const parsed = BodySchema.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
-  await recordFeedback(
-    user.id,
-    parsed.data.listingId,
-    parsed.data.rating,
-    parsed.data.note,
-  );
-  return NextResponse.json({ ok: true });
+  return withApiLog("feedback", req, async (log) => {
+    const user = await getCurrentUser();
+    if (!user) {
+      log.warn("unauthenticated");
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+    const json = await req.json().catch(() => null);
+    const parsed = BodySchema.safeParse(json);
+    if (!parsed.success) {
+      log.warn("invalid body", { user: user.id });
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
+    try {
+      await recordFeedback(
+        user.id,
+        parsed.data.listingId,
+        parsed.data.rating,
+        parsed.data.note,
+      );
+      log.info("feedback recorded", {
+        user: user.id,
+        listingId: parsed.data.listingId,
+        rating: parsed.data.rating,
+      });
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      log.error("feedback failed", {
+        user: user.id,
+        listingId: parsed.data.listingId,
+        error: errorMessage(err),
+      });
+      throw err;
+    }
+  });
 }

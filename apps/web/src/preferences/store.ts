@@ -7,6 +7,9 @@ import {
 } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import { preferences } from "@/db/schema";
+import { createLogger, errorMessage } from "@/lib/log";
+
+const log = createLogger("preferences");
 
 let adminUserIdCache: string | null | undefined;
 
@@ -16,6 +19,7 @@ let adminUserIdCache: string | null | undefined;
 // Postgres has the new ones. The pkey lookup below is ~1-2ms; that's cheap
 // enough that correctness wins. `reactCache` still dedupes within one render.
 async function loadPreferencesUncached(userId: string): Promise<Preferences> {
+  const startedAt = Date.now();
   const db = getDb();
   const rows = await db
     .select()
@@ -29,11 +33,23 @@ async function loadPreferencesUncached(userId: string): Promise<Preferences> {
       .insert(preferences)
       .values({ userId, data: defaults })
       .onConflictDoNothing();
+    log.info("seeded defaults", {
+      user: userId,
+      durationMs: Date.now() - startedAt,
+    });
     return defaults;
   }
 
   const parsed = PreferencesSchema.safeParse(row.data);
-  return parsed.success ? normalizePreferences(parsed.data) : defaultPreferences;
+  if (!parsed.success) {
+    log.warn("parse failed, using defaults", {
+      user: userId,
+      issues: parsed.error.issues.length,
+      durationMs: Date.now() - startedAt,
+    });
+    return defaultPreferences;
+  }
+  return normalizePreferences(parsed.data);
 }
 
 export const loadPreferences = reactCache(loadPreferencesUncached);
@@ -42,15 +58,29 @@ export async function savePreferences(
   userId: string,
   next: Preferences,
 ): Promise<void> {
+  const startedAt = Date.now();
   const db = getDb();
   const parsed = normalizePreferences(next);
-  await db
-    .insert(preferences)
-    .values({ userId, data: parsed, updatedAt: new Date() })
-    .onConflictDoUpdate({
-      target: preferences.userId,
-      set: { data: parsed, updatedAt: new Date() },
+  try {
+    await db
+      .insert(preferences)
+      .values({ userId, data: parsed, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: preferences.userId,
+        set: { data: parsed, updatedAt: new Date() },
+      });
+    log.info("saved", {
+      user: userId,
+      durationMs: Date.now() - startedAt,
     });
+  } catch (err) {
+    log.error("save failed", {
+      user: userId,
+      durationMs: Date.now() - startedAt,
+      error: errorMessage(err),
+    });
+    throw err;
+  }
 }
 
 /**

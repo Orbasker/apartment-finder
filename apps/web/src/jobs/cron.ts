@@ -26,6 +26,7 @@ import {
 } from "@/pipeline/topPicks";
 import { env } from "@/lib/env";
 import { isLoopbackOrigin, resolveAppPublicOrigin } from "@/lib/appOrigin";
+import { createLogger, errorMessage, newId, type Logger } from "@/lib/log";
 
 export type JobRunResult = {
   status: number;
@@ -44,7 +45,12 @@ type FanOutStats = {
 async function fanOutToUsers(
   inserted: InsertedListing[],
   jobLabel: string,
+  parentLog?: Logger,
 ): Promise<FanOutStats> {
+  const log = parentLog
+    ? parentLog.child("fan-out", { job: jobLabel })
+    : createLogger("job:fan-out", { run: newId(), job: jobLabel });
+
   const stats: FanOutStats = {
     perUser: 0,
     passed: 0,
@@ -53,23 +59,37 @@ async function fanOutToUsers(
     skipped: 0,
     unsure: 0,
   };
-  if (inserted.length === 0) return stats;
+  if (inserted.length === 0) {
+    log.info("no listings to fan out");
+    return stats;
+  }
 
   const userIds = await getActiveEmailAlertUsers();
   stats.perUser = userIds.length;
+  log.info("active email-alert users", {
+    users: userIds.length,
+    listings: inserted.length,
+  });
   if (userIds.length === 0) return stats;
 
   for (const userId of userIds) {
     const prefs = await loadPreferences(userId);
     const userAlerts: AlertEntry[] = [];
+    let userFiltered = 0;
+    let userPassed = 0;
+    let userAlerted = 0;
+    let userSkipped = 0;
+    let userUnsure = 0;
 
     for (const row of inserted) {
       const verdict = ruleFilter(row.listing, prefs);
       if (!verdict.pass) {
         stats.filtered++;
+        userFiltered++;
         continue;
       }
       stats.passed++;
+      userPassed++;
       const result = await runJudgeAndNotify({
         listingId: row.id,
         listing: row.listing,
@@ -79,10 +99,25 @@ async function fanOutToUsers(
       });
       if (result.outcome === "alert") {
         stats.alerted++;
+        userAlerted++;
         if (result.alert) userAlerts.push(result.alert);
-      } else if (result.outcome === "unsure") stats.unsure++;
-      else stats.skipped++;
+      } else if (result.outcome === "unsure") {
+        stats.unsure++;
+        userUnsure++;
+      } else {
+        stats.skipped++;
+        userSkipped++;
+      }
     }
+
+    log.info("per-user summary", {
+      user: userId,
+      filtered: userFiltered,
+      passed: userPassed,
+      alerted: userAlerted,
+      skipped: userSkipped,
+      unsure: userUnsure,
+    });
 
     await sendRunSummaryEmail({
       userId,
@@ -94,7 +129,10 @@ async function fanOutToUsers(
       },
       alerts: userAlerts,
     }).catch((err) =>
-      console.error(`send ${jobLabel} summary email for user ${userId} failed:`, err),
+      log.error("run summary email failed", {
+        user: userId,
+        error: errorMessage(err),
+      }),
     );
   }
   return stats;
@@ -106,8 +144,10 @@ export async function runYad2PollJob(options?: {
   const startedAt = Date.now();
   const localTime = describeLocalSchedule();
   const enforceSchedule = options?.enforceSchedule ?? true;
+  const log = createLogger("job:yad2", { run: newId() });
 
   if (enforceSchedule && !shouldRunYad2Poll()) {
+    log.info("skipped outside schedule", { localTime });
     const payload = {
       ok: true,
       skipped: "Outside Yad2 local schedule window",
@@ -116,10 +156,37 @@ export async function runYad2PollJob(options?: {
     return { status: 200, payload };
   }
 
+  log.info("job started", { localTime, enforceSchedule });
+
   try {
+    const fetchStart = Date.now();
     const listings = await fetchYad2Listings();
+    log.info("yad2 fetched", {
+      listings: listings.length,
+      durationMs: Date.now() - fetchStart,
+    });
+
     const { inserted, skippedExisting } = await ingestNewListings(listings);
-    const stats = await fanOutToUsers(inserted, "Yad2 poll");
+    log.info("ingested", {
+      inserted: inserted.length,
+      skippedExisting,
+    });
+
+    const stats = await fanOutToUsers(inserted, "Yad2 poll", log);
+
+    const durationMs = Date.now() - startedAt;
+    log.info("job finished", {
+      fetched: listings.length,
+      inserted: inserted.length,
+      skippedExisting,
+      notifiedUsers: stats.perUser,
+      passed: stats.passed,
+      filtered: stats.filtered,
+      alerted: stats.alerted,
+      skipped: stats.skipped,
+      unsure: stats.unsure,
+      durationMs,
+    });
 
     const payload = {
       ok: true,
@@ -133,12 +200,18 @@ export async function runYad2PollJob(options?: {
       skipped: stats.skipped,
       unsure: stats.unsure,
       localTime,
-      durationMs: Date.now() - startedAt,
+      durationMs,
     };
     return { status: 200, payload };
   } catch (err) {
     if (err instanceof Yad2UpstreamUnavailableError) {
-      console.warn("poll-yad2 skipped:", err.message);
+      log.warn("yad2 upstream unavailable", {
+        error: err.message,
+        status: err.status,
+        contentType: err.contentType,
+        bodyPreview: err.bodyPreview,
+        durationMs: Date.now() - startedAt,
+      });
       const payload = {
         ok: true,
         fetched: 0,
@@ -158,7 +231,10 @@ export async function runYad2PollJob(options?: {
       return { status: 200, payload };
     }
 
-    console.error("poll-yad2 failed:", err);
+    log.error("job failed", {
+      error: errorMessage(err),
+      durationMs: Date.now() - startedAt,
+    });
     const payload = {
       ok: false,
       error: err instanceof Error ? err.message : String(err),
@@ -174,8 +250,10 @@ export async function runApifyPollJob(options: {
   enforceSchedule?: boolean;
 }): Promise<JobRunResult> {
   const enforceSchedule = options.enforceSchedule ?? true;
+  const log = createLogger("job:apify", { run: newId() });
 
   if (enforceSchedule && !shouldRunApifyPoll()) {
+    log.info("skipped outside schedule");
     return {
       status: 200,
       payload: {
@@ -187,6 +265,7 @@ export async function runApifyPollJob(options: {
   }
 
   if (!isApifyConfigured()) {
+    log.warn("apify not configured");
     return {
       status: 200,
       payload: {
@@ -198,6 +277,7 @@ export async function runApifyPollJob(options: {
 
   const webhookSecret = env().APIFY_WEBHOOK_SECRET;
   if (!webhookSecret) {
+    log.error("APIFY_WEBHOOK_SECRET not set");
     return {
       status: 500,
       payload: { ok: false, error: "APIFY_WEBHOOK_SECRET not set" },
@@ -206,6 +286,7 @@ export async function runApifyPollJob(options: {
 
   const origin = resolveAppPublicOrigin(options.origin);
   if (isLoopbackOrigin(origin)) {
+    log.error("origin is loopback, apify cannot reach webhook", { origin });
     return {
       status: 400,
       payload: {
@@ -217,6 +298,7 @@ export async function runApifyPollJob(options: {
   }
 
   const webhookUrl = new URL("/api/webhooks/apify", origin).toString();
+  log.info("starting apify run", { webhookUrl });
 
   try {
     const result = await startFacebookGroupsRun({
@@ -225,6 +307,7 @@ export async function runApifyPollJob(options: {
     });
 
     if (!result) {
+      log.warn("no monitored groups configured");
       return {
         status: 200,
         payload: {
@@ -234,9 +317,13 @@ export async function runApifyPollJob(options: {
       };
     }
 
+    log.info("apify run started", {
+      runId: result.runId,
+      groupCount: result.groupCount,
+    });
     return { status: 200, payload: { ok: true, ...result } };
   } catch (err) {
-    console.error("poll-apify failed:", err);
+    log.error("apify poll failed", { error: errorMessage(err) });
     return {
       status: 500,
       payload: {
@@ -248,6 +335,9 @@ export async function runApifyPollJob(options: {
 }
 
 export async function runAdminCostSummaryJob(): Promise<JobRunResult> {
+  const log = createLogger("job:admin-cost-summary", { run: newId() });
+  log.info("job started");
+
   const summary = await getAiUsageSummary(24);
   const payload = {
     ok: true,
@@ -259,6 +349,7 @@ export async function runAdminCostSummaryJob(): Promise<JobRunResult> {
   };
 
   if (!isResendConfigured()) {
+    log.warn("resend not configured");
     return {
       status: 200,
       payload: {
@@ -269,6 +360,7 @@ export async function runAdminCostSummaryJob(): Promise<JobRunResult> {
   }
 
   if (!hasAdminSummaryRecipients()) {
+    log.warn("no admin summary recipients");
     return {
       status: 200,
       payload: {
@@ -280,9 +372,14 @@ export async function runAdminCostSummaryJob(): Promise<JobRunResult> {
 
   try {
     await sendAdminCostSummaryEmail(summary);
+    log.info("summary emailed", {
+      totalCalls: summary.totalCalls,
+      totalTokens: summary.totalTokens,
+      estimatedCostUsd: payload.estimatedCostUsd,
+    });
     return { status: 200, payload };
   } catch (err) {
-    console.error("send admin cost summary email failed:", err);
+    log.error("summary email failed", { error: errorMessage(err) });
     return {
       status: 500,
       payload: {
@@ -301,8 +398,10 @@ export async function runAiTopPicksJob(options?: {
   const startedAt = Date.now();
   const hoursAgo = options?.hoursAgo ?? DEFAULT_HOURS_AGO;
   const topN = options?.topN ?? DEFAULT_TOP_PICKS;
+  const log = createLogger("job:ai-top-picks", { run: newId() });
 
   if (!isGatewayConfigured()) {
+    log.warn("gateway not configured");
     return {
       status: 200,
       payload: {
@@ -315,7 +414,10 @@ export async function runAiTopPicksJob(options?: {
   }
 
   const userIds = await getActiveTopPicksUsers();
+  log.info("job started", { users: userIds.length, hoursAgo, topN });
+
   if (userIds.length === 0) {
+    log.info("no top-picks users");
     return {
       status: 200,
       payload: {
@@ -345,13 +447,21 @@ export async function runAiTopPicksJob(options?: {
         hoursAgo: result.hoursAgo,
         candidateCount: result.candidateCount,
       });
+      log.info("top picks sent", {
+        user: userId,
+        candidateCount: result.candidateCount,
+        picks: result.picks.length,
+      });
       perUser.push({
         userId,
         candidateCount: result.candidateCount,
         picks: result.picks.length,
       });
     } catch (err) {
-      console.error(`ai-top-picks failed for user ${userId}:`, err);
+      log.error("top picks failed for user", {
+        user: userId,
+        error: errorMessage(err),
+      });
       perUser.push({
         userId,
         candidateCount: 0,
@@ -361,6 +471,13 @@ export async function runAiTopPicksJob(options?: {
     }
   }
 
+  const durationMs = Date.now() - startedAt;
+  log.info("job finished", {
+    users: perUser.length,
+    durationMs,
+    errors: perUser.filter((r) => r.error).length,
+  });
+
   return {
     status: 200,
     payload: {
@@ -369,7 +486,7 @@ export async function runAiTopPicksJob(options?: {
       topN,
       users: perUser.length,
       results: perUser,
-      durationMs: Date.now() - startedAt,
+      durationMs,
     },
   };
 }

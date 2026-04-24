@@ -3,6 +3,9 @@ import type { NormalizedListing } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import { listings } from "@/db/schema";
 import { listingTextHash } from "@/pipeline/normalize";
+import { createLogger } from "@/lib/log";
+
+const log = createLogger("pipeline:dedup");
 
 export type InsertedListing = { id: number; listing: NormalizedListing };
 
@@ -65,23 +68,37 @@ export async function ingestNewListings(
     textHash: listingTextHash(l),
   }));
 
-  const inserted = await db
+  const insertedRows = await db
     .insert(listings)
     .values(rows)
     .onConflictDoNothing({ target: [listings.source, listings.sourceId] })
     .returning({ id: listings.id, source: listings.source, sourceId: listings.sourceId });
 
   const idBySourceKey = new Map(
-    inserted.map((r) => [`${r.source}:${r.sourceId}`, r.id] as const),
+    insertedRows.map((r) => [`${r.source}:${r.sourceId}`, r.id] as const),
   );
 
+  const inserted = fresh
+    .map((listing) => {
+      const id = idBySourceKey.get(`${listing.source}:${listing.sourceId}`);
+      return id === undefined ? null : { id, listing };
+    })
+    .filter((x): x is { id: number; listing: NormalizedListing } => x !== null);
+
+  const skippedExisting = incoming.length - fresh.length;
+  const raceSkipped = fresh.length - inserted.length;
+
+  if (raceSkipped > 0) {
+    log.warn("insert race skipped rows", {
+      incoming: incoming.length,
+      fresh: fresh.length,
+      inserted: inserted.length,
+      raceSkipped,
+    });
+  }
+
   return {
-    inserted: fresh
-      .map((listing) => {
-        const id = idBySourceKey.get(`${listing.source}:${listing.sourceId}`);
-        return id === undefined ? null : { id, listing };
-      })
-      .filter((x): x is { id: number; listing: NormalizedListing } => x !== null),
-    skippedExisting: incoming.length - fresh.length,
+    inserted,
+    skippedExisting,
   };
 }

@@ -1,14 +1,20 @@
 import { verifyCronRequest } from "@/lib/cronAuth";
 import { runApifyPollJob } from "@/jobs/cron";
+import { withApiLog } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(req: Request): Promise<Response> {
-  const authFail = verifyCronRequest(req);
-  if (authFail) return authFail;
-  const origin = new URL(req.url).origin;
-  const result = await runApifyPollJob({ origin, enforceSchedule: true });
-  return Response.json(result.payload, { status: result.status });
+  return withApiLog("cron:apify", req, async (log) => {
+    const authFail = verifyCronRequest(req);
+    if (authFail) {
+      log.warn("cron auth failed", { status: authFail.status });
+      return authFail;
+    }
+    const origin = new URL(req.url).origin;
+    const result = await runApifyPollJob({ origin, enforceSchedule: true });
+    return Response.json(result.payload, { status: result.status });
+  });
 }

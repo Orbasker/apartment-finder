@@ -4,6 +4,9 @@ import { summarizeForAlert } from "@/pipeline/summarize";
 import { notifyListing } from "@/pipeline/notifier";
 import type { AlertChannel, AlertEntry } from "@/pipeline/sentAlerts";
 import { isGatewayConfigured } from "@/lib/gateway";
+import { createLogger, errorMessage } from "@/lib/log";
+
+const log = createLogger("pipeline:judge");
 
 export type PipelineOutcome = "alert" | "skip" | "unsure" | "error";
 
@@ -30,9 +33,17 @@ export async function runJudgeAndNotify(args: RunArgs): Promise<PipelineResult> 
     };
     try {
       await notifyListing({ ...alert, userId: args.notifyUserId, channels: args.channels });
+      log.info("alerted (no-ai fallback)", {
+        listingId: args.listingId,
+        user: args.notifyUserId,
+      });
       return { outcome: "alert", alert };
     } catch (err) {
-      console.error("notify failed:", err);
+      log.error("notify failed (no-ai fallback)", {
+        listingId: args.listingId,
+        user: args.notifyUserId,
+        error: errorMessage(err),
+      });
       return { outcome: "error" };
     }
   }
@@ -42,7 +53,10 @@ export async function runJudgeAndNotify(args: RunArgs): Promise<PipelineResult> 
     judgeResult = await judgeListing(args.listing, args.prefs);
     await persistJudgment(args.listingId, judgeResult);
   } catch (err) {
-    console.error(`judge failed for listing ${args.listingId}:`, err);
+    log.error("judge failed", {
+      listingId: args.listingId,
+      error: errorMessage(err),
+    });
     return { outcome: "error" };
   }
 
@@ -52,6 +66,12 @@ export async function runJudgeAndNotify(args: RunArgs): Promise<PipelineResult> 
     judgment.decision === "alert" && judgment.score >= alertThreshold;
 
   if (!shouldAlert) {
+    log.debug("judged not alertable", {
+      listingId: args.listingId,
+      decision: judgment.decision,
+      score: judgment.score,
+      threshold: alertThreshold,
+    });
     return { outcome: judgment.decision === "unsure" ? "unsure" : "skip" };
   }
 
@@ -59,7 +79,10 @@ export async function runJudgeAndNotify(args: RunArgs): Promise<PipelineResult> 
   try {
     summary = await summarizeForAlert(args.listing, judgment, args.prefs);
   } catch (err) {
-    console.warn(`summarize failed for listing ${args.listingId}:`, err);
+    log.warn("summarize failed", {
+      listingId: args.listingId,
+      error: errorMessage(err),
+    });
   }
 
   const alert: AlertEntry = {
@@ -71,9 +94,18 @@ export async function runJudgeAndNotify(args: RunArgs): Promise<PipelineResult> 
 
   try {
     await notifyListing({ ...alert, userId: args.notifyUserId, channels: args.channels });
+    log.info("alerted", {
+      listingId: args.listingId,
+      user: args.notifyUserId,
+      score: judgment.score,
+    });
     return { outcome: "alert", alert };
   } catch (err) {
-    console.error(`notify failed for listing ${args.listingId}:`, err);
+    log.error("notify failed", {
+      listingId: args.listingId,
+      user: args.notifyUserId,
+      error: errorMessage(err),
+    });
     return { outcome: "error" };
   }
 }

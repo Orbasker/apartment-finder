@@ -1,4 +1,7 @@
 import type { NormalizedListing } from "@apartment-finder/shared";
+import { createLogger, errorMessage } from "../lib/log";
+
+const log = createLogger("scraper:yad2");
 
 // Matches https://www.yad2.co.il/realestate/rent/tel-aviv-area
 // region=3 → "תל אביב והסביבה" (Tel Aviv & surroundings)
@@ -67,9 +70,13 @@ export async function fetchYad2Listings(
 ): Promise<NormalizedListing[]> {
   const url = opts.feedUrl ?? YAD2_FEED_URL;
   const fetchImpl = opts.fetchImpl ?? buildDefaultYad2Fetch();
+  const proxied = Boolean(process.env.YAD2_PROXY_URL && process.env.YAD2_PROXY_SECRET);
   const controller = new AbortController();
   const timeoutMs = opts.timeoutMs ?? 15_000;
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const startedAt = Date.now();
+
+  log.info("fetch starting", { proxied, timeoutMs });
 
   try {
     let res: Response;
@@ -85,12 +92,24 @@ export async function fetchYad2Listings(
         signal: controller.signal,
       });
     } catch (cause) {
-      throw buildFetchFailureError(cause, timeoutMs);
+      const err = buildFetchFailureError(cause, timeoutMs);
+      log.error("fetch failed", {
+        proxied,
+        durationMs: Date.now() - startedAt,
+        error: errorMessage(cause),
+      });
+      throw err;
     }
 
     const rawText = await res.text();
 
     if (!res.ok) {
+      log.warn("upstream not ok", {
+        status: res.status,
+        contentType: res.headers.get("content-type"),
+        bytes: rawText.length,
+        durationMs: Date.now() - startedAt,
+      });
       throw new Yad2UpstreamUnavailableError(
         `Yad2 feed returned ${res.status} ${res.statusText}${formatResponseDetails(rawText, res)}`,
         {
@@ -103,11 +122,22 @@ export async function fetchYad2Listings(
 
     const json = parseYad2Response(rawText, res);
     if (json.message && json.message !== "OK") {
+      log.error("upstream message not ok", { message: json.message });
       throw new Error(`Yad2 feed error: ${json.message}`);
     }
     const items: Yad2RawItem[] = json.data?.markers ?? [];
+    const normalized = items
+      .map(normalizeYad2Item)
+      .filter((l): l is NormalizedListing => l !== null);
 
-    return items.map(normalizeYad2Item).filter((l): l is NormalizedListing => l !== null);
+    log.info("fetch ok", {
+      rawItems: items.length,
+      normalized: normalized.length,
+      dropped: items.length - normalized.length,
+      bytes: rawText.length,
+      durationMs: Date.now() - startedAt,
+    });
+    return normalized;
   } finally {
     clearTimeout(timeout);
   }
