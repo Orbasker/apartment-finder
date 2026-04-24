@@ -9,7 +9,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const AGENT_MODEL = "anthropic/claude-sonnet-4-6";
+const AGENT_MODEL = "google/gemini-2.5-flash";
 const WEB_CHAT_ID = "web";
 
 export async function POST(req: Request) {

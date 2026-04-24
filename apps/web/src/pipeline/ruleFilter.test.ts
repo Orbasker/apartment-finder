@@ -26,8 +26,8 @@ const basePrefs: Preferences = {
   maxAgeHours: 24,
   ai: {
     scoreThreshold: 70,
-    primaryModel: "anthropic/claude-haiku-4-5",
-    escalationModel: "anthropic/claude-sonnet-4-6",
+    primaryModel: "google/gemini-2.5-flash",
+    escalationModel: "google/gemini-2.5-flash",
   },
   alerts: {
     email: {

@@ -140,7 +140,7 @@ export default function LoginPage() {
                 <li>Next.js 15 + RSC</li>
                 <li>Supabase Postgres</li>
                 <li>Vercel AI Gateway</li>
-                <li>Claude 4 (Haiku → Sonnet)</li>
+                <li>Gemini 2.5 Flash</li>
                 <li>Telegram (grammY)</li>
                 <li>Apify + custom scrapers</li>
               </ul>
