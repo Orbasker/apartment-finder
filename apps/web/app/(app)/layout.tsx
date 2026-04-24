@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
+import { getRequestUser, isAdmin } from "@/lib/supabase/server";
 import { seedAlertEmailTargets } from "@/preferences/store";
 import { autoSubscribeToEnabledGroups } from "@/groups/subscriptions";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -7,7 +7,7 @@ import { DashboardNav, HeaderBrandLink } from "./nav-links";
 import { UserMenu } from "./user-menu";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const user = await getCurrentUser();
+  const user = await getRequestUser();
   if (user) {
     await Promise.all([
       seedAlertEmailTargets(user.id, user.email),

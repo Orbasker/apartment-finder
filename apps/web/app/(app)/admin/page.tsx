@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
+import { getRequestUser, isAdmin } from "@/lib/supabase/server";
 import { getAiUsageSummary } from "@/lib/aiUsage";
 import { getCostProjection } from "@/lib/costProjection";
 import { getDashboardStats } from "@/listings/queries";
@@ -11,7 +11,7 @@ import { relTime } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const user = await getCurrentUser();
+  const user = await getRequestUser();
   if (!isAdmin(user)) notFound();
 
   const [ai24h, ai7d, ai30d, day, week, sources, projection] = await Promise.all([

@@ -17,7 +17,7 @@ import { ListingsFiltersBar } from "@/listings/filters-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatNis, relTime } from "@/lib/utils";
-import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
+import { getRequestUser, isAdmin } from "@/lib/supabase/server";
 import { loadPreferences } from "@/preferences/store";
 import { getSubscribedGroupUrls } from "@/groups/subscriptions";
 import { ruleFilter } from "@/pipeline/ruleFilter";
@@ -34,26 +34,27 @@ export default async function DashboardHomePage({
   const filters = parseListingFilters(rawParams);
   const active = hasActiveFilters(filters);
 
-  const user = await getCurrentUser();
+  const user = await getRequestUser();
   const admin = isAdmin(user);
 
+  const prefsP = user ? loadPreferences(user.id) : Promise.resolve(null);
+  const subscribedGroupUrls = user
+    ? await getSubscribedGroupUrls(user.id)
+    : undefined;
   const scope: Pick<ListingsFilter, "forUserId" | "subscribedGroupUrls"> = user
-    ? {
-        forUserId: user.id,
-        subscribedGroupUrls: await getSubscribedGroupUrls(user.id),
-      }
+    ? { forUserId: user.id, subscribedGroupUrls }
     : {};
-  const prefs = user ? await loadPreferences(user.id) : null;
-  const applyUserRules = (rows: ListingRow[]): ListingRow[] =>
-    prefs ? rows.filter((r) => ruleFilter(rowToListing(r), prefs).pass) : rows;
 
-  const [alertsToday, page, totalMatches] = await Promise.all([
+  const [alertsToday, page, totalMatches, prefs] = await Promise.all([
     searchListings({ decision: "alert", hoursAgo: 24, limit: 30, ...scope }),
     searchListings({ ...toListingsFilter(filters), ...scope }),
     active
       ? countListings({ ...toListingsFilter(filters), ...scope })
       : Promise.resolve<number | null>(null),
+    prefsP,
   ]);
+  const applyUserRules = (rows: ListingRow[]): ListingRow[] =>
+    prefs ? rows.filter((r) => ruleFilter(rowToListing(r), prefs).pass) : rows;
   const alertsTodayRows = applyUserRules(alertsToday.rows);
   const pageRows = applyUserRules(page.rows);
 
