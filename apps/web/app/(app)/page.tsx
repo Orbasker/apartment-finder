@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { NormalizedListing } from "@apartment-finder/shared";
+import type { NormalizedListing, Preferences } from "@apartment-finder/shared";
 import {
   countListings,
   searchListings,
@@ -12,6 +12,7 @@ import {
   parseListingFilters,
   toListingsFilter,
   type DashboardSearchParams,
+  type ParsedListingFilters,
 } from "@/listings/filter-params";
 import { ListingsFiltersBar } from "@/listings/filters-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +33,7 @@ export default async function DashboardHomePage({
 }) {
   const rawParams = await searchParams;
   const filters = parseListingFilters(rawParams);
-  const active = hasActiveFilters(filters);
+  const urlActive = hasActiveFilters(filters);
 
   const user = await getCurrentUser();
   const admin = isAdmin(user);
@@ -47,11 +48,16 @@ export default async function DashboardHomePage({
   const applyUserRules = (rows: ListingRow[]): ListingRow[] =>
     prefs ? rows.filter((r) => ruleFilter(rowToListing(r), prefs).pass) : rows;
 
+  const effectiveFilters: ParsedListingFilters =
+    !urlActive && prefs ? seedFiltersFromPreferences(filters, prefs) : filters;
+  const effectiveActive = hasActiveFilters(effectiveFilters);
+  const prefsSeeded = !urlActive && effectiveActive;
+
   const [alertsToday, page, totalMatches] = await Promise.all([
     searchListings({ decision: "alert", hoursAgo: 24, limit: 30, ...scope }),
-    searchListings({ ...toListingsFilter(filters), ...scope }),
-    active
-      ? countListings({ ...toListingsFilter(filters), ...scope })
+    searchListings({ ...toListingsFilter(effectiveFilters), ...scope }),
+    effectiveActive
+      ? countListings({ ...toListingsFilter(effectiveFilters), ...scope })
       : Promise.resolve<number | null>(null),
   ]);
   const alertsTodayRows = applyUserRules(alertsToday.rows);
@@ -75,20 +81,27 @@ export default async function DashboardHomePage({
           <ResultSummary
             shown={pageRows.length}
             total={totalMatches}
-            limit={filters.limit}
-            active={active}
+            limit={effectiveFilters.limit}
+            active={effectiveActive}
             cursorActive={Boolean(filters.cursor)}
             resetCursorHref={resetCursorHref}
+            prefsSeeded={prefsSeeded}
           />
         }
         defaultOpen
       >
         <div className="space-y-4">
-          <ListingsFiltersBar values={filters} hasActiveFilters={active} />
+          <ListingsFiltersBar
+            values={effectiveFilters}
+            hasActiveFilters={urlActive}
+            prefsSeeded={prefsSeeded}
+          />
 
           {pageRows.length === 0 ? (
             <p className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
-              No listings match these filters.
+              {prefsSeeded
+                ? "No listings match your saved preferences. Widen the filters above to see more."
+                : "No listings match these filters."}
             </p>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
@@ -217,6 +230,7 @@ function ResultSummary({
   active,
   cursorActive,
   resetCursorHref,
+  prefsSeeded,
 }: {
   shown: number;
   total: number | null;
@@ -224,6 +238,7 @@ function ResultSummary({
   active: boolean;
   cursorActive: boolean;
   resetCursorHref: string | null;
+  prefsSeeded: boolean;
 }) {
   const parts: string[] = [];
   if (active) {
@@ -235,6 +250,7 @@ function ResultSummary({
   } else {
     parts.push(`${shown} of latest`);
   }
+  if (prefsSeeded) parts.push("from your preferences");
   if (cursorActive) parts.push(`page size ${limit}`);
   return (
     <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -246,6 +262,22 @@ function ResultSummary({
       )}
     </div>
   );
+}
+
+function seedFiltersFromPreferences(
+  base: ParsedListingFilters,
+  prefs: Preferences,
+): ParsedListingFilters {
+  return {
+    ...base,
+    minPriceNis:
+      prefs.budget.minNis > 0 ? prefs.budget.minNis : base.minPriceNis,
+    maxPriceNis: prefs.budget.maxNis,
+    minRooms: prefs.rooms.min,
+    maxRooms: prefs.rooms.max,
+    minScore: prefs.ai.scoreThreshold,
+    hoursAgo: prefs.maxAgeHours,
+  };
 }
 
 function DecisionBadge({ decision }: { decision: string }) {
