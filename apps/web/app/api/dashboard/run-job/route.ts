@@ -8,6 +8,7 @@ import {
   runApifyPollJob,
   runYad2PollJob,
 } from "@/jobs/cron";
+import { withApiLog, errorMessage } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,50 +21,63 @@ const BodySchema = z.object({
 type JobId = z.infer<typeof BodySchema>["job"];
 
 export async function POST(req: Request): Promise<Response> {
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  if (!isAdmin(user)) {
-    return NextResponse.json(
-      { error: "Only admins can trigger data collection runs" },
-      { status: 403 },
-    );
-  }
+  return withApiLog("dashboard:run-job", req, async (log) => {
+    const user = await getCurrentUser();
+    if (!user) {
+      log.warn("unauthenticated");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    if (!isAdmin(user)) {
+      log.warn("non-admin tried to run job", { user: user.id });
+      return NextResponse.json(
+        { error: "Only admins can trigger data collection runs" },
+        { status: 403 },
+      );
+    }
 
-  const json = await req.json().catch(() => null);
-  const parsed = BodySchema.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
+    const json = await req.json().catch(() => null);
+    const parsed = BodySchema.safeParse(json);
+    if (!parsed.success) {
+      log.warn("invalid body", { user: user.id });
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
 
-  const { job } = parsed.data;
+    const { job } = parsed.data;
+    log.info("admin job triggered", { user: user.id, job });
 
-  try {
-    const result = await runJob(job);
-    return NextResponse.json(
-      {
+    try {
+      const result = await runJob(job);
+      log.info("admin job finished", {
+        user: user.id,
         job,
-        ok: result.status < 400 && result.payload.ok !== false,
         status: result.status,
-        summary: summarizeJobResult(job, result.payload),
-        payload: result.payload,
-      },
-      { status: 200 },
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Job failed";
-    return NextResponse.json(
-      {
-        job,
-        ok: false,
-        status: 500,
-        summary: message,
-        payload: { ok: false, error: message },
-      },
-      { status: 200 },
-    );
-  }
+        ok: result.status < 400 && result.payload.ok !== false,
+      });
+      return NextResponse.json(
+        {
+          job,
+          ok: result.status < 400 && result.payload.ok !== false,
+          status: result.status,
+          summary: summarizeJobResult(job, result.payload),
+          payload: result.payload,
+        },
+        { status: 200 },
+      );
+    } catch (err) {
+      const message = errorMessage(err);
+      log.error("admin job threw", { user: user.id, job, error: message });
+      return NextResponse.json(
+        {
+          job,
+          ok: false,
+          status: 500,
+          summary: message,
+          payload: { ok: false, error: message },
+        },
+        { status: 200 },
+      );
+    }
+  });
 }
 
 async function runJob(job: JobId) {
