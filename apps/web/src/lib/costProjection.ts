@@ -1,4 +1,4 @@
-import { getAiUsageSummary } from "@/lib/aiUsage";
+import type { AiUsageSummary } from "@/lib/aiUsage";
 
 export type FixedCost = {
   label: string;
@@ -23,12 +23,10 @@ export type CostProjection = {
   fixed: FixedCost[];
 };
 
-export async function getCostProjection(): Promise<CostProjection> {
-  const [week, month] = await Promise.all([
-    getAiUsageSummary(24 * 7),
-    getAiUsageSummary(24 * 30),
-  ]);
-
+export function buildCostProjection(
+  week: Pick<AiUsageSummary, "estimatedCostUsd">,
+  month: Pick<AiUsageSummary, "estimatedCostUsd">,
+): CostProjection {
   // Prefer the 7d trend extrapolated to a month for a more recent signal;
   // fall back to the trailing-30d window if 7d is empty.
   const aiMonthlyProjectedUsd =

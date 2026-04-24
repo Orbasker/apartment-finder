@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getRequestUser, isAdmin } from "@/lib/supabase/server";
 import { getAiUsageSummary } from "@/lib/aiUsage";
-import { getCostProjection } from "@/lib/costProjection";
+import { buildCostProjection } from "@/lib/costProjection";
 import { getDashboardStats } from "@/listings/queries";
 import { getSourceHealth } from "@/admin/queries";
 import { relTime } from "@/lib/utils";
@@ -14,15 +14,15 @@ export default async function AdminPage() {
   const user = await getRequestUser();
   if (!isAdmin(user)) notFound();
 
-  const [ai24h, ai7d, ai30d, day, week, sources, projection] = await Promise.all([
+  const [ai24h, ai7d, ai30d, day, week, sources] = await Promise.all([
     getAiUsageSummary(24),
     getAiUsageSummary(24 * 7),
     getAiUsageSummary(24 * 30),
     getDashboardStats(24),
     getDashboardStats(24 * 7),
     getSourceHealth(),
-    getCostProjection(),
   ]);
+  const projection = buildCostProjection(ai7d, ai30d);
 
   return (
     <div className="space-y-8">
