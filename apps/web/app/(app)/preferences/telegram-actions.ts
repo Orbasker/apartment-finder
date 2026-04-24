@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { env } from "@/lib/env";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getRequestUser } from "@/lib/supabase/server";
 import {
   createLinkToken,
   getChatIdForUser,
@@ -23,14 +23,14 @@ export type CreateLinkResult =
   | { ok: false; error: string };
 
 export async function getTelegramLinkStatus(): Promise<LinkStatus> {
-  const user = await getCurrentUser();
+  const user = await getRequestUser();
   if (!user) return { linked: false };
   const chatId = await getChatIdForUser(user.id);
   return chatId ? { linked: true, chatId } : { linked: false };
 }
 
 export async function createTelegramLinkAction(): Promise<CreateLinkResult> {
-  const user = await getCurrentUser();
+  const user = await getRequestUser();
   if (!user) return { ok: false, error: "Not authenticated" };
 
   const token = await createLinkToken(user.id);
@@ -44,7 +44,7 @@ export async function createTelegramLinkAction(): Promise<CreateLinkResult> {
 }
 
 export async function unlinkTelegramAction(): Promise<void> {
-  const user = await getCurrentUser();
+  const user = await getRequestUser();
   if (!user) throw new Error("Not authenticated");
   await unlinkUser(user.id);
   revalidatePath("/preferences");

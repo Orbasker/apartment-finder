@@ -13,9 +13,12 @@ function createClient() {
   const sql = postgres(url, {
     prepare: false,
     max: 1,
-    connect_timeout: 10,
+    connect_timeout: 30,
     idle_timeout: 20,
     max_lifetime: 60 * 30,
+    connection: {
+      statement_timeout: 25_000,
+    },
   });
   return { sql, db: drizzle(sql, { schema }) };
 }

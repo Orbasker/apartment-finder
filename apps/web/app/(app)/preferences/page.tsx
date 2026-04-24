@@ -1,14 +1,15 @@
 import { notFound } from "next/navigation";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getRequestUser } from "@/lib/supabase/server";
 import { loadPreferences } from "@/preferences/store";
 import { PreferencesForm } from "./form";
 import { TelegramSection } from "./telegram-section";
 import { getTelegramLinkStatus } from "./telegram-actions";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 export default async function PreferencesPage() {
-  const user = await getCurrentUser();
+  const user = await getRequestUser();
   if (!user) notFound();
   const [prefs, telegramStatus] = await Promise.all([
     loadPreferences(user.id),
