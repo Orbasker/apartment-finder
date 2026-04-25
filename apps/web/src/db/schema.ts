@@ -327,13 +327,12 @@ export const aiUsage = pgTable(
 
 // ---------------------------------------------------------------------------
 // Better Auth tables. IDs are UUIDs to match the existing `uuid("user_id")`
-// FK columns elsewhere in this schema. Better Auth pre-computes UUIDs via
-// `advanced.database.generateId: "uuid"` in `lib/auth.ts`, so no DB-side
-// default is needed here.
+// FK columns elsewhere in this schema. With the Postgres Drizzle adapter,
+// Better Auth relies on DB-side UUID defaults for models it creates internally.
 // ---------------------------------------------------------------------------
 
 export const user = pgTable("user", {
-  id: uuid("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
@@ -347,7 +346,7 @@ export const user = pgTable("user", {
 });
 
 export const session = pgTable("session", {
-  id: uuid("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
@@ -361,7 +360,7 @@ export const session = pgTable("session", {
 });
 
 export const account = pgTable("account", {
-  id: uuid("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
@@ -379,7 +378,7 @@ export const account = pgTable("account", {
 });
 
 export const verification = pgTable("verification", {
-  id: uuid("id").primaryKey(),
+  id: uuid("id").primaryKey().defaultRandom(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),

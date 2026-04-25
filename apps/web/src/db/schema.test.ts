@@ -371,6 +371,13 @@ describe("schema: preserved tables intact", () => {
     expect(schema.verification).toBeDefined();
   });
 
+  test("Better Auth UUID primary keys have database defaults", () => {
+    for (const table of [schema.user, schema.session, schema.account, schema.verification]) {
+      const cols = getTableColumns(table);
+      expect(cols.id.hasDefault).toBe(true);
+    }
+  });
+
   test("preferences/aiUsage/monitoredGroups/etc. still exported", () => {
     expect(schema.preferences).toBeDefined();
     expect(schema.aiUsage).toBeDefined();
