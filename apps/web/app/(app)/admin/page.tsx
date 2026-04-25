@@ -37,13 +37,13 @@ export default async function AdminPage({
   return (
     <div className="space-y-6">
       <header>
-        <h2 className="text-2xl font-semibold">Admin</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-xl font-semibold sm:text-2xl">Admin</h2>
+        <p className="text-sm text-muted-foreground break-words">
           Signed in as {user?.email} · admin
         </p>
       </header>
 
-      <nav className="flex gap-1 border-b">
+      <nav className="-mx-4 flex gap-1 overflow-x-auto border-b px-4 sm:mx-0 sm:px-0">
         {TABS.map((t) => {
           const isActive = t.id === active;
           return (
@@ -77,7 +77,7 @@ async function StatsTab() {
     getDashboardStats(24 * 7),
   ]);
   return (
-    <section className="grid gap-4 md:grid-cols-2">
+    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <StatsCard title="Last 24h" stats={day} />
       <StatsCard title="Last 7 days" stats={week} />
     </section>
@@ -93,8 +93,8 @@ async function CostsTab() {
   const projection = buildCostProjection(ai7d, ai30d);
 
   return (
-    <div className="space-y-8">
-      <section className="grid gap-4 md:grid-cols-4">
+    <div className="space-y-6 sm:space-y-8">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Projected monthly"
           value={usd(projection.totalMonthlyUsd)}
@@ -117,7 +117,7 @@ async function CostsTab() {
         />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>AI spend by feature · 7d</CardTitle>
@@ -139,7 +139,7 @@ async function CostsTab() {
       <section>
         <h3 className="mb-3 text-lg font-semibold">Fixed monthly costs</h3>
         <Card>
-          <CardContent className="p-0">
+          <CardContent className="overflow-x-auto p-0">
             <table className="min-w-full text-sm">
               <thead className="bg-muted text-left">
                 <tr>
@@ -183,7 +183,7 @@ async function SourcesTab() {
   return (
     <section>
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="overflow-x-auto p-0">
           <table className="min-w-full text-sm">
             <thead className="bg-muted text-left">
               <tr>
@@ -285,6 +285,7 @@ function BreakdownTable({
     return <p className="text-sm text-muted-foreground">No usage in this window.</p>;
   }
   return (
+    <div className="overflow-x-auto">
     <table className="min-w-full text-sm">
       <thead className="text-left text-muted-foreground">
         <tr>
@@ -305,6 +306,7 @@ function BreakdownTable({
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
 

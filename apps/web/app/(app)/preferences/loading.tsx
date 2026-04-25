@@ -4,7 +4,7 @@ export default function PreferencesLoading() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Skeleton className="h-7 w-40" />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="space-y-2">
             <Skeleton className="h-4 w-32" />

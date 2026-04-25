@@ -3,8 +3,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ListingDetailLoading() {
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <div className="space-y-6 lg:col-span-2">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+      <div className="space-y-4 sm:space-y-6 lg:col-span-2">
         <Card>
           <CardHeader className="space-y-3">
             <Skeleton className="h-8 w-2/3" />
@@ -23,7 +23,7 @@ export default function ListingDetailLoading() {
         </Card>
       </div>
 
-      <aside className="space-y-6">
+      <aside className="space-y-4 sm:space-y-6">
         <Card>
           <CardHeader>
             <Skeleton className="h-5 w-32" />

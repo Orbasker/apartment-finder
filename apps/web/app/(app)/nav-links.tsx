@@ -18,7 +18,7 @@ export function DashboardNav({ showAdmin = false }: { showAdmin?: boolean }) {
   const pathname = usePathname();
   const links = showAdmin ? [...baseLinks, adminLink] : baseLinks;
   return (
-    <nav className="flex gap-4">
+    <nav className="flex gap-3 whitespace-nowrap sm:gap-4">
       {links.map((l) => {
         const isActive =
           l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);

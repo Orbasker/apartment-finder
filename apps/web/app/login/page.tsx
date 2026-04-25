@@ -18,12 +18,12 @@ export default async function LoginPage({
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
           <a href="#top" className="flex items-center gap-2">
             <LogoMark />
             <span className="text-sm font-semibold tracking-tight">Apartment Finder</span>
           </a>
-          <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+          <nav className="flex items-center gap-3 text-sm text-muted-foreground sm:gap-6">
             <a href="#how" className="hidden hover:text-foreground sm:inline">
               How it works
             </a>
@@ -40,17 +40,17 @@ export default async function LoginPage({
         </div>
       </header>
 
-      <main id="top" className="mx-auto max-w-6xl px-6">
-        <section className="grid gap-10 py-16 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-24">
+      <main id="top" className="mx-auto max-w-6xl px-4 sm:px-6">
+        <section className="grid gap-8 py-10 sm:gap-10 sm:py-16 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-24">
           <div className="space-y-6">
             <span className="inline-flex items-center gap-2 rounded-full border bg-muted px-3 py-1 text-xs text-muted-foreground">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               24/7 monitoring · Tel Aviv
             </span>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
               Find the right apartment before anyone else sees it.
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base text-muted-foreground sm:text-lg">
               Apartment Finder watches Yad2 and dozens of Facebook groups around the clock,
               filters noise and reposts with AI, and pings you on Telegram the moment a
               listing matches your preferences.
@@ -77,12 +77,12 @@ export default async function LoginPage({
           </div>
         </section>
 
-        <section id="features" className="border-t py-16">
+        <section id="features" className="border-t py-10 sm:py-16">
           <SectionHeading
             eyebrow="What it does"
             title="One pipeline for every source that matters."
           />
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
+          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 sm:mt-10">
             <FeatureCard
               icon={<IconLayers />}
               title="Aggregates every source"
@@ -101,9 +101,9 @@ export default async function LoginPage({
           </div>
         </section>
 
-        <section id="how" className="border-t py-16">
+        <section id="how" className="border-t py-10 sm:py-16">
           <SectionHeading eyebrow="How it works" title="Four steps, fully automated." />
-          <ol className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <ol className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 sm:mt-10 lg:grid-cols-4">
             <Step
               n="01"
               title="Set preferences"
@@ -127,8 +127,8 @@ export default async function LoginPage({
           </ol>
         </section>
 
-        <section className="border-t py-16">
-          <div className="grid gap-8 md:grid-cols-2">
+        <section className="border-t py-10 sm:py-16">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
             <div>
               <SectionHeading
                 eyebrow="Why it exists"
@@ -154,8 +154,8 @@ export default async function LoginPage({
           </div>
         </section>
 
-        <section className="border-t py-16 text-center">
-          <h2 className="text-2xl font-semibold tracking-tight">Ready to stop refreshing?</h2>
+        <section className="border-t py-10 text-center sm:py-16">
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Ready to stop refreshing?</h2>
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
             Sign in to set up your preferences and start receiving matches.
           </p>
@@ -186,7 +186,7 @@ function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) 
       <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {eyebrow}
       </div>
-      <h2 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">{title}</h2>
+      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{title}</h2>
     </div>
   );
 }
