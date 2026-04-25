@@ -10,7 +10,14 @@ import {
   type Preferences,
 } from "@apartment-finder/shared";
 import { getDb } from "@/db";
-import { feedback, judgments, listings } from "@/db/schema";
+import {
+  apartmentSources,
+  canonicalApartments,
+  extractions,
+  feedback,
+  judgments,
+  rawPosts,
+} from "@/db/schema";
 import { model } from "@/lib/gateway";
 import { recordAiUsage } from "@/lib/aiUsage";
 
@@ -73,12 +80,12 @@ export async function judgeListing(
   };
 }
 
-export async function persistJudgment(listingId: number, result: JudgeResult): Promise<void> {
+export async function persistJudgment(canonicalId: number, result: JudgeResult): Promise<void> {
   const db = getDb();
   await db
     .insert(judgments)
     .values({
-      listingId,
+      canonicalId,
       score: result.judgment.score,
       decision: result.judgment.decision,
       reasoning: result.judgment.reasoning,
@@ -87,7 +94,7 @@ export async function persistJudgment(listingId: number, result: JudgeResult): P
       model: result.model,
     })
     .onConflictDoUpdate({
-      target: judgments.listingId,
+      target: judgments.canonicalId,
       set: {
         score: result.judgment.score,
         decision: result.judgment.decision,
@@ -113,12 +120,16 @@ async function loadRecentFeedback(): Promise<RecentFeedbackRow[]> {
     .select({
       rating: feedback.rating,
       reasoning: judgments.reasoning,
-      priceNis: listings.priceNis,
-      neighborhood: listings.neighborhood,
+      priceNis: extractions.priceNis,
+      neighborhood: sql<
+        string | null
+      >`coalesce(${canonicalApartments.neighborhood}, ${extractions.neighborhood})`,
     })
     .from(feedback)
-    .innerJoin(listings, eq(listings.id, feedback.listingId))
-    .leftJoin(judgments, eq(judgments.listingId, feedback.listingId))
+    .innerJoin(canonicalApartments, eq(canonicalApartments.id, feedback.canonicalId))
+    .innerJoin(apartmentSources, eq(apartmentSources.canonicalId, feedback.canonicalId))
+    .innerJoin(extractions, eq(extractions.id, apartmentSources.extractionId))
+    .leftJoin(judgments, eq(judgments.canonicalId, feedback.canonicalId))
     .orderBy(desc(feedback.createdAt))
     .limit(RECENT_FEEDBACK_LIMIT);
 
@@ -216,25 +227,30 @@ export async function rejudgePastListings(limit = 200, userId?: string): Promise
 
   const rows = await db
     .select({
-      id: listings.id,
-      source: listings.source,
-      sourceId: listings.sourceId,
-      url: listings.url,
-      title: listings.title,
-      description: listings.description,
-      priceNis: listings.priceNis,
-      rooms: listings.rooms,
-      sqm: listings.sqm,
-      floor: listings.floor,
-      neighborhood: listings.neighborhood,
-      street: listings.street,
-      postedAt: listings.postedAt,
-      isAgency: listings.isAgency,
-      authorName: listings.authorName,
-      authorProfile: listings.authorProfile,
+      id: canonicalApartments.id,
+      source: rawPosts.source,
+      sourceId: rawPosts.sourceId,
+      url: rawPosts.url,
+      title: canonicalApartments.primaryAddress,
+      description: rawPosts.rawText,
+      priceNis: extractions.priceNis,
+      rooms: sql<number | null>`coalesce(${extractions.rooms}, ${canonicalApartments.rooms})`,
+      sqm: sql<number | null>`coalesce(${extractions.sqm}, ${canonicalApartments.sqm})`,
+      floor: extractions.floor,
+      neighborhood: sql<
+        string | null
+      >`coalesce(${canonicalApartments.neighborhood}, ${extractions.neighborhood})`,
+      street: sql<string | null>`coalesce(${canonicalApartments.street}, ${extractions.street})`,
+      postedAt: rawPosts.postedAt,
+      isAgency: extractions.isAgency,
+      authorName: rawPosts.authorName,
+      authorProfile: rawPosts.authorProfile,
     })
-    .from(listings)
-    .orderBy(desc(listings.ingestedAt))
+    .from(canonicalApartments)
+    .innerJoin(apartmentSources, eq(apartmentSources.canonicalId, canonicalApartments.id))
+    .innerJoin(extractions, eq(extractions.id, apartmentSources.extractionId))
+    .innerJoin(rawPosts, eq(rawPosts.id, extractions.rawPostId))
+    .orderBy(desc(rawPosts.fetchedAt))
     .limit(limit);
 
   if (rows.length === 0) return 0;

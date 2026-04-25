@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { NormalizedListing } from "@apartment-finder/shared";
 import { getDb } from "@/db";
-import { listings } from "@/db/schema";
+import { apartmentSources, canonicalApartments, extractions, rawPosts } from "@/db/schema";
 import { listingTextHash } from "@/pipeline/normalize";
 import { createLogger } from "@/lib/log";
 
@@ -31,9 +31,9 @@ export async function ingestNewListings(incoming: NormalizedListing[]): Promise<
     const ids = arr.map((l) => l.sourceId);
     if (ids.length === 0) continue;
     const rows = await db
-      .select({ sourceId: listings.sourceId })
-      .from(listings)
-      .where(and(eq(listings.source, source), inArray(listings.sourceId, ids)));
+      .select({ sourceId: rawPosts.sourceId })
+      .from(rawPosts)
+      .where(and(eq(rawPosts.source, source), inArray(rawPosts.sourceId, ids)));
     for (const r of rows) existingKeys.add(`${source}:${r.sourceId}`);
   }
 
@@ -47,39 +47,75 @@ export async function ingestNewListings(incoming: NormalizedListing[]): Promise<
     source: l.source,
     sourceId: l.sourceId,
     url: l.url,
-    title: l.title ?? null,
-    description: l.description ?? null,
-    priceNis: l.priceNis ?? null,
-    rooms: l.rooms ?? null,
-    sqm: l.sqm ?? null,
-    floor: l.floor ?? null,
-    neighborhood: l.neighborhood ?? null,
-    street: l.street ?? null,
+    rawText: listingRawText(l),
+    contentHash: listingTextHash(l),
     postedAt: l.postedAt ?? null,
-    isAgency: l.isAgency ?? null,
     authorName: l.authorName ?? null,
     authorProfile: l.authorProfile ?? null,
     sourceGroupUrl: l.sourceGroupUrl ?? null,
     rawJson: l.rawJson ?? null,
-    textHash: listingTextHash(l),
   }));
 
-  const insertedRows = await db
-    .insert(listings)
+  const insertedRawRows = await db
+    .insert(rawPosts)
     .values(rows)
-    .onConflictDoNothing({ target: [listings.source, listings.sourceId] })
-    .returning({ id: listings.id, source: listings.source, sourceId: listings.sourceId });
+    .onConflictDoNothing({ target: [rawPosts.source, rawPosts.sourceId] })
+    .returning({ id: rawPosts.id, source: rawPosts.source, sourceId: rawPosts.sourceId });
 
   const idBySourceKey = new Map(
-    insertedRows.map((r) => [`${r.source}:${r.sourceId}`, r.id] as const),
+    insertedRawRows.map((r) => [`${r.source}:${r.sourceId}`, r.id] as const),
   );
 
-  const inserted = fresh
-    .map((listing) => {
-      const id = idBySourceKey.get(`${listing.source}:${listing.sourceId}`);
-      return id === undefined ? null : { id, listing };
-    })
-    .filter((x): x is { id: number; listing: NormalizedListing } => x !== null);
+  const inserted: InsertedListing[] = [];
+  for (const listing of fresh) {
+    const rawPostId = idBySourceKey.get(`${listing.source}:${listing.sourceId}`);
+    if (rawPostId === undefined) continue;
+
+    const [extraction] = await db
+      .insert(extractions)
+      .values({
+        rawPostId,
+        schemaVersion: 1,
+        model: "normalized-ingest",
+        priceNis: listing.priceNis ?? null,
+        rooms: listing.rooms ?? null,
+        sqm: listing.sqm ?? null,
+        floor: listing.floor ?? null,
+        street: listing.street ?? null,
+        neighborhood: listing.neighborhood ?? null,
+        isAgency: listing.isAgency ?? null,
+        extras: null,
+      })
+      .onConflictDoNothing({ target: [extractions.rawPostId, extractions.schemaVersion] })
+      .returning({ id: extractions.id });
+
+    if (!extraction) continue;
+
+    const [canonical] = await db
+      .insert(canonicalApartments)
+      .values({
+        primaryAddress: listing.street ?? listing.neighborhood ?? null,
+        street: listing.street ?? null,
+        neighborhood: listing.neighborhood ?? null,
+        rooms: listing.rooms ?? null,
+        sqm: listing.sqm ?? null,
+        matchKey: `${listing.source}:${listing.sourceId}`,
+      })
+      .returning({ id: canonicalApartments.id });
+
+    if (!canonical) continue;
+
+    await db
+      .insert(apartmentSources)
+      .values({
+        canonicalId: canonical.id,
+        extractionId: extraction.id,
+        confidence: 1,
+      })
+      .onConflictDoNothing();
+
+    inserted.push({ id: canonical.id, listing });
+  }
 
   const skippedExisting = incoming.length - fresh.length;
   const raceSkipped = fresh.length - inserted.length;
@@ -97,4 +133,11 @@ export async function ingestNewListings(incoming: NormalizedListing[]): Promise<
     inserted,
     skippedExisting,
   };
+}
+
+function listingRawText(listing: NormalizedListing): string | null {
+  const parts = [listing.title, listing.description].filter(
+    (part): part is string => typeof part === "string" && part.trim() !== "",
+  );
+  return parts.length > 0 ? parts.join("\n\n") : null;
 }

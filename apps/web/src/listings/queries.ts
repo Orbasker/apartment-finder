@@ -1,6 +1,14 @@
-import { and, desc, eq, gte, ilike, inArray, lt, lte, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
-import { feedback, judgments, listings, sentAlerts } from "@/db/schema";
+import {
+  apartmentSources,
+  canonicalApartments,
+  extractions,
+  feedback,
+  judgments,
+  rawPosts,
+  sentAlerts,
+} from "@/db/schema";
 
 export type ListingSource = "yad2" | "fb_apify" | "fb_ext";
 export type ListingDecision = "alert" | "skip" | "unsure";
@@ -27,6 +35,7 @@ export type ListingsFilter = {
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
+type FilterCondition = SQL<unknown>;
 
 export function encodeCursor(ingestedAt: Date, id: number): string {
   return `${ingestedAt.getTime()}_${id}`;
@@ -41,42 +50,47 @@ export function decodeCursor(raw: string): { ingestedAt: Date; id: number } | nu
   return { ingestedAt: new Date(ms), id };
 }
 
-export async function searchListings(f: ListingsFilter = {}) {
-  const db = getDb();
-  const limit = Math.min(Math.max(f.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
-  const conds = [];
+function buildFilterConditions(f: ListingsFilter, includeCursor: boolean): FilterCondition[] {
+  const conds: FilterCondition[] = [];
 
   if (f.neighborhood) {
-    conds.push(ilike(listings.neighborhood, `%${f.neighborhood}%`));
+    conds.push(
+      or(
+        ilike(canonicalApartments.neighborhood, `%${f.neighborhood}%`),
+        ilike(extractions.neighborhood, `%${f.neighborhood}%`),
+      )!,
+    );
   }
   if (f.maxPriceNis != null) {
-    conds.push(lte(listings.priceNis, f.maxPriceNis));
+    conds.push(lte(extractions.priceNis, f.maxPriceNis));
   }
   if (f.minPriceNis != null) {
-    conds.push(gte(listings.priceNis, f.minPriceNis));
+    conds.push(gte(extractions.priceNis, f.minPriceNis));
   }
   if (f.minRooms != null) {
-    conds.push(gte(listings.rooms, f.minRooms));
+    conds.push(gte(extractions.rooms, f.minRooms));
   }
   if (f.maxRooms != null) {
-    conds.push(lte(listings.rooms, f.maxRooms));
+    conds.push(lte(extractions.rooms, f.maxRooms));
   }
   if (f.source) {
-    conds.push(eq(listings.source, f.source));
+    conds.push(eq(rawPosts.source, f.source));
   }
   if (f.hoursAgo != null) {
     const cutoff = new Date(Date.now() - f.hoursAgo * 3_600_000);
-    conds.push(gte(listings.ingestedAt, cutoff));
+    conds.push(gte(rawPosts.fetchedAt, cutoff));
   }
   if (f.search) {
     const needle = `%${f.search}%`;
     conds.push(
       or(
-        ilike(listings.description, needle),
-        ilike(listings.title, needle),
-        ilike(listings.neighborhood, needle),
-        ilike(listings.street, needle),
-        ilike(listings.authorName, needle),
+        ilike(rawPosts.rawText, needle),
+        ilike(canonicalApartments.primaryAddress, needle),
+        ilike(canonicalApartments.neighborhood, needle),
+        ilike(canonicalApartments.street, needle),
+        ilike(extractions.neighborhood, needle),
+        ilike(extractions.street, needle),
+        ilike(rawPosts.authorName, needle),
       )!,
     );
   }
@@ -87,49 +101,62 @@ export async function searchListings(f: ListingsFilter = {}) {
     conds.push(eq(judgments.decision, f.decision));
   }
 
-  if (f.cursor) {
+  if (includeCursor && f.cursor) {
     const c = decodeCursor(f.cursor);
     if (c) {
       conds.push(
         or(
-          lt(listings.ingestedAt, c.ingestedAt),
-          and(eq(listings.ingestedAt, c.ingestedAt), lt(listings.id, c.id)),
+          lt(rawPosts.fetchedAt, c.ingestedAt),
+          and(eq(rawPosts.fetchedAt, c.ingestedAt), lt(canonicalApartments.id, c.id)),
         )!,
       );
     }
-  } else if (f.offset != null && f.offset > 0) {
-    // Legacy offset mode kept for callers that don't use cursor yet.
   }
+
   if (f.subscribedGroupUrls) {
-    const nonFb = inArray(listings.source, ["yad2"]);
+    const nonFb = inArray(rawPosts.source, ["yad2"]);
     if (f.subscribedGroupUrls.length === 0) {
       conds.push(nonFb);
     } else {
-      conds.push(or(nonFb, inArray(listings.sourceGroupUrl, f.subscribedGroupUrls))!);
+      conds.push(or(nonFb, inArray(rawPosts.sourceGroupUrl, f.subscribedGroupUrls))!);
     }
   }
 
+  return conds;
+}
+
+export async function searchListings(f: ListingsFilter = {}) {
+  const db = getDb();
+  const limit = Math.min(Math.max(f.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
+  const conds = buildFilterConditions(f, true);
+
+  if (!f.cursor && f.offset != null && f.offset > 0) {
+    // Legacy offset mode kept for callers that don't use cursor yet.
+  }
+
   const feedbackJoinCond = f.forUserId
-    ? and(eq(feedback.listingId, listings.id), eq(feedback.userId, f.forUserId))!
-    : eq(feedback.listingId, listings.id);
+    ? and(eq(feedback.canonicalId, canonicalApartments.id), eq(feedback.userId, f.forUserId))!
+    : eq(feedback.canonicalId, canonicalApartments.id);
 
   const query = db
     .select({
-      id: listings.id,
-      source: listings.source,
-      sourceId: listings.sourceId,
-      url: listings.url,
-      title: listings.title,
-      description: listings.description,
-      priceNis: listings.priceNis,
-      rooms: listings.rooms,
-      sqm: listings.sqm,
-      neighborhood: listings.neighborhood,
-      street: listings.street,
-      postedAt: listings.postedAt,
-      ingestedAt: listings.ingestedAt,
-      isAgency: listings.isAgency,
-      authorName: listings.authorName,
+      id: canonicalApartments.id,
+      source: rawPosts.source,
+      sourceId: rawPosts.sourceId,
+      url: rawPosts.url,
+      title: canonicalApartments.primaryAddress,
+      description: rawPosts.rawText,
+      priceNis: extractions.priceNis,
+      rooms: sql<number | null>`coalesce(${extractions.rooms}, ${canonicalApartments.rooms})`,
+      sqm: sql<number | null>`coalesce(${extractions.sqm}, ${canonicalApartments.sqm})`,
+      neighborhood: sql<
+        string | null
+      >`coalesce(${canonicalApartments.neighborhood}, ${extractions.neighborhood})`,
+      street: sql<string | null>`coalesce(${canonicalApartments.street}, ${extractions.street})`,
+      postedAt: rawPosts.postedAt,
+      ingestedAt: rawPosts.fetchedAt,
+      isAgency: extractions.isAgency,
+      authorName: rawPosts.authorName,
       score: judgments.score,
       decision: judgments.decision,
       reasoning: judgments.reasoning,
@@ -137,15 +164,18 @@ export async function searchListings(f: ListingsFilter = {}) {
       positiveSignals: judgments.positiveSignals,
       feedbackRating: feedback.rating,
     })
-    .from(listings)
-    .leftJoin(judgments, eq(judgments.listingId, listings.id))
+    .from(canonicalApartments)
+    .innerJoin(apartmentSources, eq(apartmentSources.canonicalId, canonicalApartments.id))
+    .innerJoin(extractions, eq(extractions.id, apartmentSources.extractionId))
+    .innerJoin(rawPosts, eq(rawPosts.id, extractions.rawPostId))
+    .leftJoin(judgments, eq(judgments.canonicalId, canonicalApartments.id))
     .leftJoin(feedback, feedbackJoinCond);
 
-  const filtered = conds.length > 0 ? query.where(and(...conds)) : query;
+  const filtered = conds.length > 0 ? query.where(and(...conds)!) : query;
 
   // Fetch limit + 1 to know if there's a next page without a COUNT.
   const rows = await filtered
-    .orderBy(desc(listings.ingestedAt), desc(listings.id))
+    .orderBy(desc(rawPosts.fetchedAt), desc(canonicalApartments.id))
     .limit(limit + 1)
     .offset(f.cursor ? 0 : (f.offset ?? 0));
 
@@ -161,66 +191,47 @@ export async function countListings(
   f: Omit<ListingsFilter, "limit" | "offset" | "cursor"> = {},
 ): Promise<number> {
   const db = getDb();
-  const conds = [];
-  if (f.neighborhood) conds.push(ilike(listings.neighborhood, `%${f.neighborhood}%`));
-  if (f.maxPriceNis != null) conds.push(lte(listings.priceNis, f.maxPriceNis));
-  if (f.minPriceNis != null) conds.push(gte(listings.priceNis, f.minPriceNis));
-  if (f.minRooms != null) conds.push(gte(listings.rooms, f.minRooms));
-  if (f.maxRooms != null) conds.push(lte(listings.rooms, f.maxRooms));
-  if (f.source) conds.push(eq(listings.source, f.source));
-  if (f.hoursAgo != null) {
-    const cutoff = new Date(Date.now() - f.hoursAgo * 3_600_000);
-    conds.push(gte(listings.ingestedAt, cutoff));
-  }
-  if (f.search) {
-    const needle = `%${f.search}%`;
-    conds.push(
-      or(
-        ilike(listings.description, needle),
-        ilike(listings.title, needle),
-        ilike(listings.neighborhood, needle),
-        ilike(listings.street, needle),
-        ilike(listings.authorName, needle),
-      )!,
-    );
-  }
-  if (f.minScore != null) conds.push(gte(judgments.score, f.minScore));
-  if (f.decision) conds.push(eq(judgments.decision, f.decision));
+  const conds = buildFilterConditions(f, false);
 
   const q = db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(listings)
-    .leftJoin(judgments, eq(judgments.listingId, listings.id));
+    .select({ count: sql<number>`count(distinct ${canonicalApartments.id})::int` })
+    .from(canonicalApartments)
+    .innerJoin(apartmentSources, eq(apartmentSources.canonicalId, canonicalApartments.id))
+    .innerJoin(extractions, eq(extractions.id, apartmentSources.extractionId))
+    .innerJoin(rawPosts, eq(rawPosts.id, extractions.rawPostId))
+    .leftJoin(judgments, eq(judgments.canonicalId, canonicalApartments.id));
 
-  const [row] = await (conds.length > 0 ? q.where(and(...conds)) : q);
+  const [row] = await (conds.length > 0 ? q.where(and(...conds)!) : q);
   return row?.count ?? 0;
 }
 
 export async function getListingById(id: number, forUserId?: string) {
   const db = getDb();
   const feedbackJoinCond = forUserId
-    ? and(eq(feedback.listingId, listings.id), eq(feedback.userId, forUserId))!
-    : eq(feedback.listingId, listings.id);
+    ? and(eq(feedback.canonicalId, canonicalApartments.id), eq(feedback.userId, forUserId))!
+    : eq(feedback.canonicalId, canonicalApartments.id);
   const rows = await db
     .select({
-      id: listings.id,
-      source: listings.source,
-      sourceId: listings.sourceId,
-      url: listings.url,
-      title: listings.title,
-      description: listings.description,
-      priceNis: listings.priceNis,
-      rooms: listings.rooms,
-      sqm: listings.sqm,
-      floor: listings.floor,
-      neighborhood: listings.neighborhood,
-      street: listings.street,
-      postedAt: listings.postedAt,
-      ingestedAt: listings.ingestedAt,
-      isAgency: listings.isAgency,
-      authorName: listings.authorName,
-      authorProfile: listings.authorProfile,
-      rawJson: listings.rawJson,
+      id: canonicalApartments.id,
+      source: rawPosts.source,
+      sourceId: rawPosts.sourceId,
+      url: rawPosts.url,
+      title: canonicalApartments.primaryAddress,
+      description: rawPosts.rawText,
+      priceNis: extractions.priceNis,
+      rooms: sql<number | null>`coalesce(${extractions.rooms}, ${canonicalApartments.rooms})`,
+      sqm: sql<number | null>`coalesce(${extractions.sqm}, ${canonicalApartments.sqm})`,
+      floor: extractions.floor,
+      neighborhood: sql<
+        string | null
+      >`coalesce(${canonicalApartments.neighborhood}, ${extractions.neighborhood})`,
+      street: sql<string | null>`coalesce(${canonicalApartments.street}, ${extractions.street})`,
+      postedAt: rawPosts.postedAt,
+      ingestedAt: rawPosts.fetchedAt,
+      isAgency: extractions.isAgency,
+      authorName: rawPosts.authorName,
+      authorProfile: rawPosts.authorProfile,
+      rawJson: rawPosts.rawJson,
       score: judgments.score,
       decision: judgments.decision,
       reasoning: judgments.reasoning,
@@ -231,10 +242,13 @@ export async function getListingById(id: number, forUserId?: string) {
       feedbackRating: feedback.rating,
       feedbackNote: feedback.note,
     })
-    .from(listings)
-    .leftJoin(judgments, eq(judgments.listingId, listings.id))
+    .from(canonicalApartments)
+    .innerJoin(apartmentSources, eq(apartmentSources.canonicalId, canonicalApartments.id))
+    .innerJoin(extractions, eq(extractions.id, apartmentSources.extractionId))
+    .innerJoin(rawPosts, eq(rawPosts.id, extractions.rawPostId))
+    .leftJoin(judgments, eq(judgments.canonicalId, canonicalApartments.id))
     .leftJoin(feedback, feedbackJoinCond)
-    .where(eq(listings.id, id))
+    .where(eq(canonicalApartments.id, id))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -245,23 +259,29 @@ export async function getDashboardStats(hoursAgo = 24) {
 
   const [counts] = await db
     .select({
-      total: sql<number>`count(*)::int`,
-      alerted: sql<number>`count(*) filter (where ${judgments.decision} = 'alert')::int`,
-      skipped: sql<number>`count(*) filter (where ${judgments.decision} = 'skip')::int`,
-      unsure: sql<number>`count(*) filter (where ${judgments.decision} = 'unsure')::int`,
+      total: sql<number>`count(distinct ${canonicalApartments.id})::int`,
+      alerted: sql<number>`count(distinct ${canonicalApartments.id}) filter (where ${judgments.decision} = 'alert')::int`,
+      skipped: sql<number>`count(distinct ${canonicalApartments.id}) filter (where ${judgments.decision} = 'skip')::int`,
+      unsure: sql<number>`count(distinct ${canonicalApartments.id}) filter (where ${judgments.decision} = 'unsure')::int`,
     })
-    .from(listings)
-    .leftJoin(judgments, eq(judgments.listingId, listings.id))
-    .where(gte(listings.ingestedAt, cutoff));
+    .from(canonicalApartments)
+    .innerJoin(apartmentSources, eq(apartmentSources.canonicalId, canonicalApartments.id))
+    .innerJoin(extractions, eq(extractions.id, apartmentSources.extractionId))
+    .innerJoin(rawPosts, eq(rawPosts.id, extractions.rawPostId))
+    .leftJoin(judgments, eq(judgments.canonicalId, canonicalApartments.id))
+    .where(gte(rawPosts.fetchedAt, cutoff));
 
   const [bySource] = await db
     .select({
-      yad2: sql<number>`count(*) filter (where ${listings.source} = 'yad2')::int`,
-      fb_apify: sql<number>`count(*) filter (where ${listings.source} = 'fb_apify')::int`,
-      fb_ext: sql<number>`count(*) filter (where ${listings.source} = 'fb_ext')::int`,
+      yad2: sql<number>`count(distinct ${canonicalApartments.id}) filter (where ${rawPosts.source} = 'yad2')::int`,
+      fb_apify: sql<number>`count(distinct ${canonicalApartments.id}) filter (where ${rawPosts.source} = 'fb_apify')::int`,
+      fb_ext: sql<number>`count(distinct ${canonicalApartments.id}) filter (where ${rawPosts.source} = 'fb_ext')::int`,
     })
-    .from(listings)
-    .where(gte(listings.ingestedAt, cutoff));
+    .from(canonicalApartments)
+    .innerJoin(apartmentSources, eq(apartmentSources.canonicalId, canonicalApartments.id))
+    .innerJoin(extractions, eq(extractions.id, apartmentSources.extractionId))
+    .innerJoin(rawPosts, eq(rawPosts.id, extractions.rawPostId))
+    .where(gte(rawPosts.fetchedAt, cutoff));
 
   const [alertCount] = await db
     .select({ count: sql<number>`count(*)::int` })

@@ -1,15 +1,17 @@
 # Patterns
 
 ## User Standards
+
 - Use **Bun** as the package manager (not npm/pnpm/yarn).
 - Stack: Next.js 15 + Supabase Postgres + Drizzle ORM + Vercel AI Gateway + TypeScript + Zod.
 - Admin email is `orbasker@gmail.com` (used for bootstrap SQL, seeds, tests).
 - Unified CI script: `bun run ci` (typecheck + tests + knip + prettier — added in commit bbbbd18).
 
 ## Common Gotchas
+
 - Drizzle migrations live in `apps/web/drizzle/`. Manual destructive resets follow the `manual_better_auth_reset.sql` pattern: `DO $$ ... $$` block, idempotent with `to_regclass(...)` guards, safe to re-run on `db:push`.
 - Auth helpers moved from `lib/supabase/server.ts` (deleted) to `lib/auth-server.ts`: `getCurrentUser()`, `getCurrentAdmin()`, `isAdmin()`.
-- `AMENITY_KEYS` (11 amenities) is defined in `packages/shared/src/preferences.ts:6` for user *preferences*. The new pipeline reuses this constant for *extraction* schema so both ends share one source of truth.
+- `AMENITY_KEYS` (11 amenities) is defined in `packages/shared/src/preferences.ts:6` for user _preferences_. The new pipeline reuses this constant for _extraction_ schema so both ends share one source of truth.
 - Vercel AI Gateway is configured via `AI_GATEWAY_API_KEY` env in `apps/web/src/lib/gateway.ts`; cost is tracked per-feature via `recordAiUsage()` in `apps/web/src/lib/aiUsage.ts`.
 - Vercel function timeout is 60s default (300s for some webhooks). Cron handlers must enqueue work asynchronously rather than process inline batches.
 - **drizzle-kit push + destructive `DROP TABLE … CASCADE` + FK rebind needs TWO push invocations.** First push prints CREATE statements but doesn't fully apply FK-rebound tables (e.g., `judgments`/`feedback`/`sent_alerts` after rebind to `canonical_id`). Second push completes. Workaround/long-term: add `apps/web/scripts/verify-schema.ts` chained into `db:push:auto` that does `to_regclass()` checks on every declared table, OR pass `drizzle-kit push --force` for non-interactive destructive applies. (Confirmed by P1 builder + verifier on 2026-04-25.)
@@ -22,4 +24,5 @@
 ## Project SKILL_HINTS
 
 ## Last Updated
+
 2026-04-25

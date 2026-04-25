@@ -54,10 +54,7 @@
       "phase_id": "P1",
       "title": "Schema foundation",
       "objective": "Define new pipeline tables in Drizzle, write idempotent destructive reset migration, push schema, enable pgvector. Preserve auth/preferences/aiUsage/monitoredGroups tables.",
-      "files": [
-        "apps/web/src/db/schema.ts",
-        "apps/web/drizzle/manual_pipeline_reset.sql"
-      ],
+      "files": ["apps/web/src/db/schema.ts", "apps/web/drizzle/manual_pipeline_reset.sql"],
       "checks": [
         "bun run typecheck",
         "bun run db:push",
@@ -70,10 +67,7 @@
       "phase_id": "P2",
       "title": "Shared extraction schema + extractor",
       "objective": "Define ExtractionSchema (Zod) in packages/shared reusing AMENITY_KEYS. Build extractApartment(rawText, sourceType) using generateObject + AI Gateway, with aiUsage cost tracking.",
-      "files": [
-        "packages/shared/src/extraction.ts",
-        "apps/web/src/pipeline/extract.ts"
-      ],
+      "files": ["packages/shared/src/extraction.ts", "apps/web/src/pipeline/extract.ts"],
       "checks": [
         "bun run typecheck",
         "Unit test: golden fixture (Yad2-shaped + FB-shaped raw text) → extractor returns Zod-shaped output with at least core fields populated",
@@ -101,10 +95,7 @@
       "phase_id": "P4",
       "title": "Unification + worker",
       "objective": "Implement match_key generation, candidate search via match_key + phone + pgvector cosine, scoring, auto-merge ≥0.95 / review queue 0.7–0.95 / new canonical <0.7. Truth-resolution rule for canonical_attributes (TRUE wins, FALSE wins, conflicts → NULL + flag).",
-      "files": [
-        "apps/web/src/pipeline/unify.ts",
-        "apps/web/app/api/jobs/unify/route.ts"
-      ],
+      "files": ["apps/web/src/pipeline/unify.ts", "apps/web/app/api/jobs/unify/route.ts"],
       "checks": [
         "bun run typecheck",
         "Unit test: match_key generation handles missing/partial address",
@@ -236,7 +227,9 @@
       ],
       "deferred_to_followup_hardening_task": ["HIGH-1", "HIGH-2", "HIGH-3"],
       "deferred_to_p4": ["MEDIUM-2: HNSW/IVFFlat index on extractions.embedding"],
-      "deferred_to_p5": ["MEDIUM-4: 40 files referencing legacy listings/Listing/listingId — P5 scope"]
+      "deferred_to_p5": [
+        "MEDIUM-4: 40 files referencing legacy listings/Listing/listingId — P5 scope"
+      ]
     },
     "verifier": {
       "phase": "P1",
@@ -280,13 +273,69 @@
     "reviewer": [],
     "hunter": [],
     "verifier": [
-      {"phase":"P1","name":"schema.ts compiles in isolation","command":"cd apps/web && bun run typecheck","expected":"0 errors in src/db/schema.ts & schema.test.ts; downstream errors localized to P5 scope","actual":"0 errors in P1 surface; 36 errors confined to 13 documented downstream files (P5 scope)","exit_code":1,"status":"PASS"},
-      {"phase":"P1","name":"db:push idempotency","command":"cd apps/web && bun run db:manual && DRIZZLE_PUSH_NO_STRICT=1 bunx drizzle-kit push","expected":"both exit 0; idempotent","actual":"all 4 manual_*.sql ok; drizzle-kit applied feedback/judgments/sent_alerts FK-rebind DDL; [✓] Changes applied","exit_code":0,"status":"PASS"},
-      {"phase":"P1","name":"6 new pipeline tables exist","command":"SELECT COUNT(*) FROM information_schema.tables WHERE table_name IN (...6 names...)","expected":"6","actual":"6","exit_code":0,"status":"PASS"},
-      {"phase":"P1","name":"pgvector enabled + extractions.embedding=vector(768)","command":"SELECT 1 FROM pg_extension WHERE extname='vector'; pg_attribute on extractions.embedding","expected":"1 row + vector(768)","actual":"1 row + vector(768)","exit_code":0,"status":"PASS"},
-      {"phase":"P1","name":"legacy listings dropped","command":"SELECT to_regclass('public.listings')","expected":"NULL","actual":"NULL","exit_code":0,"status":"PASS"},
-      {"phase":"P1","name":"auth/preferences/aiUsage/monitoredGroups intact","command":"SELECT COUNT(*) on each of 7 tables","expected":"all selectable; ai_usage retains data","actual":"user=0, session=0, account=0, verification=0, preferences=0, ai_usage=614 rows preserved, monitored_groups=1","exit_code":0,"status":"PASS"},
-      {"phase":"P1","name":"schema test suite","command":"CI=true bun run test apps/web/src/db/schema.test.ts","expected":"34/34 pass, exit 0","actual":"34/34 pass in 92ms","exit_code":0,"status":"PASS"}
+      {
+        "phase": "P1",
+        "name": "schema.ts compiles in isolation",
+        "command": "cd apps/web && bun run typecheck",
+        "expected": "0 errors in src/db/schema.ts & schema.test.ts; downstream errors localized to P5 scope",
+        "actual": "0 errors in P1 surface; 36 errors confined to 13 documented downstream files (P5 scope)",
+        "exit_code": 1,
+        "status": "PASS"
+      },
+      {
+        "phase": "P1",
+        "name": "db:push idempotency",
+        "command": "cd apps/web && bun run db:manual && DRIZZLE_PUSH_NO_STRICT=1 bunx drizzle-kit push",
+        "expected": "both exit 0; idempotent",
+        "actual": "all 4 manual_*.sql ok; drizzle-kit applied feedback/judgments/sent_alerts FK-rebind DDL; [✓] Changes applied",
+        "exit_code": 0,
+        "status": "PASS"
+      },
+      {
+        "phase": "P1",
+        "name": "6 new pipeline tables exist",
+        "command": "SELECT COUNT(*) FROM information_schema.tables WHERE table_name IN (...6 names...)",
+        "expected": "6",
+        "actual": "6",
+        "exit_code": 0,
+        "status": "PASS"
+      },
+      {
+        "phase": "P1",
+        "name": "pgvector enabled + extractions.embedding=vector(768)",
+        "command": "SELECT 1 FROM pg_extension WHERE extname='vector'; pg_attribute on extractions.embedding",
+        "expected": "1 row + vector(768)",
+        "actual": "1 row + vector(768)",
+        "exit_code": 0,
+        "status": "PASS"
+      },
+      {
+        "phase": "P1",
+        "name": "legacy listings dropped",
+        "command": "SELECT to_regclass('public.listings')",
+        "expected": "NULL",
+        "actual": "NULL",
+        "exit_code": 0,
+        "status": "PASS"
+      },
+      {
+        "phase": "P1",
+        "name": "auth/preferences/aiUsage/monitoredGroups intact",
+        "command": "SELECT COUNT(*) on each of 7 tables",
+        "expected": "all selectable; ai_usage retains data",
+        "actual": "user=0, session=0, account=0, verification=0, preferences=0, ai_usage=614 rows preserved, monitored_groups=1",
+        "exit_code": 0,
+        "status": "PASS"
+      },
+      {
+        "phase": "P1",
+        "name": "schema test suite",
+        "command": "CI=true bun run test apps/web/src/db/schema.test.ts",
+        "expected": "34/34 pass, exit 0",
+        "actual": "34/34 pass in 92ms",
+        "exit_code": 0,
+        "status": "PASS"
+      }
     ]
   },
   "telemetry": {

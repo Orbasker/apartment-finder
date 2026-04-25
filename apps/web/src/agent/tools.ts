@@ -1,9 +1,8 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { desc } from "drizzle-orm";
 import { PreferencesPatchSchema } from "@apartment-finder/shared";
 import { getDb } from "@/db";
-import { blockedAuthors, listings } from "@/db/schema";
+import { blockedAuthors } from "@/db/schema";
 import { getDashboardStats, getListingById, searchListings } from "@/listings/queries";
 import { loadPreferences } from "@/preferences/store";
 import { getSubscribedGroupUrls } from "@/groups/subscriptions";
@@ -126,19 +125,14 @@ export function buildAgentTools(userId: string) {
       description: "Quick list of the most recently ingested listings regardless of score.",
       inputSchema: z.object({ limit: z.number().int().min(1).max(20).default(5) }),
       execute: async ({ limit }) => {
-        const db = getDb();
-        const rows = await db
-          .select({
-            id: listings.id,
-            url: listings.url,
-            neighborhood: listings.neighborhood,
-            priceNis: listings.priceNis,
-            rooms: listings.rooms,
-          })
-          .from(listings)
-          .orderBy(desc(listings.ingestedAt))
-          .limit(limit);
-        return rows;
+        const { rows } = await searchListings({ limit });
+        return rows.map((row) => ({
+          id: row.id,
+          url: row.url,
+          neighborhood: row.neighborhood,
+          priceNis: row.priceNis,
+          rooms: row.rooms,
+        }));
       },
     }),
   };
