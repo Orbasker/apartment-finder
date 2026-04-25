@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth-server";
 import { recordFeedback } from "@/feedback/store";
 import { withApiLog, errorMessage } from "@/lib/log";
 

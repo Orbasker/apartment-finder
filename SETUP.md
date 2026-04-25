@@ -12,20 +12,32 @@ Phase 1 gets Yad2 alerts flowing to Telegram. **No AI yet** (that's Phase 2). Be
 bun install
 ```
 
-## 2. Create Supabase project (free tier)
+## 2. Create Supabase Postgres (free tier — used as a hosted Postgres only)
+
+Auth is handled by Better Auth, not Supabase. We just use Supabase for managed Postgres.
 
 1. Go to https://supabase.com/dashboard/new
 2. Create a new project. Save the DB password — you'll need it once.
 3. Wait ~2 min for provisioning.
-4. In the dashboard:
-   - **Project Settings → Database → Connection string → URI**
-     - Pick the **Transaction pooler** (port `6543`) — this is what serverless needs.
-     - Copy the URL, replace `[YOUR-PASSWORD]` with your DB password.
-     - This goes into `DATABASE_URL`.
-   - **Project Settings → API**
-     - `Project URL` → `SUPABASE_URL`
-     - `anon public` key → `SUPABASE_ANON_KEY`
-     - `service_role` secret → `SUPABASE_SERVICE_ROLE_KEY` (never expose this to the browser)
+4. **Project Settings → Database → Connection string → URI**
+   - Pick the **Transaction pooler** (port `6543`) — what serverless needs.
+   - Copy the URL, replace `[YOUR-PASSWORD]` with your DB password.
+   - This goes into `DATABASE_URL`.
+
+## 2a. Set up Better Auth + Google OAuth
+
+1. Generate a session secret:
+   ```bash
+   openssl rand -base64 32   # → BETTER_AUTH_SECRET
+   ```
+2. Set `BETTER_AUTH_URL` to the public origin (e.g. `http://localhost:3000` or `https://<your-host>`).
+3. Create a Google OAuth client at https://console.cloud.google.com/apis/credentials:
+   - Application type: **Web application**.
+   - Authorized redirect URIs (add ALL hosts you sign in from):
+     - `http://localhost:3000/api/auth/callback/google`
+     - `https://<your-vercel-host>/api/auth/callback/google`
+   - Copy the Client ID + Client secret into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+4. Magic-link emails go through Resend (see Phase 4) — `RESEND_API_KEY` and a verified `RESEND_FROM_EMAIL` are required for sign-in via email.
 
 ## 3. Create the Telegram bot
 
@@ -89,9 +101,10 @@ You should see a JSON response like `{ "ok": true, "fetched": 40, "inserted": 40
 3. **⚠️ Root Directory: `apps/web`** (monorepo — Next.js lives in `apps/web`, not the repo root). If you skip this, the build fails with `Error: No Next.js version detected`. You can change it later under Project Settings → General → Root Directory. **Framework preset:** Next.js. **Build command:** leave default. **Install command:** leave default — Vercel detects `bun.lock` and uses `bun install` automatically.
 4. **Environment Variables** — add all of these from your `.env`:
    - `DATABASE_URL`
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `BETTER_AUTH_SECRET`
+   - `BETTER_AUTH_URL` (set to the deployed origin, e.g. `https://<your-host>`)
+   - `GOOGLE_CLIENT_ID`
+   - `GOOGLE_CLIENT_SECRET`
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_WEBHOOK_SECRET`
    - `CRON_SECRET`
@@ -153,7 +166,8 @@ To tune without the dashboard (which lands in Phase 4), open Supabase → Table 
 
 **Before we move to Phase 2, I need from you:**
 
-- [ ] Supabase project created; `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` in `.env` and Vercel
+- [ ] Supabase Postgres created; `DATABASE_URL` in `.env` and Vercel
+- [ ] Better Auth configured: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in `.env` and Vercel; redirect URI added in Google Cloud Console
 - [ ] Telegram bot created via BotFather; `TELEGRAM_BOT_TOKEN` in `.env` and Vercel
 - [ ] `TELEGRAM_WEBHOOK_SECRET` and `CRON_SECRET` generated (`openssl rand -hex 32`), in `.env` and Vercel
 - [ ] Repo pushed to GitHub (private)
@@ -175,53 +189,35 @@ To tune without the dashboard (which lands in Phase 4), open Supabase → Table 
 
 **Phase 4 will additionally need:**
 
-- [ ] Resend account + `RESEND_API_KEY` (for email alerts; verify your sending domain if going to prod)
-- [ ] Supabase Auth: enable Magic Link provider; add your email to the allowlist (Authentication → Providers → Email + Authentication → Users)
-- [ ] `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` set in `.env` and Vercel (same values as the server-side ones — the `NEXT_PUBLIC_` prefix just ships them to the browser for the login page)
+- [ ] Resend account + `RESEND_API_KEY` (for magic-link sign-in AND alert emails; verify your sending domain — magic links 403 from an unverified domain)
+- [ ] `RESEND_FROM_EMAIL` set to a verified sender (e.g. `Apartment Finder <noreply@your-domain.com>`)
 
 ---
 
-## Admin access (for `/dashboard/admin`)
+## Admin access (for `/admin`)
 
-Admin role is stored in `auth.users.raw_app_meta_data.is_admin`. Supabase exposes this as
-`user.app_metadata.is_admin` and does not let clients modify it, so it's safe to use for gating.
+Admin role is the `role` column on the Better Auth `"user"` table (added by the `admin` plugin). Possible values: `"user"` (default) or `"admin"`. Server code checks via `isAdmin(user)` which compares `user.role === "admin"`.
 
-**Promote a user to admin** — Supabase Dashboard → SQL editor:
+**Promote a user to admin** — run against the Postgres DB (Supabase SQL editor or `psql $DATABASE_URL`):
 
 ```sql
-update auth.users
-set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"is_admin": true}'::jsonb
-where email = 'orbasker@gmail.com';
+update "user" set role = 'admin' where email = 'orbasker@gmail.com';
 ```
 
 **Revoke admin:**
 
 ```sql
-update auth.users
-set raw_app_meta_data = raw_app_meta_data - 'is_admin'
-where email = 'orbasker@gmail.com';
+update "user" set role = 'user' where email = 'orbasker@gmail.com';
 ```
 
-Users need to sign out/in (or let their JWT refresh) for the change to take effect.
-
-Alternative: Supabase Dashboard → Authentication → Users → click user → edit `app_metadata` JSON.
+The change takes effect on the next request — Better Auth re-reads the user row on every `getSession()` call, deduped per render via React `cache()`.
 
 ---
 
-## Multi-user migration (one-time, when upgrading an existing single-user deploy)
+## Better Auth cutover (one-time)
 
-`apps/web/drizzle/manual_multi_user.sql` changes primary keys on `preferences`, `feedback`, and `sent_alerts` to be per-user, adds `monitored_groups.added_by`, `listings.source_group_url`, and creates `user_group_subscriptions`. It's idempotent and now runs automatically before `drizzle-kit push`, so the normal flow is:
+`apps/web/drizzle/manual_better_auth_reset.sql` truncates every user-scoped table (`preferences`, `feedback`, `sent_alerts`, `telegram_links`, `telegram_link_tokens`, `user_group_subscriptions`) and nulls `monitored_groups.added_by` so the new auth system starts from a clean slate. Users are NOT migrated — the admin re-onboards by signing in fresh with Google or magic link, then runs the promote SQL above.
 
-1. **Promote the admin** (see "Admin access" above) so `auth.users` has at least one user with `raw_app_meta_data.is_admin = true`. **Skip this on a fresh DB with no data — the migration becomes a no-op.**
-2. **Sync the schema:**
-   ```bash
-   bun run db:push           # or db:push:auto in non-interactive terminals
-   ```
-   This first runs `manual_multi_user.sql` (backfills existing rows to the admin, swaps PKs, creates new tables), then `drizzle-kit push` applies any remaining schema diffs. Both steps are no-ops on an already-migrated DB, so it's safe to re-run.
-3. Sign out of the dashboard and back in so the admin's JWT picks up `app_metadata.is_admin`.
+The reset runs automatically as part of `bun run db:push`. It's idempotent (guarded by `to_regclass`) and re-runs are safe.
 
-If you'd rather apply the SQL by hand (e.g. Supabase SQL editor) you can paste the contents of `manual_multi_user.sql` directly — same result.
-
-**What this does NOT migrate:** historical Facebook-sourced listings won't have `source_group_url` populated unless their `raw_json` had a `groupUrl` field at ingest time (the migration populates it from there). New FB posts ingested after the migration write the column directly.
-
-**Telegram still talks only to the admin.** The bot reads/writes admin preferences and sends alerts to the admin chat. Per-user Telegram is a later phase.
+**Snapshot first.** This wipes user data. Take a Supabase DB backup before running the migration on an existing deploy.

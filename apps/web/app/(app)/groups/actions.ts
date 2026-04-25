@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { monitoredGroups } from "@/db/schema";
-import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
+import { getCurrentUser, isAdmin } from "@/lib/auth-server";
 import { setSubscription } from "@/groups/subscriptions";
 
 async function requireUser() {

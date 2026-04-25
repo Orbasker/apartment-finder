@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { NormalizedListing } from "@apartment-finder/shared";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth-server";
 import { getListingById } from "@/listings/queries";
 import { isGatewayConfigured } from "@/lib/gateway";
 import { judgeListing, persistJudgment } from "@/pipeline/judge";

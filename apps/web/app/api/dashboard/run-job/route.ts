@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getCurrentUser, isAdmin } from "@/lib/supabase/server";
+import { getCurrentUser, isAdmin } from "@/lib/auth-server";
 import {
   runAdminCostSummaryJob,
   runAiTopPicksJob,

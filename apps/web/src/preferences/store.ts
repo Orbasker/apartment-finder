@@ -77,8 +77,8 @@ export async function getAdminUserId(): Promise<string | null> {
   if (adminUserIdCache !== undefined) return adminUserIdCache;
   const db = getDb();
   const rows = await db.execute<{ id: string }>(
-    sql`SELECT id FROM auth.users
-        WHERE (raw_app_meta_data->>'is_admin')::boolean = true
+    sql`SELECT id FROM "user"
+        WHERE role = 'admin'
         ORDER BY created_at
         LIMIT 1`,
   );
@@ -129,7 +129,7 @@ export async function seedAlertEmailTargets(
 export async function getUserAuthEmail(userId: string): Promise<string | null> {
   const db = getDb();
   const rows = await db.execute<{ email: string | null }>(
-    sql`SELECT email FROM auth.users WHERE id = ${userId} LIMIT 1`,
+    sql`SELECT email FROM "user" WHERE id = ${userId} LIMIT 1`,
   );
   const email = (rows as unknown as { email: string | null }[])[0]?.email;
   return email?.trim().toLowerCase() || null;
@@ -137,7 +137,7 @@ export async function getUserAuthEmail(userId: string): Promise<string | null> {
 
 /**
  * Returns the email recipients for a given user's alerts.
- * Falls back to the user's Supabase auth email when no explicit targets are
+ * Falls back to the user's account email when no explicit targets are
  * configured, so new signups get alerts without touching preferences.
  */
 export async function getUserAlertRecipients(

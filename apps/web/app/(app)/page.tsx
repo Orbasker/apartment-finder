@@ -18,7 +18,7 @@ import { ListingsFiltersBar } from "@/listings/filters-bar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatNis, relTime } from "@/lib/utils";
-import { getRequestUser, isAdmin } from "@/lib/supabase/server";
+import { getCurrentUser, isAdmin } from "@/lib/auth-server";
 import { loadPreferences } from "@/preferences/store";
 import { getSubscribedGroupUrls } from "@/groups/subscriptions";
 import { ruleFilter } from "@/pipeline/ruleFilter";
@@ -35,7 +35,7 @@ export default async function DashboardHomePage({
   const filters = parseListingFilters(rawParams);
   const urlActive = hasActiveFilters(filters);
 
-  const user = await getRequestUser();
+  const user = await getCurrentUser();
   const admin = isAdmin(user);
 
   const [prefs, subscribedGroupUrls] = user

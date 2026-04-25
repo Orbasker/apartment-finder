@@ -4,7 +4,7 @@ import { buildAgentSystem } from "@/agent/agent";
 import { buildAgentTools } from "@/agent/tools";
 import { isGatewayConfigured, model } from "@/lib/gateway";
 import { loadPreferences } from "@/preferences/store";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth-server";
 import { withApiLog } from "@/lib/log";
 
 export const runtime = "nodejs";

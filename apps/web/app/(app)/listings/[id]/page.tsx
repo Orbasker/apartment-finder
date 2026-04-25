@@ -3,7 +3,7 @@ import { getListingById } from "@/listings/queries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatNis, relTime } from "@/lib/utils";
-import { getRequestUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth-server";
 import { FeedbackButtons } from "./feedback-buttons";
 import { RejudgeButton } from "./rejudge-button";
 
@@ -13,7 +13,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const listingId = Number(id);
   if (!Number.isFinite(listingId)) notFound();
-  const user = await getRequestUser();
+  const user = await getCurrentUser();
   if (!user) notFound();
   const listing = await getListingById(listingId, user.id);
   if (!listing) notFound();
