@@ -9,6 +9,12 @@ export const metadata = {
   description: "AI-assisted Tel Aviv apartment finder",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+};
+
 const themeInitScript = `
   (function() {
     try {

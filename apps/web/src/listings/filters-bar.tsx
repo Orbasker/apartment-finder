@@ -11,7 +11,7 @@ type Props = {
 };
 
 const selectClass =
-  "h-9 w-full rounded-md border bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  "h-9 w-full rounded-md border bg-background px-2 text-base shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm";
 
 export function ListingsFiltersBar({
   action = "/",
@@ -23,7 +23,7 @@ export function ListingsFiltersBar({
     <form
       method="get"
       action={action}
-      className="space-y-3 rounded-lg border bg-card p-4"
+      className="space-y-3 rounded-lg border bg-card p-3 sm:p-4"
     >
       {prefsSeeded && (
         <p className="text-xs text-muted-foreground">
@@ -34,7 +34,7 @@ export function ListingsFiltersBar({
           .
         </p>
       )}
-      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-muted-foreground">
             Search
