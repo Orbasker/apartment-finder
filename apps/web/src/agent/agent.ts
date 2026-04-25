@@ -6,10 +6,7 @@ import { recordAiUsage } from "@/lib/aiUsage";
 
 const AGENT_MODEL = "google/gemini-2.5-flash";
 
-export async function handleAgentMessage(input: {
-  userId: string;
-  text: string;
-}): Promise<string> {
+export async function handleAgentMessage(input: { userId: string; text: string }): Promise<string> {
   if (!isGatewayConfigured()) {
     return "AI agent is not configured (missing AI_GATEWAY_API_KEY). Ask the dashboard owner to set it.";
   }

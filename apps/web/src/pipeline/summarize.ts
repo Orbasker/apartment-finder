@@ -1,9 +1,5 @@
 import { generateText } from "ai";
-import type {
-  Judgment,
-  NormalizedListing,
-  Preferences,
-} from "@apartment-finder/shared";
+import type { Judgment, NormalizedListing, Preferences } from "@apartment-finder/shared";
 import { model } from "@/lib/gateway";
 import { recordAiUsage } from "@/lib/aiUsage";
 
@@ -24,9 +20,7 @@ export async function summarizeForAlert(
       listing.priceNis ? `Price ₪${listing.priceNis}.` : "",
       listing.rooms ? `${listing.rooms} rooms.` : "",
       `Score ${judgment.score}. Reasoning: ${judgment.reasoning}.`,
-      judgment.positiveSignals.length
-        ? `Positives: ${judgment.positiveSignals.join(", ")}.`
-        : "",
+      judgment.positiveSignals.length ? `Positives: ${judgment.positiveSignals.join(", ")}.` : "",
     ]
       .filter(Boolean)
       .join(" "),

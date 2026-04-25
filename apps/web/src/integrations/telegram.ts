@@ -2,10 +2,7 @@ import { Bot, webhookCallback } from "grammy";
 import { env } from "@/lib/env";
 import { recordFeedback } from "@/feedback/store";
 import { handleAgentMessage } from "@/agent/agent";
-import {
-  consumeLinkToken,
-  getUserIdForChat,
-} from "@/integrations/telegramLinks";
+import { consumeLinkToken, getUserIdForChat } from "@/integrations/telegramLinks";
 import { cancelLatestPatch, confirmLatestPatch } from "@/agent/patches";
 
 let botInstance: Bot | undefined;
@@ -117,10 +114,10 @@ export function getBot(): Bot {
 
     try {
       const original = ctx.callbackQuery.message?.text ?? "";
-      await ctx.editMessageText(
-        original + (rating > 0 ? "\n\n✓ 👍" : "\n\n✓ 👎"),
-        { parse_mode: "HTML", link_preview_options: { is_disabled: false } },
-      );
+      await ctx.editMessageText(original + (rating > 0 ? "\n\n✓ 👍" : "\n\n✓ 👎"), {
+        parse_mode: "HTML",
+        link_preview_options: { is_disabled: false },
+      });
     } catch {
       /* message too old / unchanged */
     }

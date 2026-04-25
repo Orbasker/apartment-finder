@@ -31,8 +31,7 @@ export default async function AdminPage({
   if (!isAdmin(user)) notFound();
 
   const { tab: tabParam } = await searchParams;
-  const active: TabId =
-    TABS.find((t) => t.id === tabParam)?.id ?? "stats";
+  const active: TabId = TABS.find((t) => t.id === tabParam)?.id ?? "stats";
 
   return (
     <div className="space-y-6">
@@ -72,10 +71,7 @@ export default async function AdminPage({
 }
 
 async function StatsTab() {
-  const [day, week] = await Promise.all([
-    getDashboardStats(24),
-    getDashboardStats(24 * 7),
-  ]);
+  const [day, week] = await Promise.all([getDashboardStats(24), getDashboardStats(24 * 7)]);
   return (
     <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <StatsCard title="Last 24h" stats={day} />
@@ -286,26 +282,26 @@ function BreakdownTable({
   }
   return (
     <div className="overflow-x-auto">
-    <table className="min-w-full text-sm">
-      <thead className="text-left text-muted-foreground">
-        <tr>
-          <th className="py-1">Label</th>
-          <th className="py-1 text-right">Calls</th>
-          <th className="py-1 text-right">Tokens</th>
-          <th className="py-1 text-right">Cost</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.label} className="border-t">
-            <td className="py-1 pr-2 font-mono text-xs">{r.label}</td>
-            <td className="py-1 text-right">{r.calls}</td>
-            <td className="py-1 text-right">{r.totalTokens.toLocaleString()}</td>
-            <td className="py-1 text-right font-medium">{usd(r.estimatedCostUsd)}</td>
+      <table className="min-w-full text-sm">
+        <thead className="text-left text-muted-foreground">
+          <tr>
+            <th className="py-1">Label</th>
+            <th className="py-1 text-right">Calls</th>
+            <th className="py-1 text-right">Tokens</th>
+            <th className="py-1 text-right">Cost</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.label} className="border-t">
+              <td className="py-1 pr-2 font-mono text-xs">{r.label}</td>
+              <td className="py-1 text-right">{r.calls}</td>
+              <td className="py-1 text-right">{r.totalTokens.toLocaleString()}</td>
+              <td className="py-1 text-right font-medium">{usd(r.estimatedCostUsd)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

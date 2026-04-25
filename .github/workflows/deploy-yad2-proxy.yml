@@ -4,8 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'services/yad2-proxy/**'
-      - '.github/workflows/deploy-yad2-proxy.yml'
+      - "services/yad2-proxy/**"
+      - ".github/workflows/deploy-yad2-proxy.yml"
   workflow_dispatch:
 
 concurrency:

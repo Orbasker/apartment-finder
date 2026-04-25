@@ -20,11 +20,7 @@ export function ListingsFiltersBar({
   prefsSeeded = false,
 }: Props) {
   return (
-    <form
-      method="get"
-      action={action}
-      className="space-y-3 rounded-lg border bg-card p-3 sm:p-4"
-    >
+    <form method="get" action={action} className="space-y-3 rounded-lg border bg-card p-3 sm:p-4">
       {prefsSeeded && (
         <p className="text-xs text-muted-foreground">
           Pre-filled from your saved preferences —{" "}
@@ -36,9 +32,7 @@ export function ListingsFiltersBar({
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">
-            Search
-          </span>
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">Search</span>
           <Input
             type="search"
             name="q"
@@ -48,9 +42,7 @@ export function ListingsFiltersBar({
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">
-            Neighborhood
-          </span>
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">Neighborhood</span>
           <Input
             name="neighborhood"
             placeholder="e.g. Florentin"
@@ -60,9 +52,7 @@ export function ListingsFiltersBar({
 
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">
-              Min ₪
-            </span>
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">Min ₪</span>
             <Input
               type="number"
               inputMode="numeric"
@@ -73,9 +63,7 @@ export function ListingsFiltersBar({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">
-              Max ₪
-            </span>
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">Max ₪</span>
             <Input
               type="number"
               inputMode="numeric"
@@ -89,9 +77,7 @@ export function ListingsFiltersBar({
 
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">
-              Min rooms
-            </span>
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">Min rooms</span>
             <Input
               type="number"
               inputMode="decimal"
@@ -102,9 +88,7 @@ export function ListingsFiltersBar({
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-muted-foreground">
-              Max rooms
-            </span>
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">Max rooms</span>
             <Input
               type="number"
               inputMode="decimal"
@@ -117,14 +101,8 @@ export function ListingsFiltersBar({
         </div>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">
-            Decision
-          </span>
-          <select
-            name="decision"
-            defaultValue={values.decision ?? ""}
-            className={selectClass}
-          >
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">Decision</span>
+          <select name="decision" defaultValue={values.decision ?? ""} className={selectClass}>
             <option value="">Any</option>
             <option value="alert">Alert</option>
             <option value="unsure">Unsure</option>
@@ -133,14 +111,8 @@ export function ListingsFiltersBar({
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">
-            Source
-          </span>
-          <select
-            name="source"
-            defaultValue={values.source ?? ""}
-            className={selectClass}
-          >
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">Source</span>
+          <select name="source" defaultValue={values.source ?? ""} className={selectClass}>
             <option value="">Any</option>
             <option value="yad2">Yad2</option>
             <option value="fb_apify">FB (Apify)</option>
@@ -149,9 +121,7 @@ export function ListingsFiltersBar({
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">
-            Min score
-          </span>
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">Min score</span>
           <Input
             type="number"
             inputMode="numeric"
@@ -164,9 +134,7 @@ export function ListingsFiltersBar({
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">
-            Time window
-          </span>
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">Time window</span>
           <select
             name="hoursAgo"
             defaultValue={values.hoursAgo != null ? String(values.hoursAgo) : ""}
@@ -181,14 +149,8 @@ export function ListingsFiltersBar({
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">
-            Per page
-          </span>
-          <select
-            name="limit"
-            defaultValue={String(values.limit)}
-            className={selectClass}
-          >
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">Per page</span>
+          <select name="limit" defaultValue={String(values.limit)} className={selectClass}>
             <option value="25">25</option>
             <option value="50">50</option>
             <option value="100">100</option>

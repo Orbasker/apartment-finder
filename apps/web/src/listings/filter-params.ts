@@ -88,15 +88,15 @@ export function toListingsFilter(f: ParsedListingFilters): ListingsFilter {
 export function hasActiveFilters(f: ParsedListingFilters): boolean {
   return Boolean(
     f.search ||
-      f.neighborhood ||
-      f.minPriceNis != null ||
-      f.maxPriceNis != null ||
-      f.minRooms != null ||
-      f.maxRooms != null ||
-      f.minScore != null ||
-      f.decision ||
-      f.source ||
-      f.hoursAgo != null,
+    f.neighborhood ||
+    f.minPriceNis != null ||
+    f.maxPriceNis != null ||
+    f.minRooms != null ||
+    f.maxRooms != null ||
+    f.minScore != null ||
+    f.decision ||
+    f.source ||
+    f.hoursAgo != null,
   );
 }
 

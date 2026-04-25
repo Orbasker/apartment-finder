@@ -2,12 +2,7 @@ import { createServer } from "node:http";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const PROXY_SECRET = process.env.PROXY_SECRET ?? "";
-const ALLOWED_HOSTS = new Set([
-  "www.yad2.co.il",
-  "gw.yad2.co.il",
-  "m.yad2.co.il",
-  "yad2.co.il",
-]);
+const ALLOWED_HOSTS = new Set(["www.yad2.co.il", "gw.yad2.co.il", "m.yad2.co.il", "yad2.co.il"]);
 const UPSTREAM_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS ?? 20000);
 
 const UPSTREAM_HEADERS = {
@@ -79,7 +74,9 @@ const server = createServer(async (req, res) => {
     });
 
     const body = Buffer.from(await upstream.arrayBuffer());
-    const headers = { "content-type": upstream.headers.get("content-type") ?? "application/octet-stream" };
+    const headers = {
+      "content-type": upstream.headers.get("content-type") ?? "application/octet-stream",
+    };
     const cacheControl = upstream.headers.get("cache-control");
     if (cacheControl) headers["cache-control"] = cacheControl;
 

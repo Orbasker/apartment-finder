@@ -35,9 +35,7 @@ loadEnvFile(path.join(workspaceRoot, ".env"));
 
 const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 if (!url) {
-  console.error(
-    "apply-manual-migrations: DIRECT_URL or DATABASE_URL is required.",
-  );
+  console.error("apply-manual-migrations: DIRECT_URL or DATABASE_URL is required.");
   process.exit(1);
 }
 

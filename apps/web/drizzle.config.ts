@@ -19,7 +19,7 @@ function loadEnvFile(filePath: string): void {
 
     let value = line.slice(separatorIndex + 1).trim();
     if (
-      (value.startsWith("\"") && value.endsWith("\"")) ||
+      (value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))
     ) {
       value = value.slice(1, -1);
@@ -38,7 +38,9 @@ loadEnvFile(path.join(workspaceRoot, ".env"));
 
 const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 if (!url) {
-  throw new Error("DIRECT_URL or DATABASE_URL is required to run drizzle-kit. Copy .env.example to .env first.");
+  throw new Error(
+    "DIRECT_URL or DATABASE_URL is required to run drizzle-kit. Copy .env.example to .env first.",
+  );
 }
 
 /** Set DRIZZLE_PUSH_NO_STRICT=1 when the terminal cannot drive the Yes/No prompt (e.g. integrated terminal). */

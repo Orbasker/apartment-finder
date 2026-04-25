@@ -39,7 +39,11 @@ export function FeedbackButtons({
         disabled={pending}
         onClick={() => submit(1)}
       >
-        {pendingRating === 1 ? <Spinner className="mr-2 h-3 w-3" /> : <span className="mr-1">👍</span>}
+        {pendingRating === 1 ? (
+          <Spinner className="mr-2 h-3 w-3" />
+        ) : (
+          <span className="mr-1">👍</span>
+        )}
         Good match
       </Button>
       <Button
@@ -48,7 +52,11 @@ export function FeedbackButtons({
         disabled={pending}
         onClick={() => submit(-1)}
       >
-        {pendingRating === -1 ? <Spinner className="mr-2 h-3 w-3" /> : <span className="mr-1">👎</span>}
+        {pendingRating === -1 ? (
+          <Spinner className="mr-2 h-3 w-3" />
+        ) : (
+          <span className="mr-1">👎</span>
+        )}
         Not for me
       </Button>
     </div>

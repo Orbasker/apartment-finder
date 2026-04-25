@@ -19,11 +19,7 @@ import {
 import { getAiUsageSummary } from "@/lib/aiUsage";
 import { isApifyConfigured, startFacebookGroupsRun } from "@/integrations/apify";
 import { isGatewayConfigured } from "@/lib/gateway";
-import {
-  DEFAULT_HOURS_AGO,
-  DEFAULT_TOP_PICKS,
-  pickTopListings,
-} from "@/pipeline/topPicks";
+import { DEFAULT_HOURS_AGO, DEFAULT_TOP_PICKS, pickTopListings } from "@/pipeline/topPicks";
 import { env } from "@/lib/env";
 import { isLoopbackOrigin, resolveAppPublicOrigin } from "@/lib/appOrigin";
 import { createLogger, errorMessage, newId, type Logger } from "@/lib/log";

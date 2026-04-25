@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import {
   extractPostIdFromUrl,
   normalizePermalink,
@@ -20,23 +20,17 @@ const baseRaw: RawPost = {
 describe("extractPostIdFromUrl", () => {
   test("pulls id from /groups/<g>/posts/<id>", () => {
     expect(
-      extractPostIdFromUrl(
-        "https://www.facebook.com/groups/telavivrentals/posts/1234567890",
-      ),
+      extractPostIdFromUrl("https://www.facebook.com/groups/telavivrentals/posts/1234567890"),
     ).toBe("1234567890");
   });
   test("pulls id from /groups/<g>/permalink/<id>", () => {
     expect(
-      extractPostIdFromUrl(
-        "https://www.facebook.com/groups/telavivrentals/permalink/987654321/",
-      ),
+      extractPostIdFromUrl("https://www.facebook.com/groups/telavivrentals/permalink/987654321/"),
     ).toBe("987654321");
   });
   test("pulls id from permalink.php?story_fbid=", () => {
     expect(
-      extractPostIdFromUrl(
-        "https://www.facebook.com/permalink.php?story_fbid=55555&id=100",
-      ),
+      extractPostIdFromUrl("https://www.facebook.com/permalink.php?story_fbid=55555&id=100"),
     ).toBe("55555");
   });
   test("returns null for non-post URL", () => {
@@ -52,9 +46,7 @@ describe("normalizePermalink", () => {
     expect(out).toBe("https://www.facebook.com/permalink.php?story_fbid=1&id=2");
   });
   test("drops hash fragment", () => {
-    const out = normalizePermalink(
-      "https://www.facebook.com/groups/g/posts/1#comments",
-    );
+    const out = normalizePermalink("https://www.facebook.com/groups/g/posts/1#comments");
     expect(out).toBe("https://www.facebook.com/groups/g/posts/1");
   });
 });
@@ -136,9 +128,7 @@ describe("parseWuiRawPost", () => {
   });
 
   test("returns null without a groupUrl", () => {
-    expect(parseWuiRawPost({ ...baseRaw, text: postText, groupUrl: null })).toBe(
-      null,
-    );
+    expect(parseWuiRawPost({ ...baseRaw, text: postText, groupUrl: null })).toBe(null);
   });
 
   test("synthesizes a wui-prefixed postId and permalink fragment", () => {

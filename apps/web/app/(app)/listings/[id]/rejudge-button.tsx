@@ -33,9 +33,7 @@ export function RejudgeButton({ listingId }: { listingId: number }) {
         {pending ? "Judging…" : "Rejudge"}
       </Button>
       {result && (
-        <p
-          className={`text-xs ${result.ok ? "text-muted-foreground" : "text-destructive"}`}
-        >
+        <p className={`text-xs ${result.ok ? "text-muted-foreground" : "text-destructive"}`}>
           {result.ok
             ? `Scored ${result.score} · ${result.decision}${result.escalated ? " (escalated)" : ""}`
             : result.error}

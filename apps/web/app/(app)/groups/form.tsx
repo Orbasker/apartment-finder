@@ -24,13 +24,7 @@ type RowAction = {
   kind: "subscribe" | "catalog" | "remove";
 };
 
-export function GroupsForm({
-  initial,
-  isAdmin,
-}: {
-  initial: Row[];
-  isAdmin: boolean;
-}) {
+export function GroupsForm({ initial, isAdmin }: { initial: Row[]; isAdmin: boolean }) {
   const [rows, setRows] = useState<Row[]>(initial);
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
@@ -96,8 +90,16 @@ export function GroupsForm({
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto]">
         <Input placeholder="Group URL" value={url} onChange={(e) => setUrl(e.target.value)} />
-        <Input placeholder="Label (optional)" value={label} onChange={(e) => setLabel(e.target.value)} />
-        <Button onClick={add} disabled={pending} className="w-full sm:w-auto sm:col-span-2 md:col-span-1">
+        <Input
+          placeholder="Label (optional)"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
+        <Button
+          onClick={add}
+          disabled={pending}
+          className="w-full sm:col-span-2 sm:w-auto md:col-span-1"
+        >
           {addingPending && <Spinner className="mr-2" />}
           {addingPending ? "Adding…" : "Add"}
         </Button>
@@ -107,7 +109,10 @@ export function GroupsForm({
         {rows.map((r) => {
           const actingOn = rowAction?.url === r.url ? rowAction : null;
           return (
-            <li key={r.url} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-3">
+            <li
+              key={r.url}
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-3"
+            >
               {actingOn?.kind === "subscribe" ? (
                 <Spinner className="h-4 w-4 text-muted-foreground" />
               ) : (

@@ -40,9 +40,7 @@ export async function normalizeFbPost(
 
   const description = r.text ?? "";
   const basic = quickExtract(description);
-  const enriched = isGatewayConfigured()
-    ? await llmExtract(description).catch(() => null)
-    : null;
+  const enriched = isGatewayConfigured() ? await llmExtract(description).catch(() => null) : null;
 
   const priceNis = enriched?.priceNis ?? basic.priceNis ?? null;
   const rooms = enriched?.rooms ?? basic.rooms ?? null;
@@ -73,9 +71,7 @@ export async function normalizeFbPost(
 
 function quickExtract(text: string): { priceNis: number | null; rooms: number | null } {
   const priceMatch = PRICE_RE.exec(text);
-  const priceNis = priceMatch?.[1]
-    ? Number(priceMatch[1].replace(/[,.]/g, ""))
-    : null;
+  const priceNis = priceMatch?.[1] ? Number(priceMatch[1].replace(/[,.]/g, "")) : null;
   const roomsMatch = ROOMS_RE.exec(text);
   const rooms = roomsMatch?.[1] ? Number(roomsMatch[1]) : null;
   return {

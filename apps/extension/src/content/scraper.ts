@@ -43,10 +43,7 @@ export function normalizePermalink(url: string): string | null {
   }
 }
 
-export function parseRawPost(
-  raw: RawPost,
-  now: Date = new Date(),
-): ExtensionScrapedPost | null {
+export function parseRawPost(raw: RawPost, now: Date = new Date()): ExtensionScrapedPost | null {
   const text = raw.text.trim();
   if (text.length < 20) return null;
 
@@ -105,14 +102,10 @@ export function extractPostsFromDocument(doc: Document): RawPost[] {
 }
 
 function findPostContainers(doc: Document): HTMLElement[] {
-  const primary = Array.from(
-    doc.querySelectorAll<HTMLElement>('[role="article"]'),
-  );
+  const primary = Array.from(doc.querySelectorAll<HTMLElement>('[role="article"]'));
   if (primary.length > 0) return primary;
 
-  const posinset = Array.from(
-    doc.querySelectorAll<HTMLElement>("[aria-posinset]"),
-  );
+  const posinset = Array.from(doc.querySelectorAll<HTMLElement>("[aria-posinset]"));
   if (posinset.length > 0) return posinset;
 
   const seen = new Set<HTMLElement>();
@@ -160,9 +153,10 @@ function extractPermalink(article: HTMLElement): string | null {
   return null;
 }
 
-function extractAuthor(
-  article: HTMLElement,
-): { authorName: string | null; authorUrl: string | null } {
+function extractAuthor(article: HTMLElement): {
+  authorName: string | null;
+  authorUrl: string | null;
+} {
   const strong = article.querySelector<HTMLElement>("h2 a, h3 a, h4 a, strong a");
   const name = strong?.innerText?.trim() ?? null;
   const href = strong?.getAttribute("href") ?? null;
@@ -265,7 +259,10 @@ function cleanWuiText(raw: string): string {
 }
 
 function guessAuthor(text: string): string | null {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   for (const line of lines.slice(0, 5)) {
     if (WUI_TIMESTAMP_RE.test(line)) continue;
     if (/₪|NIS|ש"?ח|שח|\d/.test(line)) continue;
@@ -275,10 +272,7 @@ function guessAuthor(text: string): string | null {
   return null;
 }
 
-export function parseWuiRawPost(
-  raw: RawPost,
-  now: Date = new Date(),
-): ExtensionScrapedPost | null {
+export function parseWuiRawPost(raw: RawPost, now: Date = new Date()): ExtensionScrapedPost | null {
   const text = raw.text.trim();
   if (text.length < 40) return null;
   const groupUrl = raw.groupUrl;

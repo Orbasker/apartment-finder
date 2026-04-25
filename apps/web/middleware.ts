@@ -6,8 +6,7 @@ export async function middleware(req: NextRequest) {
   const path = url.pathname;
 
   const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnon =
-    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseAnon = process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // If Supabase not configured yet (Phase 1 deploys), allow access — dashboard is single-user.
   if (!supabaseUrl || !supabaseAnon) return NextResponse.next();

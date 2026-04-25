@@ -19,11 +19,7 @@ chrome.runtime.onMessage.addListener(
 );
 
 function isScrapedPosts(m: unknown): m is ScrapedPostsMessage {
-  return (
-    typeof m === "object" &&
-    m !== null &&
-    (m as { kind?: unknown }).kind === "scraped-posts"
-  );
+  return typeof m === "object" && m !== null && (m as { kind?: unknown }).kind === "scraped-posts";
 }
 
 async function handleScrapedPosts(

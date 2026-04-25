@@ -13,27 +13,24 @@ export default defineManifest({
     "http://localhost:3000/*",
     "http://127.0.0.1/*",
     "http://127.0.0.1:3000/*",
-    "https://apartment-finder-eight.vercel.app/*"
+    "https://apartment-finder-eight.vercel.app/*",
   ],
   background: {
     service_worker: "src/background.ts",
-    type: "module"
+    type: "module",
   },
   content_scripts: [
     {
-      matches: [
-        "https://www.facebook.com/groups/*",
-        "https://m.facebook.com/groups/*"
-      ],
+      matches: ["https://www.facebook.com/groups/*", "https://m.facebook.com/groups/*"],
       js: ["src/content/index.ts"],
-      run_at: "document_idle"
-    }
+      run_at: "document_idle",
+    },
   ],
   options_ui: {
     page: "src/options/index.html",
-    open_in_tab: true
+    open_in_tab: true,
   },
   action: {
-    default_title: "Apartment Finder"
-  }
+    default_title: "Apartment Finder",
+  },
 });

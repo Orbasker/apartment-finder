@@ -56,11 +56,7 @@ export function ChatUI() {
             <span>{status === "submitted" ? "Thinking…" : "Responding…"}</span>
           </div>
         )}
-        {error && (
-          <div className="text-xs text-destructive">
-            Error: {error.message}
-          </div>
-        )}
+        {error && <div className="text-xs text-destructive">Error: {error.message}</div>}
       </div>
 
       <form onSubmit={submit} className="flex gap-2">

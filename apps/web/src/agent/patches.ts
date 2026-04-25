@@ -59,22 +59,15 @@ export async function cancelLatestPatch(userId: string): Promise<string> {
   return "Cancelled pending changes.";
 }
 
-function mergePreferences(
-  current: Preferences,
-  patch: PreferencesPatch,
-): Preferences {
+function mergePreferences(current: Preferences, patch: PreferencesPatch): Preferences {
   return {
     ...current,
     ...patch,
     budget: { ...current.budget, ...(patch.budget ?? {}) },
     rooms: { ...current.rooms, ...(patch.rooms ?? {}) },
-    sizeSqm: patch.sizeSqm
-      ? { ...(current.sizeSqm ?? {}), ...patch.sizeSqm }
-      : current.sizeSqm,
-    allowedNeighborhoods:
-      patch.allowedNeighborhoods ?? current.allowedNeighborhoods,
-    blockedNeighborhoods:
-      patch.blockedNeighborhoods ?? current.blockedNeighborhoods,
+    sizeSqm: patch.sizeSqm ? { ...(current.sizeSqm ?? {}), ...patch.sizeSqm } : current.sizeSqm,
+    allowedNeighborhoods: patch.allowedNeighborhoods ?? current.allowedNeighborhoods,
+    blockedNeighborhoods: patch.blockedNeighborhoods ?? current.blockedNeighborhoods,
     hardRequirements: patch.hardRequirements ?? current.hardRequirements,
     niceToHaves: patch.niceToHaves ?? current.niceToHaves,
     dealBreakers: patch.dealBreakers ?? current.dealBreakers,

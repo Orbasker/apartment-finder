@@ -1,0 +1,14 @@
+node_modules
+.next
+.turbo
+.vercel
+dist
+out
+coverage
+bun.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.context
+apps/web/drizzle
+*.tsbuildinfo

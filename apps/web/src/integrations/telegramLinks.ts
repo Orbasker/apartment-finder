@@ -42,10 +42,7 @@ export async function createLinkToken(userId: string): Promise<string> {
   return token;
 }
 
-export async function consumeLinkToken(
-  token: string,
-  chatId: string,
-): Promise<ConsumeTokenResult> {
+export async function consumeLinkToken(token: string, chatId: string): Promise<ConsumeTokenResult> {
   const db = getDb();
   const now = new Date();
 

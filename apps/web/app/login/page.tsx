@@ -51,9 +51,9 @@ export default async function LoginPage({
               Find the right apartment before anyone else sees it.
             </h1>
             <p className="text-base text-muted-foreground sm:text-lg">
-              Apartment Finder watches Yad2 and dozens of Facebook groups around the clock,
-              filters noise and reposts with AI, and pings you on Telegram the moment a
-              listing matches your preferences.
+              Apartment Finder watches Yad2 and dozens of Facebook groups around the clock, filters
+              noise and reposts with AI, and pings you on Telegram the moment a listing matches your
+              preferences.
             </p>
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <Stat label="Sources" value="Yad2 + FB groups" />
@@ -135,9 +135,9 @@ export default async function LoginPage({
                 title="Because the listings you want get buried."
               />
               <p className="mt-6 text-muted-foreground">
-                Tel Aviv is a noisy market — Yad2 plus dozens of Facebook groups, most posts
-                are agency spam, duplicates, or reposts. Good listings disappear in hours.
-                Manual monitoring doesn&apos;t scale; this does.
+                Tel Aviv is a noisy market — Yad2 plus dozens of Facebook groups, most posts are
+                agency spam, duplicates, or reposts. Good listings disappear in hours. Manual
+                monitoring doesn&apos;t scale; this does.
               </p>
             </div>
             <div className="rounded-lg border bg-muted/30 p-6 text-sm">
@@ -155,7 +155,9 @@ export default async function LoginPage({
         </section>
 
         <section className="border-t py-10 text-center sm:py-16">
-          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">Ready to stop refreshing?</h2>
+          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            Ready to stop refreshing?
+          </h2>
           <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
             Sign in to set up your preferences and start receiving matches.
           </p>
@@ -186,20 +188,14 @@ function SectionHeading({ eyebrow, title }: { eyebrow: string; title: string }) 
       <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {eyebrow}
       </div>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{title}</h2>
+      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+        {title}
+      </h2>
     </div>
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  body,
-}: {
-  icon: ReactNode;
-  title: string;
-  body: string;
-}) {
+function FeatureCard({ icon, title, body }: { icon: ReactNode; title: string; body: string }) {
   return (
     <div className="rounded-lg border bg-background p-6 shadow-sm">
       <div className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-muted text-foreground">

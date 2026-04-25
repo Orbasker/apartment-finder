@@ -18,9 +18,7 @@ export async function notifyListing(opts: NotifyOptions): Promise<void> {
   const tasks: Promise<unknown>[] = [];
   if (channels.includes("email") && isResendConfigured()) {
     tasks.push(
-      notifyChannel(opts.userId, "email", opts.listingId, () =>
-        sendEmailAlert(opts.userId, opts),
-      ),
+      notifyChannel(opts.userId, "email", opts.listingId, () => sendEmailAlert(opts.userId, opts)),
     );
   }
   await Promise.all(tasks);

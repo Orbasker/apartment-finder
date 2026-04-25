@@ -62,8 +62,7 @@ export async function runJudgeAndNotify(args: RunArgs): Promise<PipelineResult> 
 
   const { judgment } = judgeResult;
   const alertThreshold = args.prefs.ai.scoreThreshold;
-  const shouldAlert =
-    judgment.decision === "alert" && judgment.score >= alertThreshold;
+  const shouldAlert = judgment.decision === "alert" && judgment.score >= alertThreshold;
 
   if (!shouldAlert) {
     log.debug("judged not alertable", {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import type { NormalizedListing, Preferences } from "@apartment-finder/shared";
 import { ruleFilter } from "./ruleFilter";
 

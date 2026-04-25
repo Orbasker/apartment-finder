@@ -49,9 +49,9 @@ export function TelegramSection({ initial }: { initial: LinkStatus }) {
       <div>
         <h3 className="font-medium">Telegram</h3>
         <p className="text-sm text-muted-foreground">
-          Link Telegram to ask the bot about listings in natural language
-          (&quot;3-room in florentin under 7500&quot;). The bot will only respond to
-          linked chats; there&apos;s no broadcast or message from it otherwise.
+          Link Telegram to ask the bot about listings in natural language (&quot;3-room in florentin
+          under 7500&quot;). The bot will only respond to linked chats; there&apos;s no broadcast or
+          message from it otherwise.
         </p>
       </div>
 

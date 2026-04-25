@@ -17,9 +17,21 @@ import { savePreferencesAction } from "./actions";
 
 const AMENITY_STATES: { value: AmenityPreference; label: string; tone: string }[] = [
   { value: "any", label: "Any", tone: "bg-muted text-muted-foreground" },
-  { value: "preferred", label: "Preferred", tone: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200" },
-  { value: "required", label: "Required", tone: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" },
-  { value: "avoid", label: "Avoid", tone: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200" },
+  {
+    value: "preferred",
+    label: "Preferred",
+    tone: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200",
+  },
+  {
+    value: "required",
+    label: "Required",
+    tone: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
+  },
+  {
+    value: "avoid",
+    label: "Avoid",
+    tone: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200",
+  },
 ];
 
 export function PreferencesForm({
@@ -31,9 +43,7 @@ export function PreferencesForm({
 }) {
   const [prefs, setPrefs] = useState<Preferences>(initial);
   const [pending, start] = useTransition();
-  const [status, setStatus] = useState<
-    { kind: "ok" | "err"; msg: string } | null
-  >(null);
+  const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
 
   function save() {
     start(async () => {
@@ -65,10 +75,7 @@ export function PreferencesForm({
       if (state !== "any") acc[state] += 1;
       return acc;
     },
-    { preferred: 0, required: 0, avoid: 0 } as Record<
-      Exclude<AmenityPreference, "any">,
-      number
-    >,
+    { preferred: 0, required: 0, avoid: 0 } as Record<Exclude<AmenityPreference, "any">, number>,
   );
 
   return (
@@ -89,17 +96,13 @@ export function PreferencesForm({
             suffix="₪ / mo"
             help="Filters out spam and bait listings"
             value={prefs.budget.minNis ?? 0}
-            onChange={(v) =>
-              setPrefs({ ...prefs, budget: { ...prefs.budget, minNis: v } })
-            }
+            onChange={(v) => setPrefs({ ...prefs, budget: { ...prefs.budget, minNis: v } })}
           />
           <NumberField
             label="Max rent"
             suffix="₪ / mo"
             value={prefs.budget.maxNis}
-            onChange={(v) =>
-              setPrefs({ ...prefs, budget: { ...prefs.budget, maxNis: v } })
-            }
+            onChange={(v) => setPrefs({ ...prefs, budget: { ...prefs.budget, maxNis: v } })}
           />
           <NumberField
             label="Flexibility"
@@ -142,18 +145,14 @@ export function PreferencesForm({
               const next = { min: min ?? undefined, max: max ?? undefined };
               setPrefs({
                 ...prefs,
-                sizeSqm:
-                  next.min == null && next.max == null ? undefined : next,
+                sizeSqm: next.min == null && next.max == null ? undefined : next,
               });
             }}
           />
         </div>
       </Section>
 
-      <Section
-        title="Freshness"
-        description="Only consider listings posted recently."
-      >
+      <Section title="Freshness" description="Only consider listings posted recently.">
         <div className="grid gap-4 sm:grid-cols-3">
           <NumberField
             label="Max age"
@@ -215,23 +214,16 @@ export function PreferencesForm({
         title="Amenities"
         description={
           <>
-            Tap a chip to set how the AI should weigh each amenity.{" "}
-            <strong>Required</strong> blocks alerts unless the feature is
-            present; <strong>Avoid</strong> demotes or skips listings that
-            mention it.
+            Tap a chip to set how the AI should weigh each amenity. <strong>Required</strong> blocks
+            alerts unless the feature is present; <strong>Avoid</strong> demotes or skips listings
+            that mention it.
           </>
         }
         aside={
           <div className="flex flex-wrap gap-2 text-xs">
-            <SummaryPill tone="emerald">
-              {amenitySummary.required} required
-            </SummaryPill>
-            <SummaryPill tone="sky">
-              {amenitySummary.preferred} preferred
-            </SummaryPill>
-            <SummaryPill tone="rose">
-              {amenitySummary.avoid} avoid
-            </SummaryPill>
+            <SummaryPill tone="emerald">{amenitySummary.required} required</SummaryPill>
+            <SummaryPill tone="sky">{amenitySummary.preferred} preferred</SummaryPill>
+            <SummaryPill tone="rose">{amenitySummary.avoid} avoid</SummaryPill>
           </div>
         }
       >
@@ -352,9 +344,7 @@ export function PreferencesForm({
           <span
             className={cn(
               "text-sm",
-              status.kind === "ok"
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-destructive",
+              status.kind === "ok" ? "text-emerald-600 dark:text-emerald-400" : "text-destructive",
             )}
           >
             {status.msg}
@@ -385,11 +375,7 @@ function Section({
       <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3 sm:px-5 sm:py-4">
         <div>
           <h3 className="font-semibold leading-none">{title}</h3>
-          {description && (
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              {description}
-            </p>
-          )}
+          {description && <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>}
         </div>
         {aside}
       </header>
@@ -487,10 +473,8 @@ function RangeInputs({
 type ChipTone = "positive" | "negative" | "neutral";
 
 const CHIP_TONES: Record<ChipTone, string> = {
-  positive:
-    "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
-  negative:
-    "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200",
+  positive: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
+  negative: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200",
   neutral: "bg-muted text-foreground",
 };
 
@@ -625,9 +609,7 @@ function AmenityRow({
               onClick={() => onChange(state.value)}
               className={cn(
                 "px-2.5 py-1 text-xs font-medium transition-colors",
-                active
-                  ? state.tone
-                  : "bg-background text-muted-foreground hover:bg-muted",
+                active ? state.tone : "bg-background text-muted-foreground hover:bg-muted",
                 "border-r last:border-r-0",
               )}
             >
@@ -661,9 +643,7 @@ function ToggleRow({
     >
       <div className="space-y-0.5">
         <div className="text-sm font-medium">{label}</div>
-        {description && (
-          <div className="text-xs text-muted-foreground">{description}</div>
-        )}
+        {description && <div className="text-xs text-muted-foreground">{description}</div>}
       </div>
       <span
         aria-hidden="true"
@@ -691,8 +671,7 @@ function SummaryPill({
   tone: "emerald" | "sky" | "rose";
 }) {
   const tones: Record<string, string> = {
-    emerald:
-      "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
+    emerald: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
     sky: "bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200",
     rose: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200",
   };

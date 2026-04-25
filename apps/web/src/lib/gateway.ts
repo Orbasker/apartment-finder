@@ -7,9 +7,7 @@ export function isGatewayConfigured(): boolean {
 
 export function model(id: string) {
   if (!isGatewayConfigured()) {
-    throw new Error(
-      "AI_GATEWAY_API_KEY not set. Enable Vercel AI Gateway and set the key.",
-    );
+    throw new Error("AI_GATEWAY_API_KEY not set. Enable Vercel AI Gateway and set the key.");
   }
   return gateway(id);
 }

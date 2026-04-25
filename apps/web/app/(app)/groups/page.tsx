@@ -22,8 +22,8 @@ export default async function GroupsPage() {
     <div className="mx-auto max-w-3xl">
       <h2 className="mb-2 text-xl font-semibold">Facebook groups</h2>
       <p className="mb-4 text-sm text-muted-foreground">
-        Public Facebook groups monitored via Apify. Anyone can add a group.
-        Check the boxes for groups you want alerts from.
+        Public Facebook groups monitored via Apify. Anyone can add a group. Check the boxes for
+        groups you want alerts from.
         {isAdmin(user) && " As admin, you can also enable/disable catalog groups and delete them."}
       </p>
       <GroupsForm

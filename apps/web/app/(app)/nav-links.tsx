@@ -20,8 +20,7 @@ export function DashboardNav({ showAdmin = false }: { showAdmin?: boolean }) {
   return (
     <nav className="flex gap-3 whitespace-nowrap sm:gap-4">
       {links.map((l) => {
-        const isActive =
-          l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
+        const isActive = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
         return (
           <Link
             key={l.href}
@@ -51,11 +50,7 @@ function LinkPendingIndicator() {
 
 export function HeaderBrandLink() {
   return (
-    <Link
-      href="/"
-      prefetch
-      className="inline-flex items-center gap-2 text-lg font-semibold"
-    >
+    <Link href="/" prefetch className="inline-flex items-center gap-2 text-lg font-semibold">
       <LinkPendingIndicator />
       Apartment Finder
     </Link>
