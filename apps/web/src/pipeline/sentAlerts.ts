@@ -15,7 +15,7 @@ export type AlertEntry = {
 
 export async function hasAlertBeenSent(
   userId: string,
-  listingId: number,
+  canonicalId: number,
   channel: AlertChannel,
 ): Promise<boolean> {
   const db = getDb();
@@ -25,7 +25,7 @@ export async function hasAlertBeenSent(
     .where(
       and(
         eq(sentAlerts.userId, userId),
-        eq(sentAlerts.listingId, listingId),
+        eq(sentAlerts.canonicalId, canonicalId),
         eq(sentAlerts.channel, channel),
       ),
     )
@@ -35,9 +35,9 @@ export async function hasAlertBeenSent(
 
 export async function recordAlertSent(
   userId: string,
-  listingId: number,
+  canonicalId: number,
   channel: AlertChannel,
 ): Promise<void> {
   const db = getDb();
-  await db.insert(sentAlerts).values({ userId, listingId, channel }).onConflictDoNothing();
+  await db.insert(sentAlerts).values({ userId, canonicalId, channel }).onConflictDoNothing();
 }

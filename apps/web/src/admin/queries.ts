@@ -1,6 +1,6 @@
 import { desc, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { listings } from "@/db/schema";
+import { rawPosts } from "@/db/schema";
 
 export type SourceHealthRow = {
   source: string;
@@ -13,14 +13,14 @@ export async function getSourceHealth(): Promise<SourceHealthRow[]> {
   const db = getDb();
   const rows = await db
     .select({
-      source: listings.source,
-      lastIngestedAt: sql<Date | null>`max(${listings.ingestedAt})`,
-      count24h: sql<number>`count(*) filter (where ${listings.ingestedAt} > now() - interval '24 hours')::int`,
-      count7d: sql<number>`count(*) filter (where ${listings.ingestedAt} > now() - interval '7 days')::int`,
+      source: rawPosts.source,
+      lastIngestedAt: sql<Date | null>`max(${rawPosts.fetchedAt})`,
+      count24h: sql<number>`count(*) filter (where ${rawPosts.fetchedAt} > now() - interval '24 hours')::int`,
+      count7d: sql<number>`count(*) filter (where ${rawPosts.fetchedAt} > now() - interval '7 days')::int`,
     })
-    .from(listings)
-    .groupBy(listings.source)
-    .orderBy(desc(sql`max(${listings.ingestedAt})`));
+    .from(rawPosts)
+    .groupBy(rawPosts.source)
+    .orderBy(desc(sql`max(${rawPosts.fetchedAt})`));
 
   return rows;
 }

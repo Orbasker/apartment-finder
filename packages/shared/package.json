@@ -10,7 +10,8 @@
     "./preferences": "./src/preferences.ts",
     "./listing": "./src/listing.ts",
     "./judgment": "./src/judgment.ts",
-    "./extension": "./src/extension.ts"
+    "./extension": "./src/extension.ts",
+    "./extraction": "./src/extraction.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

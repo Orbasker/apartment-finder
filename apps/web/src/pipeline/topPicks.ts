@@ -1,8 +1,14 @@
 import { generateObject } from "ai";
-import { desc, eq, gte } from "drizzle-orm";
+import { desc, eq, gte, sql } from "drizzle-orm";
 import type { Preferences } from "@apartment-finder/shared";
 import { getDb } from "../db";
-import { judgments, listings } from "../db/schema";
+import {
+  apartmentSources,
+  canonicalApartments,
+  extractions,
+  judgments,
+  rawPosts,
+} from "../db/schema";
 import { model } from "../lib/gateway";
 import { recordAiUsage } from "../lib/aiUsage";
 import {
@@ -24,27 +30,32 @@ export async function fetchRecentCandidates(
 
   const rows = await db
     .select({
-      id: listings.id,
-      source: listings.source,
-      url: listings.url,
-      title: listings.title,
-      description: listings.description,
-      priceNis: listings.priceNis,
-      rooms: listings.rooms,
-      sqm: listings.sqm,
-      neighborhood: listings.neighborhood,
-      street: listings.street,
-      isAgency: listings.isAgency,
-      postedAt: listings.postedAt,
-      ingestedAt: listings.ingestedAt,
+      id: canonicalApartments.id,
+      source: rawPosts.source,
+      url: rawPosts.url,
+      title: canonicalApartments.primaryAddress,
+      description: rawPosts.rawText,
+      priceNis: extractions.priceNis,
+      rooms: sql<number | null>`coalesce(${extractions.rooms}, ${canonicalApartments.rooms})`,
+      sqm: sql<number | null>`coalesce(${extractions.sqm}, ${canonicalApartments.sqm})`,
+      neighborhood: sql<
+        string | null
+      >`coalesce(${canonicalApartments.neighborhood}, ${extractions.neighborhood})`,
+      street: sql<string | null>`coalesce(${canonicalApartments.street}, ${extractions.street})`,
+      isAgency: extractions.isAgency,
+      postedAt: rawPosts.postedAt,
+      ingestedAt: rawPosts.fetchedAt,
       score: judgments.score,
       decision: judgments.decision,
       reasoning: judgments.reasoning,
     })
-    .from(listings)
-    .leftJoin(judgments, eq(judgments.listingId, listings.id))
-    .where(gte(listings.ingestedAt, cutoff))
-    .orderBy(desc(listings.ingestedAt))
+    .from(canonicalApartments)
+    .innerJoin(apartmentSources, eq(apartmentSources.canonicalId, canonicalApartments.id))
+    .innerJoin(extractions, eq(extractions.id, apartmentSources.extractionId))
+    .innerJoin(rawPosts, eq(rawPosts.id, extractions.rawPostId))
+    .leftJoin(judgments, eq(judgments.canonicalId, canonicalApartments.id))
+    .where(gte(rawPosts.fetchedAt, cutoff))
+    .orderBy(desc(rawPosts.fetchedAt))
     .limit(limit);
 
   return rows;

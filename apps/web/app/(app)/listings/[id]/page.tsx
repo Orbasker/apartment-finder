@@ -75,7 +75,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                   <div>
                     <p className="font-medium">Positives</p>
                     <ul className="list-disc pl-5 text-muted-foreground">
-                      {listing.positiveSignals.map((s) => (
+                      {listing.positiveSignals.map((s: string) => (
                         <li key={s}>{s}</li>
                       ))}
                     </ul>
@@ -85,7 +85,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
                   <div>
                     <p className="font-medium">Red flags</p>
                     <ul className="list-disc pl-5 text-muted-foreground">
-                      {listing.redFlags.map((s) => (
+                      {listing.redFlags.map((s: string) => (
                         <li key={s}>{s}</li>
                       ))}
                     </ul>
