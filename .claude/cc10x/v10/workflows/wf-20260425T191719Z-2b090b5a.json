@@ -1,0 +1,379 @@
+{
+  "workflow_uuid": "wf-20260425T191719Z-2b090b5a",
+  "workflow_id": "wf-20260425T191719Z-2b090b5a",
+  "workflow_type": "BUILD",
+  "state_root": ".claude/cc10x/v10",
+  "user_request": "Execute approved plan — apartment data pipeline rebuild (multi-collector → shared AI extractor with tri-state attributes → cross-source unification → canonical apartments). QStash for async, pgvector for matching.",
+  "plan_file": "/Users/orb/.claude/plans/system-instruction-you-are-working-zippy-fountain.md",
+  "design_file": null,
+  "research_files": [],
+  "approved_decisions": [
+    "extraction_execution_model: async via QStash",
+    "existing_listings_data: fresh start, drop old table",
+    "unification_matching: pgvector enabled day one",
+    "tri_state_storage: hybrid (nullable boolean per amenity + jsonb extras)",
+    "madlan_scope: follow-up, not in this PR",
+    "phone_extraction: include phone_e164",
+    "qstash_account: assumed, env one-time setup",
+    "schema_versioning_reextraction: manual admin button"
+  ],
+  "plan_mode": "execution_plan",
+  "verification_rigor": "critical_path",
+  "proof_status": "passed",
+  "traceability": {
+    "requirements": [],
+    "phases": [],
+    "verification": [],
+    "remediation": []
+  },
+  "intent": {
+    "goal": "Replace flat listings table with three-layer pipeline (raw_posts → extractions → canonical_apartments) supporting tri-state amenity attributes and cross-source apartment unification.",
+    "non_goals": [
+      "Adding the Madlan collector (deferred to follow-up)",
+      "Auto-trigger re-extraction on schema bump (deferred)"
+    ],
+    "constraints": [
+      "Must run on Vercel (60s function limit; longer for cron/webhooks)",
+      "Strong typing end-to-end (Drizzle + Zod)",
+      "Cost-conscious — content_hash short-circuits re-extraction of unchanged content",
+      "Reuse existing gateway.ts, aiUsage.ts, AMENITY_KEYS"
+    ],
+    "acceptance_criteria": [
+      "All 6 new tables exist; vector extension enabled; old listings table dropped",
+      "Shared extractApartment(rawText, sourceType) extracts core fields + 11 tri-state booleans",
+      "/api/jobs/extract and /api/jobs/unify routes accept QStash signed payloads",
+      "Cross-source duplicates merge automatically at ≥0.95 confidence; 0.7–0.95 land in merge_candidates; <0.7 create new canonical",
+      "Yad2/Apify/Extension collectors only insert raw_posts and enqueue; no normalization in collectors",
+      "judge.ts reads canonical_apartments + canonical_attributes",
+      "bun run ci passes (typecheck + tests + knip + prettier)"
+    ],
+    "open_decisions": []
+  },
+  "normalized_phases": [
+    {
+      "phase_id": "P1",
+      "title": "Schema foundation",
+      "objective": "Define new pipeline tables in Drizzle, write idempotent destructive reset migration, push schema, enable pgvector. Preserve auth/preferences/aiUsage/monitoredGroups tables.",
+      "files": [
+        "apps/web/src/db/schema.ts",
+        "apps/web/drizzle/manual_pipeline_reset.sql"
+      ],
+      "checks": [
+        "bun run typecheck",
+        "bun run db:push",
+        "psql verify all 6 new tables exist",
+        "psql verify vector extension enabled"
+      ],
+      "exit_criteria": "Schema applied without error; 6 new tables present; vector extension enabled; auth/preferences/aiUsage/monitoredGroups intact; old listings table dropped."
+    },
+    {
+      "phase_id": "P2",
+      "title": "Shared extraction schema + extractor",
+      "objective": "Define ExtractionSchema (Zod) in packages/shared reusing AMENITY_KEYS. Build extractApartment(rawText, sourceType) using generateObject + AI Gateway, with aiUsage cost tracking.",
+      "files": [
+        "packages/shared/src/extraction.ts",
+        "apps/web/src/pipeline/extract.ts"
+      ],
+      "checks": [
+        "bun run typecheck",
+        "Unit test: golden fixture (Yad2-shaped + FB-shaped raw text) → extractor returns Zod-shaped output with at least core fields populated",
+        "Unit test: invalid LLM response is rejected"
+      ],
+      "exit_criteria": "Extractor compiles, types align with the new extractions table, dual-model escalation supported, recordAiUsage tagged 'pipeline.extract'."
+    },
+    {
+      "phase_id": "P3",
+      "title": "Queue + extract worker",
+      "objective": "Wrap QStash publish/verify. Implement /api/jobs/extract worker route that consumes signed QStash payloads, runs extractApartment, writes extractions, sets raw_posts.extraction_status=done, enqueues unify job. Add QSTASH env vars to env.ts.",
+      "files": [
+        "apps/web/src/pipeline/queue.ts",
+        "apps/web/app/api/jobs/extract/route.ts",
+        "apps/web/src/lib/env.ts"
+      ],
+      "checks": [
+        "bun run typecheck",
+        "Unit test: queue.ts publish/verify wrapper",
+        "Unit test: /api/jobs/extract rejects unsigned payloads, processes signed payloads end-to-end with mocked extractor"
+      ],
+      "exit_criteria": "Worker writes a valid extraction row given a raw_post_id; rejects bad signatures; unify enqueue is called on success."
+    },
+    {
+      "phase_id": "P4",
+      "title": "Unification + worker",
+      "objective": "Implement match_key generation, candidate search via match_key + phone + pgvector cosine, scoring, auto-merge ≥0.95 / review queue 0.7–0.95 / new canonical <0.7. Truth-resolution rule for canonical_attributes (TRUE wins, FALSE wins, conflicts → NULL + flag).",
+      "files": [
+        "apps/web/src/pipeline/unify.ts",
+        "apps/web/app/api/jobs/unify/route.ts"
+      ],
+      "checks": [
+        "bun run typecheck",
+        "Unit test: match_key generation handles missing/partial address",
+        "Unit test: ≥0.95 path merges into existing canonical and updates canonical_attributes",
+        "Unit test: 0.7–0.95 path inserts merge_candidate",
+        "Unit test: <0.7 path creates new canonical_apartment",
+        "Unit test: TRUE/FALSE conflict resolves to NULL"
+      ],
+      "exit_criteria": "All unit tests pass; types align with schema; pgvector cosine query works against test fixtures."
+    },
+    {
+      "phase_id": "P5",
+      "title": "Collector simplification + judge rewire + cleanup",
+      "objective": "Strip per-source normalization. Yad2/Apify/Extension only produce RawPost and enqueue. Delete fbNormalize.ts and dedup.ts. Rewire judge.ts to read canonical_apartments + canonical_attributes. Update webhooks/cron to enqueue extraction jobs.",
+      "files": [
+        "apps/web/src/scrapers/yad2.ts",
+        "apps/web/src/integrations/apify.ts",
+        "apps/web/app/api/webhooks/extension/route.ts",
+        "apps/web/app/api/webhooks/apify/route.ts",
+        "apps/web/app/api/cron/poll-yad2/route.ts",
+        "apps/web/app/api/cron/poll-apify/route.ts",
+        "apps/web/src/pipeline/judge.ts",
+        "apps/web/src/pipeline/fbNormalize.ts (DELETE)",
+        "apps/web/src/pipeline/dedup.ts (DELETE)"
+      ],
+      "checks": [
+        "bun run ci (typecheck + tests + knip + prettier)",
+        "Manual: trigger Yad2 cron locally → rows land in raw_posts only, extraction job is enqueued",
+        "Manual: trigger Apify webhook locally → same behavior"
+      ],
+      "exit_criteria": "ci passes; collectors do no normalization; judge runs against canonical_apartments; no orphan imports."
+    },
+    {
+      "phase_id": "P6",
+      "title": "UI rewire + admin merge queue",
+      "objective": "Rewire all UI/routes that query listings to read canonical_apartments. Build admin merge-queue page gated by getCurrentAdmin().",
+      "files": [
+        "apps/web/app/(app)/page.tsx",
+        "apps/web/app/(app)/listings/[id]/page.tsx",
+        "apps/web/app/(app)/admin/page.tsx",
+        "apps/web/app/api/dashboard/run-job/route.ts",
+        "apps/web/app/(app)/admin/merge-queue/page.tsx (NEW)"
+      ],
+      "checks": [
+        "bun run ci",
+        "Manual UI: dashboard loads, listing detail loads, admin merge queue loads and approve/reject works"
+      ],
+      "exit_criteria": "ci passes; admin merge queue functional; no broken UI links to dropped tables."
+    }
+  ],
+  "phase_cursor": "P2",
+  "capabilities": {
+    "brightdata_available": "unknown",
+    "octocode_available": "unknown",
+    "websearch_available": "unknown",
+    "webfetch_available": "unknown"
+  },
+  "research_rounds": [],
+  "research_backend_history": [],
+  "research_quality": {
+    "web": "none",
+    "github": "none",
+    "overall": "none"
+  },
+  "task_ids": {
+    "workflow": "1"
+  },
+  "phase_status": {
+    "P1": "completed",
+    "P2": "pending",
+    "P3": "pending",
+    "P4": "pending",
+    "P5": "pending",
+    "P6": "pending"
+  },
+  "results": {
+    "builder": {
+      "phase": "P1",
+      "status": "PASS",
+      "confidence": 92,
+      "phase_exit_ready": true,
+      "tdd_red_exit": 1,
+      "tdd_green_exit": 0,
+      "files_modified": [
+        "apps/web/src/db/schema.ts",
+        "apps/web/drizzle/manual_better_auth_reset.sql"
+      ],
+      "files_created": [
+        "apps/web/drizzle/manual_pipeline_reset.sql",
+        "apps/web/src/db/schema.test.ts"
+      ],
+      "scenarios_passed": 2,
+      "blocked_items": [],
+      "deferred": [
+        "Downstream typecheck failures (Listing/listingId references) in apps/web/src/{admin,agent,feedback,listings,pipeline}/* — owned by P5",
+        "Pre-existing typecheck failures in auth.ts/auth-client.ts/middleware.ts (Cannot find module 'better-auth/...') — predate P1",
+        "drizzle-kit push:auto initial-pass quirk on feedback/judgments/sent_alerts; second push fixed it — note for P5/P6 verifier"
+      ]
+    },
+    "investigator": null,
+    "reviewer": {
+      "phase": "P1",
+      "verdict": "APPROVE",
+      "confidence": 92,
+      "critical_issues": 0,
+      "blocking": false,
+      "summary": "All P1 plan requirements met; 34/34 schema tests pass; FK cascades audited; tri-state semantics verified; pgvector(768) correct.",
+      "deferred": [
+        "(M) sent_alerts.canonical_id lacks .references() — matches pre-P1 sent_alerts.listing_id pattern; flag if downstream phases need referential integrity",
+        "(m) apartment_sources.extraction_id lacks standalone index for reverse lookups",
+        "(m) apartment_sources test does not assert FK target tables",
+        "(m) canonical_attributes test does not assert tri-state nullability of has_* columns explicitly",
+        "(m) bigserial PK paired with integer FK — pre-existing convention, revisit if any table approaches 2.1B rows"
+      ]
+    },
+    "hunter": {
+      "phase": "P1",
+      "verdict": "ISSUES_FOUND",
+      "critical_issues": 0,
+      "high_issues": 3,
+      "medium_issues": 4,
+      "blocking": false,
+      "remediation_needed": false,
+      "summary": "P1 schema is shippable as-is for a not-yet-live system. 3 HIGH pre-existing tooling concerns; 1 MEDIUM (HNSW index) tracked for P4; 1 MEDIUM (40 files referencing legacy listings) is P5 known scope.",
+      "high_issues_detail": [
+        "HIGH-1: manual_gemini_model_swap.sql is not idempotent on fresh DB (unguarded UPDATE on preferences). Pre-existing. Fix: wrap in to_regclass guard.",
+        "HIGH-2: apply-manual-migrations.ts swallows all Postgres NOTICE messages (onnotice: () => {}). Pre-existing. Fix: log notices.",
+        "HIGH-3: db:push:auto chain has no post-push schema verification. Pre-existing. Fix: add verify-schema.ts script."
+      ],
+      "deferred_to_followup_hardening_task": ["HIGH-1", "HIGH-2", "HIGH-3"],
+      "deferred_to_p4": ["MEDIUM-2: HNSW/IVFFlat index on extractions.embedding"],
+      "deferred_to_p5": ["MEDIUM-4: 40 files referencing legacy listings/Listing/listingId — P5 scope"]
+    },
+    "verifier": {
+      "phase": "P1",
+      "status": "PASS",
+      "scenarios_total": 7,
+      "scenarios_passed": 7,
+      "scenarios_failed": 0,
+      "blocking": false,
+      "summary": "All 7 P1 phase-exit checks reconciled with concrete evidence on a live Supabase Postgres. Drizzle-kit second-pass FK-rebind quirk empirically reproduced and resolved during verification (judgments/feedback/sent_alerts now have canonical_id only).",
+      "key_observation": "drizzle-kit may need TWO push invocations to apply FK-rebound table DDL after destructive resets — first pass prints DDL but doesn't fully apply; second pass completes. P1 scope confirmed shippable."
+    },
+    "planner": null,
+    "research": {
+      "web": null,
+      "github": null,
+      "synthesis": null
+    }
+  },
+  "evidence": {
+    "builder": [
+      {
+        "phase": "P1",
+        "name": "Schema introspection matches plan",
+        "command": "CI=true bun run test apps/web/src/db/schema.test.ts",
+        "expected": "34/34 pass, exit 0",
+        "actual": "34/34 pass, exit 0",
+        "exit_code": 0,
+        "status": "PASS"
+      },
+      {
+        "phase": "P1",
+        "name": "db:push applies schema to live Supabase Postgres",
+        "command": "cd apps/web && bun run db:push:auto",
+        "expected": "exit 0; 6 pipeline tables present; vector extension present; listings table NULL; auth/preferences/aiUsage preserved",
+        "actual": "exit 0; 6/6 pipeline tables; vector extension yes; listings NULL; ai_usage 614 rows preserved",
+        "exit_code": 0,
+        "status": "PASS"
+      }
+    ],
+    "investigator": [],
+    "reviewer": [],
+    "hunter": [],
+    "verifier": [
+      {"phase":"P1","name":"schema.ts compiles in isolation","command":"cd apps/web && bun run typecheck","expected":"0 errors in src/db/schema.ts & schema.test.ts; downstream errors localized to P5 scope","actual":"0 errors in P1 surface; 36 errors confined to 13 documented downstream files (P5 scope)","exit_code":1,"status":"PASS"},
+      {"phase":"P1","name":"db:push idempotency","command":"cd apps/web && bun run db:manual && DRIZZLE_PUSH_NO_STRICT=1 bunx drizzle-kit push","expected":"both exit 0; idempotent","actual":"all 4 manual_*.sql ok; drizzle-kit applied feedback/judgments/sent_alerts FK-rebind DDL; [✓] Changes applied","exit_code":0,"status":"PASS"},
+      {"phase":"P1","name":"6 new pipeline tables exist","command":"SELECT COUNT(*) FROM information_schema.tables WHERE table_name IN (...6 names...)","expected":"6","actual":"6","exit_code":0,"status":"PASS"},
+      {"phase":"P1","name":"pgvector enabled + extractions.embedding=vector(768)","command":"SELECT 1 FROM pg_extension WHERE extname='vector'; pg_attribute on extractions.embedding","expected":"1 row + vector(768)","actual":"1 row + vector(768)","exit_code":0,"status":"PASS"},
+      {"phase":"P1","name":"legacy listings dropped","command":"SELECT to_regclass('public.listings')","expected":"NULL","actual":"NULL","exit_code":0,"status":"PASS"},
+      {"phase":"P1","name":"auth/preferences/aiUsage/monitoredGroups intact","command":"SELECT COUNT(*) on each of 7 tables","expected":"all selectable; ai_usage retains data","actual":"user=0, session=0, account=0, verification=0, preferences=0, ai_usage=614 rows preserved, monitored_groups=1","exit_code":0,"status":"PASS"},
+      {"phase":"P1","name":"schema test suite","command":"CI=true bun run test apps/web/src/db/schema.test.ts","expected":"34/34 pass, exit 0","actual":"34/34 pass in 92ms","exit_code":0,"status":"PASS"}
+    ]
+  },
+  "telemetry": {
+    "task_metrics_available": "unknown",
+    "workflow_wall_clock_seconds": 0,
+    "agent_wall_clock_seconds": {
+      "builder": 0,
+      "investigator": 0,
+      "reviewer": 0,
+      "hunter": 0,
+      "verifier": 0,
+      "planner": 0
+    },
+    "loop_counts": {
+      "re_review": 0,
+      "re_hunt": 0,
+      "re_verify": 0
+    },
+    "verifier": {
+      "phase_exit_proof_runs": 0,
+      "extended_audit_runs": 0,
+      "workload_seconds": {
+        "tests": 0,
+        "build": 0,
+        "scan": 0,
+        "reconcile": 0,
+        "reasoning": 0
+      }
+    }
+  },
+  "quality": {
+    "confidence": 92,
+    "evidence_complete": true,
+    "scenario_coverage": 7,
+    "research_quality": "none",
+    "convergence_state": "phase_p1_passed"
+  },
+  "memory_notes": [],
+  "pending_gate": null,
+  "status_history": [
+    {
+      "event": "workflow_started",
+      "ts": "2026-04-25T19:17:19Z",
+      "phase": "build"
+    },
+    {
+      "event": "agent_completed",
+      "ts": "2026-04-25T19:37:12Z",
+      "phase": "P1",
+      "agent": "builder",
+      "decision": "PASS",
+      "reason": "TDD RED 1 → GREEN 0; live db:push succeeded; 6 pipeline tables verified; vector extension enabled; listings dropped; auth/preferences/aiUsage preserved"
+    },
+    {
+      "event": "agent_completed",
+      "ts": "2026-04-25T19:50:00Z",
+      "phase": "P1",
+      "agent": "code-reviewer",
+      "decision": "APPROVE",
+      "reason": "All P1 plan requirements met; 0 critical issues; medium observations deferred"
+    },
+    {
+      "event": "agent_completed",
+      "ts": "2026-04-25T19:50:00Z",
+      "phase": "P1",
+      "agent": "silent-failure-hunter",
+      "decision": "ISSUES_FOUND",
+      "reason": "0 critical, 3 HIGH (all pre-existing tooling hygiene); shippable as-is for not-yet-live system"
+    },
+    {
+      "event": "agent_completed",
+      "ts": "2026-04-25T19:55:20Z",
+      "phase": "P1",
+      "agent": "integration-verifier",
+      "decision": "PASS",
+      "reason": "7/7 phase-exit checks reconciled with concrete evidence on live Postgres; FK-rebind quirk empirically reproduced and resolved"
+    },
+    {
+      "event": "phase_completed",
+      "ts": "2026-04-25T19:55:20Z",
+      "phase": "P1",
+      "agent": "router",
+      "decision": "advance_cursor",
+      "reason": "Phase exit gate passed; advancing phase_cursor P1 → P2"
+    }
+  ],
+  "remediation_history": [],
+  "created_at": "2026-04-25T19:17:19Z",
+  "updated_at": "2026-04-25T19:55:20Z"
+}
