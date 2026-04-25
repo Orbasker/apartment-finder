@@ -339,7 +339,7 @@ export function PreferencesForm({
         </div>
       </Section>
 
-      <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 rounded-md border bg-background/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/75">
+      <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center justify-end gap-3 border-t bg-background/95 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/75 sm:-mx-0 sm:rounded-md sm:border">
         {status && (
           <span
             className={cn(
@@ -372,14 +372,14 @@ function Section({
 }) {
   return (
     <section className="rounded-lg border bg-background shadow-sm">
-      <header className="flex flex-wrap items-start justify-between gap-3 border-b px-5 py-4">
+      <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3 sm:px-5 sm:py-4">
         <div>
           <h3 className="font-semibold leading-none">{title}</h3>
           {description && <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>}
         </div>
         {aside}
       </header>
-      <div className="space-y-5 px-5 py-5">{children}</div>
+      <div className="space-y-5 px-4 py-4 sm:px-5 sm:py-5">{children}</div>
     </section>
   );
 }
@@ -591,7 +591,7 @@ function AmenityRow({
   onChange: (next: AmenityPreference) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-2">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background px-3 py-2">
       <span className="text-sm">{AMENITY_LABELS[amenityKey]}</span>
       <div
         role="radiogroup"

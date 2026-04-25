@@ -19,11 +19,11 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
   if (!listing) notFound();
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <div className="space-y-6 lg:col-span-2">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+      <div className="space-y-4 sm:space-y-6 lg:col-span-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">
+            <CardTitle className="text-xl sm:text-2xl break-words">
               {listing.neighborhood ?? listing.title ?? "Listing"}
             </CardTitle>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -56,7 +56,7 @@ export default async function ListingDetailPage({ params }: { params: Promise<{ 
         </Card>
       </div>
 
-      <aside className="space-y-6">
+      <aside className="space-y-4 sm:space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>AI Judgment</CardTitle>

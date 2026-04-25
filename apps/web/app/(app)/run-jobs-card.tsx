@@ -97,7 +97,7 @@ export function RunJobsCard() {
           schedule window when started here.
         </p>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {JOBS.map((job) => {
             const result = results[job.id];
             const isRunning = running.has(job.id);

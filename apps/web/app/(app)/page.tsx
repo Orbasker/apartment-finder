@@ -71,7 +71,7 @@ export default async function DashboardHomePage({
     : null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {admin && <RunJobsCard />}
 
       <CollapsibleSection
@@ -103,50 +103,78 @@ export default async function DashboardHomePage({
                 : "No listings match these filters."}
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="min-w-full text-sm">
-                <thead className="bg-muted text-left">
-                  <tr>
-                    <th className="p-2">When</th>
-                    <th className="p-2">Source</th>
-                    <th className="p-2">Price</th>
-                    <th className="p-2">Rooms</th>
-                    <th className="p-2">Neighborhood</th>
-                    <th className="p-2">Score</th>
-                    <th className="p-2">Decision</th>
-                    <th className="p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageRows.map((l) => (
-                    <tr key={l.id} className="border-t hover:bg-muted/50">
-                      <td className="p-2 text-muted-foreground">{relTime(l.ingestedAt)}</td>
-                      <td className="p-2">
+            <>
+              <ul className="space-y-2 md:hidden">
+                {pageRows.map((l) => (
+                  <li key={l.id}>
+                    <Link
+                      href={`/listings/${l.id}`}
+                      className="block rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50"
+                    >
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                        <span className="font-medium">{formatNis(l.priceNis)}</span>
+                        {l.rooms != null && (
+                          <span className="text-muted-foreground">· {l.rooms} rooms</span>
+                        )}
+                        {l.neighborhood && (
+                          <span className="text-muted-foreground">· {l.neighborhood}</span>
+                        )}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                         <Badge variant="muted">{l.source}</Badge>
-                      </td>
-                      <td className="p-2">{formatNis(l.priceNis)}</td>
-                      <td className="p-2">{l.rooms ?? "—"}</td>
-                      <td className="p-2">{l.neighborhood ?? "—"}</td>
-                      <td className="p-2">{l.score ?? "—"}</td>
-                      <td className="p-2">
-                        {l.decision ? <DecisionBadge decision={l.decision} /> : "—"}
-                      </td>
-                      <td className="p-2">
-                        <Link
-                          href={`/listings/${l.id}`}
-                          className="text-sm underline hover:text-primary"
-                        >
-                          open
-                        </Link>
-                      </td>
+                        {l.score != null && <span>score {l.score}</span>}
+                        {l.decision && <DecisionBadge decision={l.decision} />}
+                        <span className="ml-auto">{relTime(l.ingestedAt)}</span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto rounded-lg border md:block">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-muted text-left">
+                    <tr>
+                      <th className="p-2">When</th>
+                      <th className="p-2">Source</th>
+                      <th className="p-2">Price</th>
+                      <th className="p-2">Rooms</th>
+                      <th className="p-2">Neighborhood</th>
+                      <th className="p-2">Score</th>
+                      <th className="p-2">Decision</th>
+                      <th className="p-2"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((l) => (
+                      <tr key={l.id} className="border-t hover:bg-muted/50">
+                        <td className="p-2 text-muted-foreground">{relTime(l.ingestedAt)}</td>
+                        <td className="p-2">
+                          <Badge variant="muted">{l.source}</Badge>
+                        </td>
+                        <td className="p-2">{formatNis(l.priceNis)}</td>
+                        <td className="p-2">{l.rooms ?? "—"}</td>
+                        <td className="p-2">{l.neighborhood ?? "—"}</td>
+                        <td className="p-2">{l.score ?? "—"}</td>
+                        <td className="p-2">
+                          {l.decision ? <DecisionBadge decision={l.decision} /> : "—"}
+                        </td>
+                        <td className="p-2">
+                          <Link
+                            href={`/listings/${l.id}`}
+                            className="text-sm underline hover:text-primary"
+                          >
+                            open
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <div className="text-muted-foreground">
               {filters.cursor ? (
                 <Link href={`/${baseFiltersQs}`} className="underline">
@@ -174,7 +202,7 @@ export default async function DashboardHomePage({
         {alertsTodayRows.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nothing matched yet in the last 24 hours.</p>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {alertsTodayRows.map((l) => (
               <ListingCard key={l.id} listing={l} />
             ))}

@@ -88,14 +88,18 @@ export function GroupsForm({ initial, isAdmin }: { initial: Row[]; isAdmin: bool
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-[1fr_1fr_auto]">
         <Input placeholder="Group URL" value={url} onChange={(e) => setUrl(e.target.value)} />
         <Input
           placeholder="Label (optional)"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
         />
-        <Button onClick={add} disabled={pending}>
+        <Button
+          onClick={add}
+          disabled={pending}
+          className="w-full sm:col-span-2 sm:w-auto md:col-span-1"
+        >
           {addingPending && <Spinner className="mr-2" />}
           {addingPending ? "Adding…" : "Add"}
         </Button>
@@ -105,7 +109,10 @@ export function GroupsForm({ initial, isAdmin }: { initial: Row[]; isAdmin: bool
         {rows.map((r) => {
           const actingOn = rowAction?.url === r.url ? rowAction : null;
           return (
-            <li key={r.url} className="flex items-center gap-3 rounded-md border p-3">
+            <li
+              key={r.url}
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-3"
+            >
               {actingOn?.kind === "subscribe" ? (
                 <Spinner className="h-4 w-4 text-muted-foreground" />
               ) : (
@@ -117,7 +124,7 @@ export function GroupsForm({ initial, isAdmin }: { initial: Row[]; isAdmin: bool
                   onChange={(e) => toggleSubscribed(r.url, e.target.checked)}
                 />
               )}
-              <div className="flex-1 overflow-hidden">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-medium">{r.label ?? r.url}</span>
                   {!r.enabled && <Badge variant="muted">disabled</Badge>}
