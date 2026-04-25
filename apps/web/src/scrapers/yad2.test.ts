@@ -1,9 +1,5 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import {
-  buildDefaultYad2Fetch,
-  fetchYad2Listings,
-  Yad2UpstreamUnavailableError,
-} from "./yad2";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { buildDefaultYad2Fetch, fetchYad2Listings, Yad2UpstreamUnavailableError } from "./yad2";
 
 describe("fetchYad2Listings", () => {
   test("parses JSON payloads even when the content-type is html", async () => {
@@ -104,7 +100,9 @@ describe("fetchYad2Listings", () => {
       expect(calledWith!.url).toBe(
         "https://proxy.example.run.app/fetch?url=https%3A%2F%2Fgw.yad2.co.il%2Frealestate-feed%2Frent%2Fmap%3Fregion%3D3",
       );
-      expect((calledWith!.init?.headers as Record<string, string>)["x-proxy-secret"]).toBe("s3cret");
+      expect((calledWith!.init?.headers as Record<string, string>)["x-proxy-secret"]).toBe(
+        "s3cret",
+      );
     });
 
     test("returns plain fetch when proxy env is not fully set", () => {

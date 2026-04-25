@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "bun@1.3.9",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "engines": {
     "bun": ">=1.1.0"
   },
@@ -12,8 +15,12 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "bun test",
-    "deadcode": "DATABASE_URL=${DATABASE_URL:-postgres://ci:ci@localhost:5432/ci} knip --include files,binaries,duplicates,unlisted,unresolved",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "knip": "DATABASE_URL=${DATABASE_URL:-postgres://ci:ci@localhost:5432/ci} knip --include files,binaries,duplicates,unlisted,unresolved",
+    "ci": "bun run format:check && bun run lint && bun run typecheck && bun run knip && bun run test",
     "db:generate": "bun run --filter @apartment-finder/web db:generate",
     "db:push": "bun run --filter @apartment-finder/web db:push",
     "db:push:auto": "bun run --filter @apartment-finder/web db:push:auto",
@@ -23,7 +30,9 @@
   },
   "devDependencies": {
     "knip": "^5.40.0",
+    "prettier": "^3.4.2",
     "turbo": "^2.3.3",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
   }
 }

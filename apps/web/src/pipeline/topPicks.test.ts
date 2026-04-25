@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { resolvePicks, type CandidateListing, type TopPick } from "./topPicks-core";
 
 function candidate(id: number, overrides: Partial<CandidateListing> = {}): CandidateListing {
@@ -55,11 +55,7 @@ describe("resolvePicks", () => {
 
   test("caps result at topN", () => {
     const candidates = [candidate(1), candidate(2), candidate(3)];
-    const resolved = resolvePicks(
-      [pick(1, 1), pick(2, 2), pick(3, 3)],
-      candidates,
-      2,
-    );
+    const resolved = resolvePicks([pick(1, 1), pick(2, 2), pick(3, 3)], candidates, 2);
     expect(resolved.map((r) => r.listingId)).toEqual([1, 2]);
   });
 });
