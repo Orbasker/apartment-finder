@@ -18,7 +18,9 @@ function getToken(): string {
 
 async function apifyFetch(
   path: string,
-  init: { method: "GET" | "POST"; query?: Record<string, string>; body?: unknown } = { method: "GET" },
+  init: { method: "GET" | "POST"; query?: Record<string, string>; body?: unknown } = {
+    method: "GET",
+  },
 ): Promise<unknown> {
   const url = new URL(`${APIFY_API_BASE}${path}`);
   if (init.query) {
@@ -42,9 +44,7 @@ async function apifyFetch(
   return res.json();
 }
 
-export async function listMonitoredGroups(): Promise<
-  Array<{ url: string; label: string | null }>
-> {
+export async function listMonitoredGroups(): Promise<Array<{ url: string; label: string | null }>> {
   const db = getDb();
   const rows = await db
     .select({ url: monitoredGroups.url, label: monitoredGroups.label })
@@ -70,9 +70,7 @@ export async function startFacebookGroupsRun(opts: {
       }),
     },
   ];
-  const webhooksB64 = Buffer.from(JSON.stringify(webhooks), "utf8").toString(
-    "base64",
-  );
+  const webhooksB64 = Buffer.from(JSON.stringify(webhooks), "utf8").toString("base64");
 
   const input = {
     startUrls: groups.map((g) => ({ url: g.url })),
@@ -90,9 +88,8 @@ export async function startFacebookGroupsRun(opts: {
 }
 
 export async function fetchDatasetItems(datasetId: string): Promise<unknown[]> {
-  const items = (await apifyFetch(
-    `/datasets/${encodeURIComponent(datasetId)}/items`,
-    { method: "GET" },
-  )) as unknown[];
+  const items = (await apifyFetch(`/datasets/${encodeURIComponent(datasetId)}/items`, {
+    method: "GET",
+  })) as unknown[];
   return items;
 }

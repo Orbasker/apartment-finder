@@ -91,9 +91,9 @@ export async function POST(req: Request): Promise<Response> {
       items: items.length,
     });
 
-    const normalized = (
-      await Promise.all(items.map((item) => normalizeFbPost(item)))
-    ).filter((l): l is NonNullable<typeof l> => l !== null);
+    const normalized = (await Promise.all(items.map((item) => normalizeFbPost(item)))).filter(
+      (l): l is NonNullable<typeof l> => l !== null,
+    );
 
     log.info("posts normalized", {
       runId: resource.id,

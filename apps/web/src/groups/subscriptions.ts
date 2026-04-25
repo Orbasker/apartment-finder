@@ -18,10 +18,7 @@ export async function setSubscription(
 ): Promise<void> {
   const db = getDb();
   if (subscribed) {
-    await db
-      .insert(userGroupSubscriptions)
-      .values({ userId, groupUrl })
-      .onConflictDoNothing();
+    await db.insert(userGroupSubscriptions).values({ userId, groupUrl }).onConflictDoNothing();
   } else {
     await db
       .delete(userGroupSubscriptions)

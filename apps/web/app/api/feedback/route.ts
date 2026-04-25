@@ -27,12 +27,7 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     try {
-      await recordFeedback(
-        user.id,
-        parsed.data.listingId,
-        parsed.data.rating,
-        parsed.data.note,
-      );
+      await recordFeedback(user.id, parsed.data.listingId, parsed.data.rating, parsed.data.note);
       log.info("feedback recorded", {
         user: user.id,
         listingId: parsed.data.listingId,

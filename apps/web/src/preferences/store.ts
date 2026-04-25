@@ -1,10 +1,6 @@
 import { cache as reactCache } from "react";
 import { eq, sql } from "drizzle-orm";
-import {
-  PreferencesSchema,
-  defaultPreferences,
-  type Preferences,
-} from "@apartment-finder/shared";
+import { PreferencesSchema, defaultPreferences, type Preferences } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import { preferences } from "@/db/schema";
 import { createLogger, errorMessage } from "@/lib/log";
@@ -21,18 +17,11 @@ let adminUserIdCache: string | null | undefined;
 async function loadPreferencesUncached(userId: string): Promise<Preferences> {
   const startedAt = Date.now();
   const db = getDb();
-  const rows = await db
-    .select()
-    .from(preferences)
-    .where(eq(preferences.userId, userId))
-    .limit(1);
+  const rows = await db.select().from(preferences).where(eq(preferences.userId, userId)).limit(1);
   const row = rows[0];
   if (!row) {
     const defaults = defaultPreferences;
-    await db
-      .insert(preferences)
-      .values({ userId, data: defaults })
-      .onConflictDoNothing();
+    await db.insert(preferences).values({ userId, data: defaults }).onConflictDoNothing();
     log.info("seeded defaults", {
       user: userId,
       durationMs: Date.now() - startedAt,
@@ -54,10 +43,7 @@ async function loadPreferencesUncached(userId: string): Promise<Preferences> {
 
 export const loadPreferences = reactCache(loadPreferencesUncached);
 
-export async function savePreferences(
-  userId: string,
-  next: Preferences,
-): Promise<void> {
+export async function savePreferences(userId: string, next: Preferences): Promise<void> {
   const startedAt = Date.now();
   const db = getDb();
   const parsed = normalizePreferences(next);

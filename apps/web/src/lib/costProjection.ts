@@ -30,9 +30,7 @@ export function buildCostProjection(
   // Prefer the 7d trend extrapolated to a month for a more recent signal;
   // fall back to the trailing-30d window if 7d is empty.
   const aiMonthlyProjectedUsd =
-    week.estimatedCostUsd > 0
-      ? week.estimatedCostUsd * (30 / 7)
-      : month.estimatedCostUsd;
+    week.estimatedCostUsd > 0 ? week.estimatedCostUsd * (30 / 7) : month.estimatedCostUsd;
 
   const fixedMonthlyUsd = FIXED_COSTS.reduce((sum, c) => sum + c.monthlyUsd, 0);
 

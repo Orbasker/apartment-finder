@@ -36,12 +36,14 @@ const amenityShape = Object.fromEntries(
   AMENITY_KEYS.map((key) => [key, AmenityPreference.default("any")]),
 ) as Record<AmenityKey, z.ZodDefault<typeof AmenityPreference>>;
 
-export const AmenityPreferencesSchema = z.object(amenityShape).default(
-  Object.fromEntries(AMENITY_KEYS.map((k) => [k, "any"])) as Record<
-    AmenityKey,
-    AmenityPreference
-  >,
-);
+export const AmenityPreferencesSchema = z
+  .object(amenityShape)
+  .default(
+    Object.fromEntries(AMENITY_KEYS.map((k) => [k, "any"])) as Record<
+      AmenityKey,
+      AmenityPreference
+    >,
+  );
 export type AmenityPreferences = z.infer<typeof AmenityPreferencesSchema>;
 
 export const PreferencesSchema = z.object({

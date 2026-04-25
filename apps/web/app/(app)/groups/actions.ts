@@ -43,8 +43,7 @@ export async function removeGroupAction(url: string) {
 
 export async function toggleGroupCatalogAction(url: string, enabled: boolean) {
   const user = await requireUser();
-  if (!isAdmin(user))
-    throw new Error("Only admins can enable/disable catalog groups");
+  if (!isAdmin(user)) throw new Error("Only admins can enable/disable catalog groups");
   const db = getDb();
   await db.update(monitoredGroups).set({ enabled }).where(eq(monitoredGroups.url, url));
   revalidatePath("/groups");

@@ -1,17 +1,10 @@
 import type { NormalizedListing, Preferences } from "@apartment-finder/shared";
 
-export type RuleFilterResult =
-  | { pass: true }
-  | { pass: false; reason: string };
+export type RuleFilterResult = { pass: true } | { pass: false; reason: string };
 
-export function ruleFilter(
-  listing: NormalizedListing,
-  prefs: Preferences,
-): RuleFilterResult {
+export function ruleFilter(listing: NormalizedListing, prefs: Preferences): RuleFilterResult {
   if (listing.priceNis != null) {
-    const cap = Math.round(
-      prefs.budget.maxNis * (1 + prefs.budget.flexibilityPct / 100),
-    );
+    const cap = Math.round(prefs.budget.maxNis * (1 + prefs.budget.flexibilityPct / 100));
     if (listing.priceNis > cap) {
       return { pass: false, reason: `price ${listing.priceNis} > ${cap}` };
     }

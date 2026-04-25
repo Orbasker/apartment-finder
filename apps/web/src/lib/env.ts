@@ -60,7 +60,7 @@ function loadEnvFile(filePath: string): void {
 
     let value = line.slice(separatorIndex + 1).trim();
     if (
-      (value.startsWith("\"") && value.endsWith("\"")) ||
+      (value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))
     ) {
       value = value.slice(1, -1);

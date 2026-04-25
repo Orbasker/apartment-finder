@@ -44,9 +44,7 @@ export async function GET(req: Request): Promise<Response> {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return NextResponse.redirect(
-      `${url.origin}/login?error=${encodeURIComponent(error.message)}`,
-    );
+    return NextResponse.redirect(`${url.origin}/login?error=${encodeURIComponent(error.message)}`);
   }
 
   return response;

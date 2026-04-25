@@ -105,9 +105,7 @@ export async function searchListings(f: ListingsFilter = {}) {
     if (f.subscribedGroupUrls.length === 0) {
       conds.push(nonFb);
     } else {
-      conds.push(
-        or(nonFb, inArray(listings.sourceGroupUrl, f.subscribedGroupUrls))!,
-      );
+      conds.push(or(nonFb, inArray(listings.sourceGroupUrl, f.subscribedGroupUrls))!);
     }
   }
 

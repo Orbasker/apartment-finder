@@ -39,10 +39,7 @@ export default async function DashboardHomePage({
   const admin = isAdmin(user);
 
   const [prefs, subscribedGroupUrls] = user
-    ? await Promise.all([
-        loadPreferences(user.id),
-        getSubscribedGroupUrls(user.id),
-      ])
+    ? await Promise.all([loadPreferences(user.id), getSubscribedGroupUrls(user.id)])
     : [null, undefined];
   const scope: Pick<ListingsFilter, "forUserId" | "subscribedGroupUrls"> = user
     ? { forUserId: user.id, subscribedGroupUrls }
@@ -167,22 +164,15 @@ export default async function DashboardHomePage({
                 Next {filters.limit} →
               </Link>
             ) : (
-              page.rows.length > 0 && (
-                <span className="text-muted-foreground">End of results</span>
-              )
+              page.rows.length > 0 && <span className="text-muted-foreground">End of results</span>
             )}
           </div>
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection
-        title={`Today's alerts (${alertsTodayRows.length})`}
-        defaultOpen
-      >
+      <CollapsibleSection title={`Today's alerts (${alertsTodayRows.length})`} defaultOpen>
         {alertsTodayRows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nothing matched yet in the last 24 hours.
-          </p>
+          <p className="text-sm text-muted-foreground">Nothing matched yet in the last 24 hours.</p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {alertsTodayRows.map((l) => (
@@ -272,8 +262,7 @@ function seedFiltersFromPreferences(
 ): ParsedListingFilters {
   return {
     ...base,
-    minPriceNis:
-      prefs.budget.minNis > 0 ? prefs.budget.minNis : base.minPriceNis,
+    minPriceNis: prefs.budget.minNis > 0 ? prefs.budget.minNis : base.minPriceNis,
     maxPriceNis: prefs.budget.maxNis,
     minRooms: prefs.rooms.min,
     maxRooms: prefs.rooms.max,
@@ -326,10 +315,7 @@ function ListingCard({ listing }: { listing: ListingRow }) {
         </p>
         <div className="mt-3 flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{relTime(listing.ingestedAt)}</span>
-          <Link
-            href={`/listings/${listing.id}`}
-            className="text-sm underline hover:text-primary"
-          >
+          <Link href={`/listings/${listing.id}`} className="text-sm underline hover:text-primary">
             open
           </Link>
         </div>

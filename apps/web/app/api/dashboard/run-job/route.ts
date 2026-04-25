@@ -103,19 +103,12 @@ async function getRequestOrigin(): Promise<string> {
     throw new Error("Could not determine app origin");
   }
   const hostLower = host.split(":")[0]?.toLowerCase() ?? host.toLowerCase();
-  const isLocal =
-    hostLower === "localhost" ||
-    hostLower === "127.0.0.1" ||
-    hostLower === "::1";
-  const proto =
-    requestHeaders.get("x-forwarded-proto") ?? (isLocal ? "http" : "https");
+  const isLocal = hostLower === "localhost" || hostLower === "127.0.0.1" || hostLower === "::1";
+  const proto = requestHeaders.get("x-forwarded-proto") ?? (isLocal ? "http" : "https");
   return `${proto}://${host}`;
 }
 
-function summarizeJobResult(
-  job: JobId,
-  payload: Record<string, unknown>,
-): string {
+function summarizeJobResult(job: JobId, payload: Record<string, unknown>): string {
   if (typeof payload.skipped === "string") {
     return `Skipped: ${payload.skipped}`;
   }
@@ -149,9 +142,7 @@ function summarizeJobResult(
 }
 
 function formatNumber(value: unknown): string {
-  return new Intl.NumberFormat("en-US").format(
-    typeof value === "number" ? value : 0,
-  );
+  return new Intl.NumberFormat("en-US").format(typeof value === "number" ? value : 0);
 }
 
 function formatUsd(value: unknown): string {

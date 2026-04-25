@@ -6,8 +6,7 @@ const log = createLogger("scraper:yad2");
 // Matches https://www.yad2.co.il/realestate/rent/tel-aviv-area
 // region=3 → "תל אביב והסביבה" (Tel Aviv & surroundings)
 // property=1 → apartments
-const YAD2_FEED_URL =
-  "https://gw.yad2.co.il/realestate-feed/rent/map?region=3&property=1";
+const YAD2_FEED_URL = "https://gw.yad2.co.il/realestate-feed/rent/map?region=3&property=1";
 
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -51,12 +50,15 @@ export class Yad2UpstreamUnavailableError extends Error {
   readonly contentType: string | null;
   readonly bodyPreview: string;
 
-  constructor(message: string, opts: {
-    status: number;
-    contentType: string | null;
-    bodyPreview: string;
-    cause?: unknown;
-  }) {
+  constructor(
+    message: string,
+    opts: {
+      status: number;
+      contentType: string | null;
+      bodyPreview: string;
+      cause?: unknown;
+    },
+  ) {
     super(message, opts.cause ? { cause: opts.cause } : undefined);
     this.name = "Yad2UpstreamUnavailableError";
     this.status = opts.status;
@@ -65,9 +67,7 @@ export class Yad2UpstreamUnavailableError extends Error {
   }
 }
 
-export async function fetchYad2Listings(
-  opts: Yad2FetchOptions = {},
-): Promise<NormalizedListing[]> {
+export async function fetchYad2Listings(opts: Yad2FetchOptions = {}): Promise<NormalizedListing[]> {
   const url = opts.feedUrl ?? YAD2_FEED_URL;
   const fetchImpl = opts.fetchImpl ?? buildDefaultYad2Fetch();
   const proxied = Boolean(process.env.YAD2_PROXY_URL && process.env.YAD2_PROXY_SECRET);
@@ -160,9 +160,7 @@ function parseYad2Response(rawText: string, res: Response): Yad2Response {
 }
 
 function buildFetchFailureError(cause: unknown, timeoutMs: number): Yad2UpstreamUnavailableError {
-  const aborted =
-    cause instanceof DOMException
-    && cause.name === "AbortError";
+  const aborted = cause instanceof DOMException && cause.name === "AbortError";
 
   return new Yad2UpstreamUnavailableError(
     aborted

@@ -43,8 +43,7 @@ export async function judgeListing(
     usage: primary.usage,
   }).catch((err) => console.error("record primary judge AI usage failed:", err));
 
-  const shouldEscalate =
-    primary.object.decision === "unsure" && primary.object.score >= 60;
+  const shouldEscalate = primary.object.decision === "unsure" && primary.object.score >= 60;
 
   if (!shouldEscalate) {
     return {
@@ -74,10 +73,7 @@ export async function judgeListing(
   };
 }
 
-export async function persistJudgment(
-  listingId: number,
-  result: JudgeResult,
-): Promise<void> {
+export async function persistJudgment(listingId: number, result: JudgeResult): Promise<void> {
   const db = getDb();
   await db
     .insert(judgments)
@@ -134,10 +130,7 @@ async function loadRecentFeedback(): Promise<RecentFeedbackRow[]> {
   }));
 }
 
-function buildJudgePrompt(
-  prefs: Preferences,
-  recent: RecentFeedbackRow[],
-): string {
+function buildJudgePrompt(prefs: Preferences, recent: RecentFeedbackRow[]): string {
   const lines: string[] = [
     "You are a Tel Aviv apartment-hunting assistant. Score each listing against the user's preferences.",
     "",
@@ -174,10 +167,7 @@ function buildJudgePrompt(
     );
     for (const f of recent) {
       const thumb = f.rating > 0 ? "👍" : "👎";
-      const meta = [
-        f.priceNis ? `₪${f.priceNis}` : null,
-        f.neighborhood,
-      ]
+      const meta = [f.priceNis ? `₪${f.priceNis}` : null, f.neighborhood]
         .filter(Boolean)
         .join(", ");
       const snippet = f.reasoning?.slice(0, 120) ?? "";
@@ -221,10 +211,7 @@ function renderListing(listing: NormalizedListing): string {
   return parts.join("\n");
 }
 
-export async function rejudgePastListings(
-  limit = 200,
-  userId?: string,
-): Promise<number> {
+export async function rejudgePastListings(limit = 200, userId?: string): Promise<number> {
   const db = getDb();
 
   const rows = await db
@@ -252,12 +239,8 @@ export async function rejudgePastListings(
 
   if (rows.length === 0) return 0;
 
-  const { loadAdminPreferences, loadPreferences } = await import(
-    "@/preferences/store"
-  );
-  const prefs = userId
-    ? await loadPreferences(userId)
-    : await loadAdminPreferences();
+  const { loadAdminPreferences, loadPreferences } = await import("@/preferences/store");
+  const prefs = userId ? await loadPreferences(userId) : await loadAdminPreferences();
 
   let ok = 0;
   for (const row of rows) {
@@ -289,10 +272,7 @@ export async function rejudgePastListings(
   return ok;
 }
 
-function amenityList(
-  prefs: Preferences,
-  state: "required" | "preferred" | "avoid",
-): string[] {
+function amenityList(prefs: Preferences, state: "required" | "preferred" | "avoid"): string[] {
   const out: string[] = [];
   for (const key of AMENITY_KEYS) {
     if (prefs.amenities[key as AmenityKey] === state) {

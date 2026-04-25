@@ -47,9 +47,7 @@ export function UserMenu({ email }: { email: string | null }) {
         >
           {initial}
         </span>
-        <span className="max-w-[10rem] truncate text-foreground">
-          {display}
-        </span>
+        <span className="max-w-[10rem] truncate text-foreground">{display}</span>
         <svg
           aria-hidden="true"
           viewBox="0 0 20 20"
@@ -66,9 +64,7 @@ export function UserMenu({ email }: { email: string | null }) {
           className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-md border bg-background shadow-md"
         >
           <div className="border-b px-3 py-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Signed in as
-            </p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Signed in as</p>
             <p className="mt-0.5 truncate text-sm font-medium">{display}</p>
           </div>
           <div className="py-1">
@@ -92,11 +88,7 @@ export function UserMenu({ email }: { email: string | null }) {
               }
               className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-muted disabled:opacity-50"
             >
-              {pending ? (
-                <Spinner className="h-4 w-4" />
-              ) : (
-                <LogoutIcon className="h-4 w-4" />
-              )}
+              {pending ? <Spinner className="h-4 w-4" /> : <LogoutIcon className="h-4 w-4" />}
               {pending ? "Signing out…" : "Log out"}
             </button>
           </div>

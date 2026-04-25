@@ -19,9 +19,7 @@ export type RejudgeResult =
     }
   | { ok: false; error: string };
 
-export async function rejudgeListingAction(
-  listingId: number,
-): Promise<RejudgeResult> {
+export async function rejudgeListingAction(listingId: number): Promise<RejudgeResult> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Unauthorized" };
 

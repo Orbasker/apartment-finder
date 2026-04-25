@@ -19,8 +19,7 @@ const drizzleDir = resolve(webDir, "drizzle");
 // connects — a dummy URL is enough.
 const env = {
   ...process.env,
-  DATABASE_URL:
-    process.env.DATABASE_URL ?? "postgres://ci:ci@localhost:5432/ci",
+  DATABASE_URL: process.env.DATABASE_URL ?? "postgres://ci:ci@localhost:5432/ci",
 };
 
 console.log("[db:check] running drizzle-kit generate...");
@@ -34,23 +33,17 @@ if (!existsSync(drizzleDir)) {
 // Compare against HEAD so that locally-staged migrations (about to be
 // committed) don't false-fail. In CI, HEAD is the commit under test, so any
 // diff from generate means the schema drifted from the committed migrations.
-const diff =
-  await $`git diff HEAD --name-only -- ${drizzleDir}`.cwd(repoRoot).text();
-const untracked =
-  await $`git ls-files --others --exclude-standard -- ${drizzleDir}`
-    .cwd(repoRoot)
-    .text();
+const diff = await $`git diff HEAD --name-only -- ${drizzleDir}`.cwd(repoRoot).text();
+const untracked = await $`git ls-files --others --exclude-standard -- ${drizzleDir}`
+  .cwd(repoRoot)
+  .text();
 
 const drift = [diff, untracked].filter((s) => s.trim().length > 0).join("\n");
 
 if (drift.trim().length > 0) {
-  console.error(
-    "\n[db:check] schema drift detected. drizzle/ has changes not in HEAD:",
-  );
+  console.error("\n[db:check] schema drift detected. drizzle/ has changes not in HEAD:");
   console.error(drift);
-  console.error(
-    "Run `bun run db:generate` locally and commit the generated migration files.",
-  );
+  console.error("Run `bun run db:generate` locally and commit the generated migration files.");
   process.exit(1);
 }
 

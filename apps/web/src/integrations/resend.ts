@@ -3,15 +3,8 @@ import type { Judgment, NormalizedListing } from "@apartment-finder/shared";
 import { env } from "@/lib/env";
 import type { AiUsageSummary } from "@/lib/aiUsage";
 import { getScheduleTimeZone } from "@/lib/schedule";
-import {
-  getUserAlertRecipients,
-  loadPreferences,
-} from "@/preferences/store";
-import {
-  hasAlertBeenSent,
-  recordAlertSent,
-  type AlertEntry,
-} from "@/pipeline/sentAlerts";
+import { getUserAlertRecipients, loadPreferences } from "@/preferences/store";
+import { hasAlertBeenSent, recordAlertSent, type AlertEntry } from "@/pipeline/sentAlerts";
 import type { ResolvedTopPick } from "@/pipeline/topPicks";
 
 let resendClient: Resend | undefined;
@@ -57,10 +50,7 @@ export function hasAdminSummaryRecipients(): boolean {
   return getAdminSummaryRecipients().length > 0;
 }
 
-export async function sendEmailAlert(
-  userId: string,
-  input: EmailInput,
-): Promise<void> {
+export async function sendEmailAlert(userId: string, input: EmailInput): Promise<void> {
   if (!isResendConfigured()) return;
   const prefs = await loadPreferences(userId);
   if (!prefs.alerts.email.enabled) return;
@@ -84,9 +74,7 @@ export async function sendEmailAlert(
       ? `<p>⚠︎ ${input.judgment.redFlags.map(escape).join(" · ")}</p>`
       : "",
     `<p><a href="${escape(input.listing.url)}">View source listing</a>${
-      siteLink
-        ? ` · <a href="${escape(siteLink)}">Open on dashboard</a>`
-        : ""
+      siteLink ? ` · <a href="${escape(siteLink)}">Open on dashboard</a>` : ""
     }</p>`,
   ];
 
@@ -114,9 +102,10 @@ export async function sendRunSummaryEmail(input: RunSummaryEmailInput): Promise<
 
   const alertsToShow = alertEmailsEnabled ? freshAlerts : [];
   const alertCount = alertsToShow.length;
-  const subject = alertCount > 0
-    ? `Apartment Finder: ${input.job} · ${alertCount} match${alertCount === 1 ? "" : "es"}`
-    : `Apartment Finder: ${input.job} ${input.status}`;
+  const subject =
+    alertCount > 0
+      ? `Apartment Finder: ${input.job} · ${alertCount} match${alertCount === 1 ? "" : "es"}`
+      : `Apartment Finder: ${input.job} ${input.status}`;
 
   const rows = Object.entries(input.details).map(
     ([key, value]) =>
@@ -141,9 +130,7 @@ export async function sendRunSummaryEmail(input: RunSummaryEmailInput): Promise<
   });
 
   await Promise.all(
-    alertsToShow.map((entry) =>
-      recordAlertSent(input.userId, entry.listingId, "email"),
-    ),
+    alertsToShow.map((entry) => recordAlertSent(input.userId, entry.listingId, "email")),
   );
 }
 
@@ -178,7 +165,7 @@ function renderAlertsSection(alerts: AlertEntry[]): string {
       const siteLink = listingPageUrl(entry.listingId);
 
       return [
-        "<li style=\"margin-bottom:16px;\">",
+        '<li style="margin-bottom:16px;">',
         `<div><strong>${escape(title)}</strong>${judgment ? ` · score ${escape(String(judgment.score))}` : ""}</div>`,
         priceLine ? `<div>${priceLine}</div>` : "",
         summary ? `<div>${escape(summary)}</div>` : "",
@@ -218,9 +205,10 @@ export async function sendTopPicksEmail(input: TopPicksEmailInput): Promise<void
   const to = await getUserAlertRecipients(input.userId, prefs);
   if (to.length === 0) return;
 
-  const subject = input.picks.length > 0
-    ? `Apartment Finder: Top ${input.picks.length} picks · last ${input.hoursAgo}h`
-    : `Apartment Finder: No standout picks · last ${input.hoursAgo}h`;
+  const subject =
+    input.picks.length > 0
+      ? `Apartment Finder: Top ${input.picks.length} picks · last ${input.hoursAgo}h`
+      : `Apartment Finder: No standout picks · last ${input.hoursAgo}h`;
 
   const intro = input.summary
     ? `<p>${escape(input.summary)}</p>`
@@ -273,9 +261,7 @@ function renderTopPicks(picks: ResolvedTopPick[]): string {
         `<div><strong>#${escape(String(pick.rank))} · ${escape(pick.headline)}</strong>${l.score != null ? ` · score ${escape(String(l.score))}` : ""}</div>`,
         meta ? `<div>${meta}</div>` : "",
         `<div><em>${escape(pick.reasoning)}</em></div>`,
-        pick.concerns.length > 0
-          ? `<div>⚠︎ ${pick.concerns.map(escape).join(" · ")}</div>`
-          : "",
+        pick.concerns.length > 0 ? `<div>⚠︎ ${pick.concerns.map(escape).join(" · ")}</div>` : "",
         `<div><a href="${escape(l.url)}">View source</a>${
           siteLink ? ` · <a href="${escape(siteLink)}">Open on dashboard</a>` : ""
         }</div>`,

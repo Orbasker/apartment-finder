@@ -4,11 +4,7 @@ import { desc } from "drizzle-orm";
 import { PreferencesPatchSchema } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import { blockedAuthors, listings } from "@/db/schema";
-import {
-  getDashboardStats,
-  getListingById,
-  searchListings,
-} from "@/listings/queries";
+import { getDashboardStats, getListingById, searchListings } from "@/listings/queries";
 import { loadPreferences } from "@/preferences/store";
 import { getSubscribedGroupUrls } from "@/groups/subscriptions";
 import { rejudgePastListings } from "@/pipeline/judge";
@@ -84,7 +80,9 @@ export function buildAgentTools(userId: string) {
         "Stage a partial update to preferences. Does NOT apply until the user replies /confirm. Use this whenever the user wants to change budget, rooms, neighborhoods, deal-breakers, or alert settings such as the target email list, run-summary emails, or top-picks emails.",
       inputSchema: z.object({
         patch: PreferencesPatchSchema,
-        humanSummary: z.string().describe("Short summary of what the patch changes, shown to the user."),
+        humanSummary: z
+          .string()
+          .describe("Short summary of what the patch changes, shown to the user."),
       }),
       execute: async ({ patch, humanSummary }, { toolCallId }) => {
         await stagePatch({ userId, toolCallId, patch });

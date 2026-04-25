@@ -60,7 +60,8 @@ const PRICING_BY_MODEL: Array<{ match: RegExp; pricing: Pricing }> = [
     pricing: { inputUsdPerMillion: 15, outputUsdPerMillion: 75, cachedInputUsdPerMillion: 1.5 },
   },
   {
-    match: /claude-sonnet-4|claude-3-7-sonnet|claude-3-5-sonnet|claude-sonnet-4-5|claude-sonnet-4-6/i,
+    match:
+      /claude-sonnet-4|claude-3-7-sonnet|claude-3-5-sonnet|claude-sonnet-4-5|claude-sonnet-4-6/i,
     pricing: { inputUsdPerMillion: 3, outputUsdPerMillion: 15, cachedInputUsdPerMillion: 0.3 },
   },
   {
@@ -69,16 +70,17 @@ const PRICING_BY_MODEL: Array<{ match: RegExp; pricing: Pricing }> = [
   },
   {
     match: /claude-3-haiku/i,
-    pricing: { inputUsdPerMillion: 0.25, outputUsdPerMillion: 1.25, cachedInputUsdPerMillion: 0.03 },
+    pricing: {
+      inputUsdPerMillion: 0.25,
+      outputUsdPerMillion: 1.25,
+      cachedInputUsdPerMillion: 0.03,
+    },
   },
 ];
 
 export function estimateCostUsd(
   modelId: string,
-  usage: Pick<
-    LanguageModelUsage,
-    "inputTokens" | "outputTokens" | "cachedInputTokens"
-  >,
+  usage: Pick<LanguageModelUsage, "inputTokens" | "outputTokens" | "cachedInputTokens">,
 ): number {
   const pricing = getPricing(modelId);
   if (!pricing) return 0;
@@ -90,7 +92,8 @@ export function estimateCostUsd(
 
   return (
     (billableInputTokens / 1_000_000) * pricing.inputUsdPerMillion +
-    (cachedInputTokens / 1_000_000) * (pricing.cachedInputUsdPerMillion ?? pricing.inputUsdPerMillion) +
+    (cachedInputTokens / 1_000_000) *
+      (pricing.cachedInputUsdPerMillion ?? pricing.inputUsdPerMillion) +
     (outputTokens / 1_000_000) * pricing.outputUsdPerMillion
   );
 }
@@ -107,8 +110,7 @@ export async function recordAiUsage(input: UsageRecordInput): Promise<void> {
     inputTokens: input.usage.inputTokens ?? 0,
     outputTokens: input.usage.outputTokens ?? 0,
     totalTokens:
-      input.usage.totalTokens ??
-      (input.usage.inputTokens ?? 0) + (input.usage.outputTokens ?? 0),
+      input.usage.totalTokens ?? (input.usage.inputTokens ?? 0) + (input.usage.outputTokens ?? 0),
     reasoningTokens: input.usage.reasoningTokens ?? null,
     cachedInputTokens: input.usage.cachedInputTokens ?? null,
     estimatedCostUsd,
@@ -128,8 +130,7 @@ export async function getAiUsageSummary(hoursAgo = 24): Promise<AiUsageSummary> 
       inputTokens: sql<number>`coalesce(sum(${aiUsage.inputTokens}), 0)::int`,
       outputTokens: sql<number>`coalesce(sum(${aiUsage.outputTokens}), 0)::int`,
       estimatedCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)::float`,
-      unpricedCalls:
-        sql<number>`count(*) filter (where ${aiUsage.totalTokens} > 0 and ${aiUsage.estimatedCostUsd} = 0)::int`,
+      unpricedCalls: sql<number>`count(*) filter (where ${aiUsage.totalTokens} > 0 and ${aiUsage.estimatedCostUsd} = 0)::int`,
     })
     .from(aiUsage)
     .where(gte(aiUsage.createdAt, windowStart));
@@ -190,10 +191,7 @@ function getPricing(modelId: string): Pricing | null {
 }
 
 async function loadAiUsageDb() {
-  const [{ getDb }, { aiUsage }] = await Promise.all([
-    import("../db"),
-    import("../db/schema"),
-  ]);
+  const [{ getDb }, { aiUsage }] = await Promise.all([import("../db"), import("../db/schema")]);
 
   return {
     db: getDb(),

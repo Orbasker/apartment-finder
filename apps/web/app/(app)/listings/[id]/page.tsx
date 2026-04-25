@@ -9,11 +9,7 @@ import { RejudgeButton } from "./rejudge-button";
 
 export const dynamic = "force-dynamic";
 
-export default async function ListingDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function ListingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const listingId = Number(id);
   if (!Number.isFinite(listingId)) notFound();
@@ -38,9 +34,7 @@ export default async function ListingDetailPage({
               {listing.floor != null && <span>· floor {listing.floor}</span>}
               <span>· {relTime(listing.ingestedAt)}</span>
             </div>
-            {listing.street && (
-              <p className="mt-1 text-sm">{listing.street}</p>
-            )}
+            {listing.street && <p className="mt-1 text-sm">{listing.street}</p>}
             <a
               href={listing.url}
               target="_blank"
@@ -76,9 +70,7 @@ export default async function ListingDetailPage({
                   </Badge>
                   <span>score {listing.score}</span>
                 </div>
-                {listing.reasoning && (
-                  <p className="text-muted-foreground">{listing.reasoning}</p>
-                )}
+                {listing.reasoning && <p className="text-muted-foreground">{listing.reasoning}</p>}
                 {listing.positiveSignals && listing.positiveSignals.length > 0 && (
                   <div>
                     <p className="font-medium">Positives</p>
@@ -119,10 +111,7 @@ export default async function ListingDetailPage({
             <CardTitle>Feedback</CardTitle>
           </CardHeader>
           <CardContent>
-            <FeedbackButtons
-              listingId={listing.id}
-              initial={listing.feedbackRating ?? null}
-            />
+            <FeedbackButtons listingId={listing.id} initial={listing.feedbackRating ?? null} />
           </CardContent>
         </Card>
       </aside>

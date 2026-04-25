@@ -39,8 +39,5 @@ export async function recordAlertSent(
   channel: AlertChannel,
 ): Promise<void> {
   const db = getDb();
-  await db
-    .insert(sentAlerts)
-    .values({ userId, listingId, channel })
-    .onConflictDoNothing();
+  await db.insert(sentAlerts).values({ userId, listingId, channel }).onConflictDoNothing();
 }

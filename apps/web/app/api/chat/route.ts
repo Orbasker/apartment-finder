@@ -17,10 +17,7 @@ export async function POST(req: Request) {
   return withApiLog("chat", req, async (log) => {
     if (!isGatewayConfigured()) {
       log.warn("gateway not configured");
-      return NextResponse.json(
-        { error: "AI_GATEWAY_API_KEY is not set" },
-        { status: 503 },
-      );
+      return NextResponse.json({ error: "AI_GATEWAY_API_KEY is not set" }, { status: 503 });
     }
 
     const user = await getCurrentUser();

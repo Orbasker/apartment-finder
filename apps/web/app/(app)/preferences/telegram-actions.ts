@@ -3,15 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { env } from "@/lib/env";
 import { getRequestUser } from "@/lib/supabase/server";
-import {
-  createLinkToken,
-  getChatIdForUser,
-  unlinkUser,
-} from "@/integrations/telegramLinks";
+import { createLinkToken, getChatIdForUser, unlinkUser } from "@/integrations/telegramLinks";
 
-export type LinkStatus =
-  | { linked: true; chatId: string }
-  | { linked: false };
+export type LinkStatus = { linked: true; chatId: string } | { linked: false };
 
 export type CreateLinkResult =
   | {
@@ -35,9 +29,7 @@ export async function createTelegramLinkAction(): Promise<CreateLinkResult> {
 
   const token = await createLinkToken(user.id);
   const botUsername =
-    env().NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ??
-    env().TELEGRAM_BOT_USERNAME ??
-    null;
+    env().NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? env().TELEGRAM_BOT_USERNAME ?? null;
 
   const deepLink = botUsername ? `https://t.me/${botUsername}?start=${token}` : null;
   return { ok: true, deepLink, token, botUsername };

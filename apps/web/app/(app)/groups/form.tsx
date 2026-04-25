@@ -24,13 +24,7 @@ type RowAction = {
   kind: "subscribe" | "catalog" | "remove";
 };
 
-export function GroupsForm({
-  initial,
-  isAdmin,
-}: {
-  initial: Row[];
-  isAdmin: boolean;
-}) {
+export function GroupsForm({ initial, isAdmin }: { initial: Row[]; isAdmin: boolean }) {
   const [rows, setRows] = useState<Row[]>(initial);
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
@@ -96,7 +90,11 @@ export function GroupsForm({
     <div className="space-y-6">
       <div className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
         <Input placeholder="Group URL" value={url} onChange={(e) => setUrl(e.target.value)} />
-        <Input placeholder="Label (optional)" value={label} onChange={(e) => setLabel(e.target.value)} />
+        <Input
+          placeholder="Label (optional)"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+        />
         <Button onClick={add} disabled={pending}>
           {addingPending && <Spinner className="mr-2" />}
           {addingPending ? "Adding…" : "Add"}

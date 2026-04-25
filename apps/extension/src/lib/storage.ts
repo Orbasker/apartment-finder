@@ -5,7 +5,7 @@ export type ExtensionSettings = {
 
 const DEFAULTS: ExtensionSettings = {
   ingestUrl: "http://localhost:3000/api/webhooks/extension",
-  secret: ""
+  secret: "",
 };
 
 export async function getSettings(): Promise<ExtensionSettings> {
@@ -21,18 +21,18 @@ const SEEN_KEY = "seenPostIds";
 const SEEN_MAX = 2000;
 
 export async function filterUnseen(ids: string[]): Promise<string[]> {
-  const { [SEEN_KEY]: seenList = [] } = (await chrome.storage.local.get(
-    SEEN_KEY
-  )) as { [SEEN_KEY]?: string[] };
+  const { [SEEN_KEY]: seenList = [] } = (await chrome.storage.local.get(SEEN_KEY)) as {
+    [SEEN_KEY]?: string[];
+  };
   const seen = new Set(seenList);
   return ids.filter((id) => !seen.has(id));
 }
 
 export async function markSeen(ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const { [SEEN_KEY]: seenList = [] } = (await chrome.storage.local.get(
-    SEEN_KEY
-  )) as { [SEEN_KEY]?: string[] };
+  const { [SEEN_KEY]: seenList = [] } = (await chrome.storage.local.get(SEEN_KEY)) as {
+    [SEEN_KEY]?: string[];
+  };
   const merged = [...seenList, ...ids];
   const trimmed = merged.slice(-SEEN_MAX);
   await chrome.storage.local.set({ [SEEN_KEY]: trimmed });

@@ -31,16 +31,13 @@ export default async function AdminPage({
   if (!isAdmin(user)) notFound();
 
   const { tab: tabParam } = await searchParams;
-  const active: TabId =
-    TABS.find((t) => t.id === tabParam)?.id ?? "stats";
+  const active: TabId = TABS.find((t) => t.id === tabParam)?.id ?? "stats";
 
   return (
     <div className="space-y-6">
       <header>
         <h2 className="text-2xl font-semibold">Admin</h2>
-        <p className="text-sm text-muted-foreground">
-          Signed in as {user?.email} · admin
-        </p>
+        <p className="text-sm text-muted-foreground">Signed in as {user?.email} · admin</p>
       </header>
 
       <nav className="flex gap-1 border-b">
@@ -72,10 +69,7 @@ export default async function AdminPage({
 }
 
 async function StatsTab() {
-  const [day, week] = await Promise.all([
-    getDashboardStats(24),
-    getDashboardStats(24 * 7),
-  ]);
+  const [day, week] = await Promise.all([getDashboardStats(24), getDashboardStats(24 * 7)]);
   return (
     <section className="grid gap-4 md:grid-cols-2">
       <StatsCard title="Last 24h" stats={day} />

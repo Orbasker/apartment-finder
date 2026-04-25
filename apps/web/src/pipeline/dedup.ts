@@ -14,9 +14,7 @@ export type IngestResult = {
   skippedExisting: number;
 };
 
-export async function ingestNewListings(
-  incoming: NormalizedListing[],
-): Promise<IngestResult> {
+export async function ingestNewListings(incoming: NormalizedListing[]): Promise<IngestResult> {
   if (incoming.length === 0) return { inserted: [], skippedExisting: 0 };
 
   const db = getDb();
@@ -39,9 +37,7 @@ export async function ingestNewListings(
     for (const r of rows) existingKeys.add(`${source}:${r.sourceId}`);
   }
 
-  const fresh = incoming.filter(
-    (l) => !existingKeys.has(`${l.source}:${l.sourceId}`),
-  );
+  const fresh = incoming.filter((l) => !existingKeys.has(`${l.source}:${l.sourceId}`));
 
   if (fresh.length === 0) {
     return { inserted: [], skippedExisting: incoming.length };

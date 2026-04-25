@@ -7,18 +7,18 @@ export default defineConfig({
   plugins: [crx({ manifest })],
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url))
-    }
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
   },
   build: {
     outDir: "dist",
     emptyOutDir: true,
     target: "esnext",
-    sourcemap: true
+    sourcemap: true,
   },
   server: {
     port: 5173,
     strictPort: true,
-    hmr: { port: 5173 }
-  }
+    hmr: { port: 5173 },
+  },
 });

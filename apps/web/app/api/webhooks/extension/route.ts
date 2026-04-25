@@ -44,9 +44,7 @@ export async function POST(req: Request): Promise<Response> {
 
     const normalized = (
       await Promise.all(
-        parsed.data.posts.map((p) =>
-          normalizeFbPost(toApifyShape(p), { source: "fb_ext" }),
-        ),
+        parsed.data.posts.map((p) => normalizeFbPost(toApifyShape(p), { source: "fb_ext" })),
       )
     ).filter((l): l is NonNullable<typeof l> => l !== null);
 

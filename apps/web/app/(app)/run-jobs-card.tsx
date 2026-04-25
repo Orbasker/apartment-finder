@@ -46,9 +46,9 @@ const JOBS: Array<{
 export function RunJobsCard() {
   const router = useRouter();
   const [running, setRunning] = useState<Set<DashboardJobId>>(new Set());
-  const [results, setResults] = useState<
-    Partial<Record<DashboardJobId, DashboardJobActionResult>>
-  >({});
+  const [results, setResults] = useState<Partial<Record<DashboardJobId, DashboardJobActionResult>>>(
+    {},
+  );
 
   async function run(job: DashboardJobId) {
     if (running.has(job)) return;
@@ -93,8 +93,8 @@ export function RunJobsCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Manual runs use the same server-side job code as cron. Yad2 and Apify bypass the
-          normal schedule window when started here.
+          Manual runs use the same server-side job code as cron. Yad2 and Apify bypass the normal
+          schedule window when started here.
         </p>
 
         <div className="grid gap-3 md:grid-cols-3">
@@ -116,14 +116,10 @@ export function RunJobsCard() {
                 </div>
                 {result && (
                   <div className="mt-3 space-y-1">
-                    <p
-                      className={`text-sm ${result.ok ? "text-foreground" : "text-destructive"}`}
-                    >
+                    <p className={`text-sm ${result.ok ? "text-foreground" : "text-destructive"}`}>
                       {result.summary}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      HTTP {result.status}
-                    </p>
+                    <p className="text-xs text-muted-foreground">HTTP {result.status}</p>
                   </div>
                 )}
               </div>
