@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getRequestUser, isAdmin } from "@/lib/supabase/server";
+import { getCurrentUser, isAdmin } from "@/lib/auth-server";
 import { getAiUsageSummary } from "@/lib/aiUsage";
 import { buildCostProjection } from "@/lib/costProjection";
 import { getDashboardStats } from "@/listings/queries";
@@ -27,7 +27,7 @@ export default async function AdminPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const user = await getRequestUser();
+  const user = await getCurrentUser();
   if (!isAdmin(user)) notFound();
 
   const { tab: tabParam } = await searchParams;

@@ -1,14 +1,14 @@
 import { notFound } from "next/navigation";
 import { getDb } from "@/db";
 import { monitoredGroups } from "@/db/schema";
-import { getRequestUser, isAdmin } from "@/lib/supabase/server";
+import { getCurrentUser, isAdmin } from "@/lib/auth-server";
 import { getSubscribedGroupUrls } from "@/groups/subscriptions";
 import { GroupsForm } from "./form";
 
 export const dynamic = "force-dynamic";
 
 export default async function GroupsPage() {
-  const user = await getRequestUser();
+  const user = await getCurrentUser();
   if (!user) notFound();
 
   const db = getDb();

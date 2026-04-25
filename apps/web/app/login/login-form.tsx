@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { authClient } from "@/lib/auth-client";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -45,14 +45,11 @@ export function LoginForm({ initialError = null }: { initialError?: string | nul
     setPendingAction("magic");
     setError(null);
     try {
-      const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await authClient.signIn.magicLink({
         email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        callbackURL: "/",
       });
-      if (error) throw error;
+      if (error) throw new Error(error.message ?? "Failed to send magic link");
       setStatus("sent");
     } catch (err) {
       setStatus("error");
@@ -67,14 +64,11 @@ export function LoginForm({ initialError = null }: { initialError?: string | nul
     setPendingAction("google");
     setError(null);
     try {
-      const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await authClient.signIn.social({
         provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
+        callbackURL: "/",
       });
-      if (error) throw error;
+      if (error) throw new Error(error.message ?? "Failed to sign in with Google");
     } catch (err) {
       setStatus("error");
       setError(err instanceof Error ? err.message : String(err));
