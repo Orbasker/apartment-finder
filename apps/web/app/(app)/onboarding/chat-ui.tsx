@@ -35,7 +35,13 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
 
   return (
     <div className="flex h-[calc(100dvh-12rem)] flex-col rounded-lg border bg-card">
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
+      <div
+        ref={scrollRef}
+        role="log"
+        aria-live="polite"
+        aria-label="שיחת אונבורדינג"
+        className="flex-1 space-y-3 overflow-y-auto p-3 sm:p-4"
+      >
         {messages.length === 0 && (
           <Bubble role="assistant">
             <p>{FIRST_PROMPT}</p>
@@ -81,9 +87,16 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
             <Spinner className="h-4 w-4" />
           </Bubble>
         )}
-        {error && <p className="text-sm text-destructive">{error.message}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error.message}
+          </p>
+        )}
         {completed && (
-          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
+          <div
+            role="status"
+            className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm"
+          >
             🎉 סיימנו! ההתראות פעילות. אפשר לערוך בכל רגע ב־
             <Link href="/filters" className="underline">
               /filters

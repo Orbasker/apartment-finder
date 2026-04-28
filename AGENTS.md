@@ -273,7 +273,16 @@ Add tests for pure logic when changing it. DB-touching code stays integration-te
 
 ## In progress
 
-- **PR6** (next): polish — accessibility audit, latency tuning, alert cap defaults, CI rebase to main once PRs 1–5 land.
+All 6 plan PRs are open and stacked. Once #56 (demolition) merges, rebase the chain onto main in order: #57 → #58 → #59 → #60 → #61.
+
+## Accessibility notes
+
+- Skip-to-content link in `app/layout.tsx` (visible on keyboard focus only). Auth layout has `<main id="main-content">` as the target.
+- Onboarding chat container has `role="log"` + `aria-live="polite"` so screen readers announce new turns.
+- Errors in the chat use `role="alert"`; the completion banner uses `role="status"`.
+- Magic-link email is Hebrew RTL.
+- All buttons have explicit `type="button"` (defaults would submit forms accidentally).
+- Inputs use `<Label>` siblings; numeric fields force `dir="ltr"` so digits render LTR inside the RTL page.
 
 ## Things deferred
 
