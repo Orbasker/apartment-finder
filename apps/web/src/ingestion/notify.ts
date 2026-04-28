@@ -2,13 +2,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { getDb } from "@/db";
-import {
-  apartments,
-  listingExtractions,
-  sentAlerts,
-  user,
-  userFilters,
-} from "@/db/schema";
+import { apartments, listingExtractions, sentAlerts, user, userFilters } from "@/db/schema";
 import { env } from "@/lib/env";
 import { createLogger, errorMessage } from "@/lib/log";
 import {
@@ -87,10 +81,7 @@ export async function sendInstantAlert(input: {
       furnitureStatus: listingExtractions.furnitureStatus,
     })
     .from(apartments)
-    .leftJoin(
-      listingExtractions,
-      eq(listingExtractions.listingId, apartments.primaryListingId),
-    )
+    .leftJoin(listingExtractions, eq(listingExtractions.listingId, apartments.primaryListingId))
     .where(eq(apartments.id, input.apartmentId))
     .limit(1);
   if (!apt) return { sent: false, reason: "error" };

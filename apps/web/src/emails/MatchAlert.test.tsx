@@ -82,7 +82,7 @@ describe("MatchAlertEmail", () => {
     expect(html).not.toContain("מידע נוסף על הנכס");
   });
 
-  test('renders the מידע נוסף על הנכס section with new fields', async () => {
+  test("renders the מידע נוסף על הנכס section with new fields", async () => {
     const html = await render(MatchAlertEmail(baseProps));
     expect(html).toContain("מידע נוסף על הנכס");
     expect(html).toContain("מחיר למ&quot;ר");

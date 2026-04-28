@@ -93,9 +93,7 @@ describe("ExtractionSchema: structured fields", () => {
       ExtractionSchema.parse(baseExtraction({ furnitureStatus: "not_included" })),
     ).not.toThrow();
     expect(() =>
-      ExtractionSchema.parse(
-        baseExtraction({ furnitureStatus: "yes" as never }),
-      ),
+      ExtractionSchema.parse(baseExtraction({ furnitureStatus: "yes" as never })),
     ).toThrow();
   });
 });

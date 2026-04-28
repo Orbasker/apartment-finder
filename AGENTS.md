@@ -156,14 +156,14 @@ Single `0000_*.sql` migration (drizzle-generated, hand-extended with `CREATE EXT
 
 ### Enums
 
-| Enum                      | Values                                                                                                                                                                                                                           |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `listing_source`          | `yad2`, `facebook`                                                                                                                                                                                                               |
-| `listing_status`          | `pending`, `extracted`, `geocoded`, `embedded`, `unified`, `failed`                                                                                                                                                              |
+| Enum                      | Values                                                                                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `listing_source`          | `yad2`, `facebook`                                                                                                                                                                                                                               |
+| `listing_status`          | `pending`, `extracted`, `geocoded`, `embedded`, `unified`, `failed`                                                                                                                                                                              |
 | `apartment_attribute_key` | 17 keys: `elevator`, `parking`, `balcony`, `air_conditioning`, `furnished`, `renovated`, `pet_friendly`, `safe_room`, `storage`, `accessible`, `bars`, `ground_floor`, `roof_access`, `shared_apartment`, `garden`, `pool`, `solar_water_heater` |
-| `attribute_requirement`   | `required_true`, `required_false`, `preferred_true`, `dont_care`                                                                                                                                                                 |
-| `attribute_source`        | `ai`, `user`, `manual`                                                                                                                                                                                                           |
-| `filter_text_kind`        | `wish`, `dealbreaker`                                                                                                                                                                                                            |
+| `attribute_requirement`   | `required_true`, `required_false`, `preferred_true`, `dont_care`                                                                                                                                                                                 |
+| `attribute_source`        | `ai`, `user`, `manual`                                                                                                                                                                                                                           |
+| `filter_text_kind`        | `wish`, `dealbreaker`                                                                                                                                                                                                                            |
 
 ### Tables
 
