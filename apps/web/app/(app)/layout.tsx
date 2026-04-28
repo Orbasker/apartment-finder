@@ -17,7 +17,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <UserMenu email={user?.email ?? null} />
         </div>
       </header>
-      {children}
+      <main id="main-content">{children}</main>
     </div>
   );
 }

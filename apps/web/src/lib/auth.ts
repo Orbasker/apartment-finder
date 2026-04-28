@@ -34,15 +34,19 @@ export const auth = betterAuth({
         const apiKey = e.RESEND_API_KEY;
         if (!apiKey) throw new Error("RESEND_API_KEY not set");
         const from = e.RESEND_FROM_EMAIL ?? "Apartment Finder <noreply@apartment-finder.app>";
+        const safeUrl = url.replace(/"/g, "&quot;");
         await new Resend(apiKey).emails.send({
           from,
           to: email,
-          subject: "Sign in to Apartment Finder",
-          html: `
-            <p>Click below to sign in. The link expires in 15 minutes.</p>
-            <p><a href="${url}">Sign in to Apartment Finder</a></p>
-            <p>If you didn't request this, you can ignore this email.</p>
-          `,
+          subject: "כניסה ל־Apartment Finder",
+          html: `<!doctype html>
+<html lang="he" dir="rtl">
+  <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#111827;">
+    <p>קישור הכניסה שלך מוכן. הקישור תקף ל־15 דקות.</p>
+    <p><a href="${safeUrl}" style="display:inline-block;background:#111827;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;">כניסה ל־Apartment Finder</a></p>
+    <p style="color:#6b7280;font-size:13px;">אם לא ביקשת קישור כניסה, אפשר להתעלם מהמייל.</p>
+  </body>
+</html>`,
         });
       },
     }),

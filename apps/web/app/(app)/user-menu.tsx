@@ -37,7 +37,7 @@ export function UserMenu({ email }: { email: string | null }) {
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "inline-flex items-center gap-2 rounded-full border bg-background px-1.5 py-1 pr-3 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex items-center gap-2 rounded-full border bg-background px-1.5 py-1 pe-3 text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         )}
       >
         <span
