@@ -7,10 +7,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./preferences": "./src/preferences.ts",
+    "./filters": "./src/filters.ts",
     "./listing": "./src/listing.ts",
-    "./judgment": "./src/judgment.ts",
-    "./extension": "./src/extension.ts",
     "./extraction": "./src/extraction.ts"
   },
   "scripts": {
