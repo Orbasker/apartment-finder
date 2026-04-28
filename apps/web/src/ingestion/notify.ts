@@ -2,10 +2,14 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { getDb } from "@/db";
-import { apartments, sentAlerts, user, userFilters } from "@/db/schema";
+import { apartments, listingExtractions, sentAlerts, user, userFilters } from "@/db/schema";
 import { env } from "@/lib/env";
 import { createLogger, errorMessage } from "@/lib/log";
-import type { ApartmentAttributeKey } from "@apartment-finder/shared";
+import {
+  FurnitureStatusSchema,
+  type ApartmentAttributeKey,
+  type FurnitureStatus,
+} from "@apartment-finder/shared";
 import { MatchAlertEmail } from "@/emails/MatchAlert";
 
 const log = createLogger("ingestion:notify");
@@ -68,11 +72,28 @@ export async function sendInstantAlert(input: {
       floor: apartments.floor,
       priceNisLatest: apartments.priceNisLatest,
       primaryListingId: apartments.primaryListingId,
+      condition: listingExtractions.condition,
+      arnonaNis: listingExtractions.arnonaNis,
+      vaadBayitNis: listingExtractions.vaadBayitNis,
+      entryDate: listingExtractions.entryDate,
+      balconySqm: listingExtractions.balconySqm,
+      totalFloors: listingExtractions.totalFloors,
+      furnitureStatus: listingExtractions.furnitureStatus,
     })
     .from(apartments)
+    .leftJoin(listingExtractions, eq(listingExtractions.listingId, apartments.primaryListingId))
     .where(eq(apartments.id, input.apartmentId))
     .limit(1);
   if (!apt) return { sent: false, reason: "error" };
+
+  const pricePerSqm =
+    apt.priceNisLatest != null && apt.sqm != null && apt.sqm > 0
+      ? Math.round(apt.priceNisLatest / apt.sqm)
+      : null;
+  const furnitureStatusParsed = FurnitureStatusSchema.safeParse(apt.furnitureStatus);
+  const furnitureStatus: FurnitureStatus | null = furnitureStatusParsed.success
+    ? furnitureStatusParsed.data
+    : null;
 
   if (!env().RESEND_API_KEY) {
     log.warn("RESEND_API_KEY not set — skipping send", { userId: input.userId });
@@ -95,35 +116,28 @@ export async function sendInstantAlert(input: {
     priceNisLatest: apt.priceNisLatest,
   });
 
-  const html = await render(
-    MatchAlertEmail({
-      apartmentId: apt.id,
-      neighborhood: apt.neighborhood,
-      formattedAddress: apt.formattedAddress,
-      rooms: apt.rooms,
-      sqm: apt.sqm,
-      floor: apt.floor,
-      priceNis: apt.priceNisLatest,
-      sourceUrl,
-      filtersUrl,
-      matchedAttributes: input.matchedAttributes,
-    }),
-  );
-  const text = await render(
-    MatchAlertEmail({
-      apartmentId: apt.id,
-      neighborhood: apt.neighborhood,
-      formattedAddress: apt.formattedAddress,
-      rooms: apt.rooms,
-      sqm: apt.sqm,
-      floor: apt.floor,
-      priceNis: apt.priceNisLatest,
-      sourceUrl,
-      filtersUrl,
-      matchedAttributes: input.matchedAttributes,
-    }),
-    { plainText: true },
-  );
+  const emailProps = {
+    apartmentId: apt.id,
+    neighborhood: apt.neighborhood,
+    formattedAddress: apt.formattedAddress,
+    rooms: apt.rooms,
+    sqm: apt.sqm,
+    floor: apt.floor,
+    priceNis: apt.priceNisLatest,
+    sourceUrl,
+    filtersUrl,
+    matchedAttributes: input.matchedAttributes,
+    pricePerSqm,
+    arnonaNis: apt.arnonaNis,
+    vaadBayitNis: apt.vaadBayitNis,
+    condition: apt.condition,
+    entryDate: apt.entryDate,
+    balconySqm: apt.balconySqm,
+    totalFloors: apt.totalFloors,
+    furnitureStatus,
+  } as const;
+  const html = await render(MatchAlertEmail(emailProps));
+  const text = await render(MatchAlertEmail(emailProps), { plainText: true });
 
   try {
     const result = await getResend().emails.send({

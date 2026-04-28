@@ -156,14 +156,14 @@ Single `0000_*.sql` migration (drizzle-generated, hand-extended with `CREATE EXT
 
 ### Enums
 
-| Enum                      | Values                                                                                                                                                                                                                           |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `listing_source`          | `yad2`, `facebook`                                                                                                                                                                                                               |
-| `listing_status`          | `pending`, `extracted`, `geocoded`, `embedded`, `unified`, `failed`                                                                                                                                                              |
-| `apartment_attribute_key` | 15 keys: `elevator`, `parking`, `balcony`, `air_conditioning`, `furnished`, `renovated`, `pet_friendly`, `safe_room`, `storage`, `accessible`, `bars`, `ground_floor`, `roof_access`, `shared_apartment`, `is_legitimate_rental` |
-| `attribute_requirement`   | `required_true`, `required_false`, `preferred_true`, `dont_care`                                                                                                                                                                 |
-| `attribute_source`        | `ai`, `user`, `manual`                                                                                                                                                                                                           |
-| `filter_text_kind`        | `wish`, `dealbreaker`                                                                                                                                                                                                            |
+| Enum                      | Values                                                                                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `listing_source`          | `yad2`, `facebook`                                                                                                                                                                                                                               |
+| `listing_status`          | `pending`, `extracted`, `geocoded`, `embedded`, `unified`, `failed`                                                                                                                                                                              |
+| `apartment_attribute_key` | 17 keys: `elevator`, `parking`, `balcony`, `air_conditioning`, `furnished`, `renovated`, `pet_friendly`, `safe_room`, `storage`, `accessible`, `bars`, `ground_floor`, `roof_access`, `shared_apartment`, `garden`, `pool`, `solar_water_heater` |
+| `attribute_requirement`   | `required_true`, `required_false`, `preferred_true`, `dont_care`                                                                                                                                                                                 |
+| `attribute_source`        | `ai`, `user`, `manual`                                                                                                                                                                                                                           |
+| `filter_text_kind`        | `wish`, `dealbreaker`                                                                                                                                                                                                                            |
 
 ### Tables
 
@@ -189,14 +189,13 @@ Implemented inline in cron + webhook handlers with concurrency=4. `maxDuration=3
 2. **geocode** (`ingestion/geocode.ts`) — Google Geocoding (`language=he&region=il`) with `geocode_cache` lookup/write.
 3. **embed** (`ingestion/embed.ts`) — `gemini-embedding-001` with `providerOptions.google.outputDimensionality=1536`. Embeds composed text: `${neighborhood} ${street} ${rooms} ${sqm} ${description}`.
 4. **persist** — write `listing_extractions` + `listing_attributes` rows.
-5. **anti-spam gate** — if AI marked `is_legitimate_rental=false`, skip unify/notify.
-6. **unify** (`ingestion/unify.ts`) — priority match:
+5. **unify** (`ingestion/unify.ts`) — priority match:
    1. exact `place_id` (confidence 0.95)
    2. lat/lon ≤ 25m + |rooms| ≤ 0.5 + sqm within 15% (0.85)
    3. embedding cosine ≥ 0.92 within ±200m bbox (0.70)
    4. create new apartment (1.0)
-7. **match** (`ingestion/match.ts`) — SQL prefilter on `user_filters` (price/rooms/sqm/neighborhoods, all-active only). Per-candidate: load `user_filter_attributes`, run `checkAttributeRequirements` (strictUnknowns honored). Then dealbreaker cosine ≤ 0.35 → fail.
-8. **notify** (`ingestion/notify.ts`) — Resend HTML email (Hebrew RTL, `<bdi>` for numerics, matched-attribute summary). Enforces `sent_alerts` dedup + per-user `daily_alert_cap`.
+6. **match** (`ingestion/match.ts`) — SQL prefilter on `user_filters` (price/rooms/sqm/neighborhoods, all-active only). Per-candidate: load `user_filter_attributes`, run `checkAttributeRequirements` (strictUnknowns honored). Then dealbreaker cosine ≤ 0.35 → fail.
+7. **notify** (`ingestion/notify.ts`) — Resend HTML email (Hebrew RTL, `<bdi>` for numerics, matched-attribute summary, "מידע נוסף על הנכס" data table from the primary listing's extraction). Enforces `sent_alerts` dedup + per-user `daily_alert_cap`.
 
 ## Pages
 
