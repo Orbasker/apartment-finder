@@ -6,7 +6,7 @@ import { Footer } from "./footer";
 
 export const metadata = {
   title: "Apartment Finder",
-  description: "AI-assisted Tel Aviv apartment finder",
+  description: "מציאת דירה בתל אביב — התראות מיידיות לפי הסינונים שלך.",
 };
 
 export const viewport = {
@@ -28,7 +28,7 @@ const themeInitScript = `
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="he" dir="rtl" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

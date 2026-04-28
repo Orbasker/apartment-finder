@@ -27,7 +27,7 @@ export function UserMenu({ email }: { email: string | null }) {
   }, [open]);
 
   const initial = email ? email.trim().charAt(0).toUpperCase() : "?";
-  const display = email ?? "Signed out";
+  const display = email ?? "מנותק/ת";
 
   return (
     <div ref={ref} className="relative">
@@ -60,11 +60,13 @@ export function UserMenu({ email }: { email: string | null }) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-md border bg-background shadow-md"
+          className="absolute end-0 z-50 mt-2 w-64 overflow-hidden rounded-md border bg-background shadow-md"
         >
           <div className="border-b px-3 py-3">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Signed in as</p>
-            <p className="mt-0.5 truncate text-sm font-medium">{display}</p>
+            <p className="text-xs text-muted-foreground">מחובר/ת בתור</p>
+            <p className="mt-0.5 truncate text-sm font-medium">
+              <bdi>{display}</bdi>
+            </p>
           </div>
           <div className="py-1">
             <button
@@ -76,10 +78,10 @@ export function UserMenu({ email }: { email: string | null }) {
                   await signOutAction();
                 })
               }
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-muted disabled:opacity-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-start text-sm text-destructive hover:bg-muted disabled:opacity-50"
             >
               {pending ? <Spinner className="h-4 w-4" /> : <LogoutIcon className="h-4 w-4" />}
-              {pending ? "Signing out…" : "Log out"}
+              {pending ? "מתנתק/ת…" : "התנתקות"}
             </button>
           </div>
         </div>
