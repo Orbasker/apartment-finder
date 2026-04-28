@@ -1,15 +1,32 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, magicLink } from "better-auth/plugins";
+import { admin, emailOTP } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
+import { render } from "@react-email/render";
 import { Resend } from "resend";
 import { getDb } from "@/db";
 import { account, session, user, verification } from "@/db/schema";
+import { SignInCodeEmail } from "@/emails/SignInCode";
 import { env } from "@/lib/env";
+
+const OTP_EXPIRES_MINUTES = 5;
 
 const e = env();
 
 const baseURL = e.BETTER_AUTH_URL ?? e.APP_PUBLIC_ORIGIN;
+
+export function isGoogleConfigured(): boolean {
+  return Boolean(e.GOOGLE_CLIENT_ID && e.GOOGLE_CLIENT_SECRET);
+}
+
+const socialProviders = isGoogleConfigured()
+  ? {
+      google: {
+        clientId: e.GOOGLE_CLIENT_ID as string,
+        clientSecret: e.GOOGLE_CLIENT_SECRET as string,
+      },
+    }
+  : undefined;
 
 export const auth = betterAuth({
   baseURL,
@@ -21,33 +38,37 @@ export const auth = betterAuth({
   advanced: {
     database: { generateId: "uuid" },
   },
-  socialProviders: {
-    google: {
-      clientId: e.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: e.GOOGLE_CLIENT_SECRET ?? "",
-    },
-  },
+  ...(socialProviders ? { socialProviders } : {}),
   plugins: [
-    magicLink({
-      expiresIn: 60 * 15,
-      sendMagicLink: async ({ email, url }) => {
+    emailOTP({
+      otpLength: 6,
+      expiresIn: 60 * OTP_EXPIRES_MINUTES,
+      sendVerificationOTP: async ({ email, otp, type }) => {
         const apiKey = e.RESEND_API_KEY;
         if (!apiKey) throw new Error("RESEND_API_KEY not set");
-        const from = e.RESEND_FROM_EMAIL ?? "Apartment Finder <noreply@apartment-finder.app>";
-        const safeUrl = url.replace(/"/g, "&quot;");
-        await new Resend(apiKey).emails.send({
+        const from = e.RESEND_FROM_EMAIL;
+        if (!from) throw new Error("RESEND_FROM_EMAIL not set");
+        const html = await render(SignInCodeEmail({ otp, expiresInMinutes: OTP_EXPIRES_MINUTES }));
+        const text = await render(SignInCodeEmail({ otp, expiresInMinutes: OTP_EXPIRES_MINUTES }), {
+          plainText: true,
+        });
+        const result = await new Resend(apiKey).emails.send({
           from,
           to: email,
-          subject: "כניסה ל־Apartment Finder",
-          html: `<!doctype html>
-<html lang="he" dir="rtl">
-  <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#111827;">
-    <p>קישור הכניסה שלך מוכן. הקישור תקף ל־15 דקות.</p>
-    <p><a href="${safeUrl}" style="display:inline-block;background:#111827;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;">כניסה ל־Apartment Finder</a></p>
-    <p style="color:#6b7280;font-size:13px;">אם לא ביקשת קישור כניסה, אפשר להתעלם מהמייל.</p>
-  </body>
-</html>`,
+          subject: `קוד הכניסה שלך: ${otp}`,
+          html,
+          text,
         });
+        if (result.error) {
+          console.error("[email-otp] Resend rejected send", {
+            from,
+            to: email,
+            type,
+            error: result.error,
+          });
+          throw new Error(`Resend send failed: ${result.error.message ?? "unknown"}`);
+        }
+        console.log("[email-otp] sent", { to: email, type, messageId: result.data?.id });
       },
     }),
     admin(),

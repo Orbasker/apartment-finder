@@ -78,6 +78,11 @@ export async function sendInstantAlert(input: {
     log.warn("RESEND_API_KEY not set — skipping send", { userId: input.userId });
     return { sent: false, reason: "no_resend" };
   }
+  const from = env().RESEND_FROM_EMAIL;
+  if (!from) {
+    log.warn("RESEND_FROM_EMAIL not set — skipping send", { userId: input.userId });
+    return { sent: false, reason: "no_resend" };
+  }
 
   const siteOrigin = (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
   const sourceUrl =
@@ -122,13 +127,22 @@ export async function sendInstantAlert(input: {
 
   try {
     const result = await getResend().emails.send({
-      from: env().RESEND_FROM_EMAIL || "Apartment Finder <apartment-finder@orbasker.com>",
+      from,
       to: u.email,
       subject,
       html,
       text,
     });
-    const messageId = (result as { data?: { id?: string } | null }).data?.id ?? null;
+    if (result.error) {
+      log.error("alert rejected by Resend", {
+        userId: input.userId,
+        apartmentId: input.apartmentId,
+        from,
+        error: result.error.message ?? String(result.error),
+      });
+      return { sent: false, reason: "error" };
+    }
+    const messageId = result.data?.id ?? null;
     await db.insert(sentAlerts).values({
       userId: input.userId,
       apartmentId: input.apartmentId,

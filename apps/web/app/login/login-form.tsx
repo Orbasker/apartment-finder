@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,60 +30,71 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-export function LoginForm({ initialError = null }: { initialError?: string | null } = {}) {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    initialError ? "error" : "idle",
-  );
-  const [pendingAction, setPendingAction] = useState<"google" | "magic" | null>(null);
-  const [error, setError] = useState<string | null>(initialError);
-  const busy = status === "sending";
+type Step = "email" | "otp";
 
-  async function sendMagicLink(e: React.FormEvent) {
+export function LoginForm({
+  initialError = null,
+  googleEnabled = false,
+}: {
+  initialError?: string | null;
+  googleEnabled?: boolean;
+} = {}) {
+  const [step, setStep] = useState<Step>("email");
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [pendingAction, setPendingAction] = useState<"google" | "send" | "verify" | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
+  const otpRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (step === "otp") otpRef.current?.focus();
+  }, [step]);
+
+  async function sendOtp(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("sending");
-    setPendingAction("magic");
+    setPendingAction("send");
     setError(null);
     try {
-      const { error } = await authClient.signIn.magicLink({ email, callbackURL: "/" });
-      if (error) throw new Error(error.message ?? "שליחת הקישור נכשלה");
-      setStatus("sent");
+      const { error } = await authClient.emailOtp.sendVerificationOtp({
+        email,
+        type: "sign-in",
+      });
+      if (error) throw new Error(error.message ?? "שליחת הקוד נכשלה");
+      setStep("otp");
     } catch (err) {
-      setStatus("error");
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setPendingAction(null);
     }
   }
 
+  async function verifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setPendingAction("verify");
+    setError(null);
+    try {
+      const { error } = await authClient.signIn.emailOtp({ email, otp });
+      if (error) throw new Error(error.message ?? "קוד שגוי");
+      window.location.href = "/";
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setPendingAction(null);
+    }
+  }
+
   async function signInWithGoogle() {
-    setStatus("sending");
     setPendingAction("google");
     setError(null);
     try {
       const { error } = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
       if (error) throw new Error(error.message ?? "התחברות עם Google נכשלה");
     } catch (err) {
-      setStatus("error");
       setError(err instanceof Error ? err.message : String(err));
       setPendingAction(null);
     }
   }
 
-  if (status === "sent") {
-    return (
-      <div className="space-y-2 text-sm">
-        <p className="font-medium">בדוק/י את תיבת הדוא״ל</p>
-        <p className="text-muted-foreground">
-          שלחנו קישור כניסה ל־
-          <strong className="text-foreground">
-            <bdi>{email}</bdi>
-          </strong>
-          .
-        </p>
-      </div>
-    );
-  }
+  const busy = pendingAction !== null;
 
   return (
     <>
@@ -97,48 +108,114 @@ export function LoginForm({ initialError = null }: { initialError?: string | nul
         </div>
       )}
       <div className="space-y-4">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 w-full text-base"
-          onClick={signInWithGoogle}
-          disabled={busy}
-        >
-          {pendingAction === "google" ? (
-            <Spinner className="h-4 w-4" />
-          ) : (
-            <GoogleIcon className="h-4 w-4" />
-          )}
-          המשך עם Google
-        </Button>
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-background px-2 text-muted-foreground">או</span>
-          </div>
-        </div>
-        <form onSubmit={sendMagicLink} className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="email">דוא״ל</Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              dir="ltr"
-              className="h-11 text-base"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-            />
-          </div>
-          <Button type="submit" disabled={busy} className="h-11 w-full text-base">
-            {pendingAction === "magic" && <Spinner className="h-4 w-4" />}
-            {pendingAction === "magic" ? "שולח קישור…" : "שלח קישור כניסה"}
-          </Button>
-        </form>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {googleEnabled && step === "email" && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full text-base"
+              onClick={signInWithGoogle}
+              disabled={busy}
+            >
+              {pendingAction === "google" ? (
+                <Spinner className="h-4 w-4" />
+              ) : (
+                <GoogleIcon className="h-4 w-4" />
+              )}
+              המשך עם Google
+            </Button>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-background px-2 text-muted-foreground">או</span>
+              </div>
+            </div>
+          </>
+        )}
+
+        {step === "email" && (
+          <form onSubmit={sendOtp} className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="email">דוא״ל</Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                dir="ltr"
+                className="h-11 text-base"
+                value={email}
+                onChange={(ev) => setEmail(ev.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+                enterKeyHint="send"
+              />
+            </div>
+            <Button type="submit" disabled={busy || !email} className="h-11 w-full text-base">
+              {pendingAction === "send" && <Spinner className="h-4 w-4" />}
+              {pendingAction === "send" ? "שולח קוד…" : "שלח קוד אימות"}
+            </Button>
+          </form>
+        )}
+
+        {step === "otp" && (
+          <form onSubmit={verifyOtp} className="space-y-3">
+            <div className="space-y-1">
+              <p className="text-sm">
+                שלחנו קוד בן 6 ספרות ל־
+                <strong className="text-foreground">
+                  <bdi>{email}</bdi>
+                </strong>
+                .
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="otp">קוד אימות</Label>
+              <Input
+                ref={otpRef}
+                id="otp"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                autoComplete="one-time-code"
+                required
+                dir="ltr"
+                maxLength={6}
+                className="h-12 text-center text-2xl tracking-[0.5em]"
+                value={otp}
+                onChange={(ev) => setOtp(ev.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="••••••"
+                enterKeyHint="done"
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={busy || otp.length !== 6}
+              className="h-11 w-full text-base"
+            >
+              {pendingAction === "verify" && <Spinner className="h-4 w-4" />}
+              {pendingAction === "verify" ? "מאמת…" : "אישור"}
+            </Button>
+            <button
+              type="button"
+              className="block w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => {
+                setStep("email");
+                setOtp("");
+                setError(null);
+              }}
+              disabled={busy}
+            >
+              לשנות כתובת או לשלוח שוב
+            </button>
+          </form>
+        )}
+
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
       </div>
     </>
   );

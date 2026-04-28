@@ -2,7 +2,6 @@
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [".env"],
   "globalEnv": [
-    "ADMIN_SUMMARY_EMAILS",
     "AI_GATEWAY_API_KEY",
     "APIFY_TOKEN",
     "APIFY_WEBHOOK_SECRET",
@@ -12,21 +11,17 @@
     "CRON_SECRET",
     "DATABASE_URL",
     "DIRECT_URL",
-    "EXTENSION_INGEST_SECRET",
+    "FACEBOOK_GROUP_URLS",
     "GOOGLE_CLIENT_ID",
     "GOOGLE_CLIENT_SECRET",
+    "GOOGLE_GEOCODING_API_KEY",
     "NEXT_PUBLIC_SITE_URL",
-    "NEXT_PUBLIC_TELEGRAM_BOT_USERNAME",
     "RESEND_API_KEY",
     "RESEND_FROM_EMAIL",
     "SUPABASE_ANON_KEY",
     "SUPABASE_DATABASE_PASSWORD",
     "SUPABASE_SERVICE_ROLE_KEY",
     "SUPABASE_URL",
-    "TELEGRAM_ALLOWED_CHAT_ID",
-    "TELEGRAM_BOT_TOKEN",
-    "TELEGRAM_BOT_USERNAME",
-    "TELEGRAM_WEBHOOK_SECRET",
     "YAD2_PROXY_SECRET",
     "YAD2_PROXY_URL"
   ],
@@ -39,7 +34,14 @@
       "cache": false,
       "persistent": true
     },
-    "lint": {},
+    "start": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint:check": {},
+    "lint:fix": {
+      "cache": false
+    },
     "typecheck": {
       "dependsOn": ["^build"]
     },
@@ -49,7 +51,7 @@
     "db:push": {
       "cache": false
     },
-    "db:push:auto": {
+    "db:migrate": {
       "cache": false
     }
   }

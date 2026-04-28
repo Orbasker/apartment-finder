@@ -35,7 +35,7 @@ jobs:
         with:
           bun-version: 1.3.9
       - run: bun install --frozen-lockfile
-      - run: bun run lint
+      - run: bun run lint:check
 
   knip:
     name: dead code (knip)

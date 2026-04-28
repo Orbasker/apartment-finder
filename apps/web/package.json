@@ -4,16 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint:check": "eslint .",
+    "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:push:auto": "DRIZZLE_PUSH_NO_STRICT=1 drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:reset": "bun scripts/db-reset.ts",
+    "db:studio": "drizzle-kit studio",
+    "email:dev": "email dev --dir src/emails"
   },
   "dependencies": {
     "@ai-sdk/gateway": "^1.0.0",
@@ -56,6 +58,7 @@
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.1.0",
+    "react-email": "^4.0.0",
     "typescript": "^5.7.2"
   }
 }

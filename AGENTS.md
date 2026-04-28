@@ -6,13 +6,14 @@ Living documentation for AI agents and contributors working on this repo. Reflec
 
 Hebrew-only Tel Aviv apartment finder. Users define their preferences via a conversational chat (or edit form), and get **instant email alerts** the moment a new listing matches. No browse UI, no admin panel — chat + email only.
 
-The system is multi-user with [Better Auth](https://better-auth.dev) (magic link via Resend, Google OAuth). Each user has their own filter set; matching is filter-only (no AI judging/scoring).
+The system is multi-user with [Better Auth](https://better-auth.dev) (email-OTP via Resend, optional Google OAuth). Each user has their own filter set; matching is filter-only (no AI judging/scoring).
 
 ## Non-negotiable conventions
 
 - **Hebrew-only**, RTL. `<html lang="he" dir="rtl">`. Use Tailwind v4 logical classes (`ms-*` / `me-*` / `ps-*` / `pe-*`, `start-*` / `end-*`) — never the LTR-physical (`ml-*`, `mr-*`).
 - **Mobile-first**. Design for ~375px viewport first; scale up via `sm:`/`md:`/`lg:` modifiers. Tap targets ≥ 44px. Single-column at base.
 - **Bidi safety**: wrap numerics/Latin inside Hebrew copy in `<bdi>` (e.g. `<bdi>₪7,500</bdi>`).
+- **All outbound email goes through React Email.** Never construct raw HTML strings inline in `auth.ts`, `notify.ts`, or anywhere else. Add a component under `apps/web/src/emails/<Name>.tsx` using `@react-email/components` (`Html`, `Body`, `Container`, `Section`, `Heading`, `Text`, `Button`, `Preview`, etc.), then `await render(<Component {...props} />)` from `@react-email/render` at the call site and pass both `html` and `text` (with `{ plainText: true }`) to `resend.emails.send`. Always set `<Html lang="he" dir="rtl">` and wrap numerics/Latin in `<bdi>`. Preview each new template with `bun run email:dev`.
 - **No backward compatibility**. Schema is fresh, migrations don't preserve legacy data, drop-and-recreate is OK.
 - Default to **no comments**. Only document non-obvious WHY.
 
@@ -56,7 +57,7 @@ User side:
 - **Postgres** on Supabase (pgvector ≥ 0.5 required for HNSW)
 - **AI Gateway** (`@ai-sdk/gateway`) → Gemini 2.5 Flash + `gemini-embedding-001`
 - **AI SDK 5** (`ai`) — `generateObject`, `embed`, `streamText`. `@ai-sdk/react@2` for `useChat` (pinned to v2 to match `ai@5`; v3 transitively pulls in `ai@6` which has incompatible types)
-- **Resend 6** for email (magic-link + match alerts) + **React Email** (`@react-email/components`, `@react-email/render`) for the match-alert template
+- **Resend 6** for outbound email (sign-in OTP + match alerts) + **React Email** (`@react-email/components`, `@react-email/render`) for every template — see `apps/web/src/emails/`
 - **Apify** for Facebook group scraping
 - **Yad2 proxy** (`services/yad2-proxy/`) for Israeli-IP egress; Yad2 blocks Vercel IPs
 - **Bun 1.3** workspace, **Turbo 2.9**, **vitest** for tests, **knip** for dead-code
@@ -80,7 +81,7 @@ apps/
           page.tsx              Server shell, loads filters
           form.tsx              Client form (RTL, mobile-first, sticky submit)
           actions.ts            saveFiltersAction (server action)
-      login/                    Magic-link + Google sign-in (Hebrew, mobile-first)
+      login/                    Email-OTP + Google sign-in (Hebrew, two-step, mobile-first)
       api/
         auth/[...all]/          better-auth routes
         chat/onboarding/        Streaming chat endpoint (streamText + tools)
@@ -100,10 +101,12 @@ apps/
         agent.ts                ONBOARDING_MODEL + ONBOARDING_SYSTEM (Hebrew prompt)
         tools.ts                buildOnboardingTools(userId) — 10 tools the
                                   chat agent calls to upsert filters
-      emails/
-        MatchAlert.tsx          React Email template (RTL Hebrew, mobile-
-                                  friendly card layout, plain-text fallback)
+      emails/                   React Email templates (RTL Hebrew, mobile-
+                                  friendly card layout, plain-text fallback).
+                                  All outbound email MUST go through here.
+        MatchAlert.tsx          New-apartment match alert
         MatchAlert.test.tsx     Render-output assertions
+        SignInCode.tsx          Email-OTP code (used by auth.ts)
       ingestion/                Collect → extract → ... → notify
         extract.ts              Gemini extraction
         geocode.ts              Google Geocoding + geocode_cache
@@ -199,7 +202,7 @@ Implemented inline in cron + webhook handlers with concurrency=4. `maxDuration=3
 
 | Path          | Auth     | Purpose                                                                                                                                                                                                                  |
 | ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/login`      | public   | Hebrew sign-in (Google OAuth + magic link via Resend).                                                                                                                                                                   |
+| `/login`      | public   | Hebrew sign-in (Google OAuth + 6-digit email OTP via Resend, two-step UI).                                                                                                                                               |
 | `/`           | required | Status home. Redirects to `/onboarding` when `user_filters.onboarded_at` is null; otherwise shows alert status + links.                                                                                                  |
 | `/onboarding` | required | Conversational chat agent (Hebrew, mobile-first). Walks user through ≥3 filters via 10 tools, then calls `completeOnboarding` to set `onboarded_at`.                                                                     |
 | `/filters`    | required | Form-based filter editor. Save action upserts `user_filters`, replaces `user_filter_attributes` row-by-row, replaces `user_filter_texts` (and re-embeds wishes/dealbreakers). Submitting also marks onboarding complete. |
@@ -211,7 +214,7 @@ The onboarding chat route is `POST /api/chat/onboarding` — `streamText` with t
 `apps/web/src/lib/auth.ts`:
 
 - Better Auth 1.6 + Drizzle adapter
-- Magic link (15-min expiry) via Resend
+- 6-digit email OTP (5-min expiry) via Resend, rendered from `src/emails/SignInCode.tsx`
 - Google OAuth (`socialProviders.google`)
 - `admin` plugin + `nextCookies` plugin
 - `middleware.ts` redirects unauthed users to `/login`
@@ -280,7 +283,7 @@ All 6 plan PRs are open and stacked. Once #56 (demolition) merges, rebase the ch
 - Skip-to-content link in `app/layout.tsx` (visible on keyboard focus only). Auth layout has `<main id="main-content">` as the target.
 - Onboarding chat container has `role="log"` + `aria-live="polite"` so screen readers announce new turns.
 - Errors in the chat use `role="alert"`; the completion banner uses `role="status"`.
-- Magic-link email is Hebrew RTL.
+- Sign-in OTP email is Hebrew RTL (rendered from `apps/web/src/emails/SignInCode.tsx`).
 - All buttons have explicit `type="button"` (defaults would submit forms accidentally).
 - Inputs use `<Label>` siblings; numeric fields force `dir="ltr"` so digits render LTR inside the RTL page.
 
