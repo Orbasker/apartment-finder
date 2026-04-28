@@ -28,7 +28,6 @@
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "drizzle-orm": "^0.36.4",
-    "grammy": "^1.33.0",
     "lucide-react": "1.8.0",
     "next": "^15.5.0",
     "postgres": "^3.4.5",
