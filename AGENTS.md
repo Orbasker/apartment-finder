@@ -304,6 +304,7 @@ All planned MVP PRs (#56 demolition → #62 schema → #63 ingestion → #64 onb
 - **AI judging / scoring** - removed; matching is filter-only.
 
 <!-- VERCEL BEST PRACTICES START -->
+
 ## Best practices for developing on Vercel
 
 These defaults are optimized for AI coding agents (and humans) working on apps that deploy to Vercel.
