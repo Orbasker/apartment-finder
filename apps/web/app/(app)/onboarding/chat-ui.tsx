@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
 
 const FIRST_PROMPT =
-  "שלום! בכמה שאלות נכין לך התראות מדויקות לדירות בתל אביב. נתחיל מהתקציב — מה הסכום המקסימלי שתסכים/י לשלם בחודש?";
+  "שלום! בכמה שאלות נכין לך התראות מדויקות לדירות בתל אביב. נתחיל מהתקציב - מה הסכום המקסימלי שתסכים/י לשלם בחודש?";
 
 export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean }) {
   const [input, setInput] = useState("");
@@ -47,7 +47,7 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
             <p>{FIRST_PROMPT}</p>
             {alreadyOnboarded && (
               <p className="mt-2 text-xs text-muted-foreground">
-                כבר השלמת אונבורדינג בעבר — אפשר להמשיך מכאן ולעדכן, או לערוך ישירות ב־
+                כבר השלמת אונבורדינג בעבר - אפשר להמשיך מכאן ולעדכן, או לערוך ישירות ב־
                 <Link href="/filters" className="underline">
                   /filters
                 </Link>

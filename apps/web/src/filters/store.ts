@@ -175,7 +175,7 @@ export async function removeText(
     );
 }
 
-/** Replace all wishes/dealbreakers for a user — used by the form-based edit page. */
+/** Replace all wishes/dealbreakers for a user - used by the form-based edit page. */
 export async function replaceTexts(
   userId: string,
   kind: FilterTextKind,

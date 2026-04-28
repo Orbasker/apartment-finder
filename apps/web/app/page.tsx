@@ -7,7 +7,7 @@ import { AiExtractor } from "./_landing/ai-extractor";
 import { ChatPreview } from "./_landing/chat-preview";
 
 export const metadata = {
-  title: "Apartment Finder — דירה בתל אביב, לפני כולם",
+  title: "Apartment Finder - דירה בתל אביב, לפני כולם",
   description:
     "סורקים את Yad2, Madlan וקבוצות פייסבוק 24/7. AI מחלץ את הפרטים, מסנן לפי הטעם שלך, ושולח התראה לאימייל / WhatsApp / Telegram.",
 };
@@ -52,9 +52,7 @@ export default async function HomePage() {
           <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-[2.6rem]">
             דירה בתל אביב,
             <br />
-            <span className="text-accent">
-              לפני כולם.
-            </span>
+            <span className="text-accent">לפני כולם.</span>
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground">
             אנחנו סורקים את <Source>Yad2</Source>, <Source>Madlan</Source> וקבוצות{" "}
@@ -73,7 +71,7 @@ export default async function HomePage() {
           </div>
           <ul className="mt-6 grid gap-1.5 text-sm text-muted-foreground">
             <Bullet>התראות תוך דקות מהפרסום</Bullet>
-            <Bullet>סינון חכם — בלי תיווך, בלי כפילויות</Bullet>
+            <Bullet>סינון חכם - בלי תיווך, בלי כפילויות</Bullet>
             <Bullet>אונבורדינג בצ׳אט, בעברית, ב-2 דקות</Bullet>
           </ul>
         </div>
@@ -84,10 +82,7 @@ export default async function HomePage() {
       </section>
 
       <section id="how-it-works" className="mt-16 sm:mt-24">
-        <SectionHeader
-          eyebrow="איך זה עובד"
-          title="3 שלבים. בלי לרענן את Yad2 פעם בשעה."
-        />
+        <SectionHeader eyebrow="איך זה עובד" title="3 שלבים. בלי לרענן את Yad2 פעם בשעה." />
         <ol className="mt-6 grid gap-3 sm:grid-cols-3 sm:gap-4">
           <Step
             n={1}
@@ -98,22 +93,20 @@ export default async function HomePage() {
             n={2}
             title="ה-AI מחלץ ומסנן"
             body={
-              <>
-                המודל קורא את הטקסט החופשי, מחלץ חדרים / שטח / מחיר / שכונה, ומשווה לסינון שלך.
-              </>
+              <>המודל קורא את הטקסט החופשי, מחלץ חדרים / שטח / מחיר / שכונה, ומשווה לסינון שלך.</>
             }
           />
           <Step
             n={3}
             title="התראה אישית"
-            body={<>התאמה? נשלחת התראה — לאימייל, WhatsApp או Telegram — עם לינק ישיר למודעה.</>}
+            body={<>התאמה? נשלחת התראה - לאימייל, WhatsApp או Telegram - עם לינק ישיר למודעה.</>}
           />
         </ol>
       </section>
 
       <section className="mt-16 sm:mt-24">
         <SectionHeader
-          eyebrow="AI Extractor"
+          eyebrow="מחלץ AI"
           title="פוסט גולמי נכנס. נתונים מובנים יוצאים."
           description="המודל מבין עברית מדוברת, מטפל ב-RTL, מנקה תיווך וכפילויות, ומחזיר שדות שאפשר לסנן עליהם."
         />
@@ -140,8 +133,8 @@ export default async function HomePage() {
               סליידרים. תכתוב/י כמו לחבר/ה.
             </Highlight>
             <Highlight>
-              <span className="font-medium text-foreground">עריכה בכל רגע.</span> משנים דרישות?
-              חזרה לצ׳אט או ל-/filters.
+              <span className="font-medium text-foreground">עריכה בכל רגע.</span> משנים דרישות? חזרה
+              לצ׳אט או ל-/filters.
             </Highlight>
             <div className="pt-2">
               <Link href={secondaryChatHref} className="block">
@@ -209,8 +202,19 @@ function Bullet({ children }: { children: React.ReactNode }) {
 
 function CheckMark() {
   return (
-    <svg className="h-3.5 w-3.5 shrink-0 text-success" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="m3 8 3.5 3.5L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      className="h-3.5 w-3.5 shrink-0 text-success"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="m3 8 3.5 3.5L13 5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -226,11 +230,11 @@ function SectionHeader({
 }) {
   return (
     <div className="max-w-2xl">
-      <div className="text-xs font-semibold uppercase tracking-wider text-accent">
-        {eyebrow}
-      </div>
+      <div className="text-xs font-semibold uppercase tracking-wider text-accent">{eyebrow}</div>
       <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>
-      {description && <p className="mt-2 text-sm text-muted-foreground sm:text-base">{description}</p>}
+      {description && (
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">{description}</p>
+      )}
     </div>
   );
 }

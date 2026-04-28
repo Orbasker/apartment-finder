@@ -3,7 +3,7 @@ import { env } from "@/lib/env";
 /**
  * Origin (scheme + host[:port], no path) that external services (e.g. Apify webhooks)
  * must use to reach this app. Override with APP_PUBLIC_ORIGIN when developing locally
- * behind localhost — use a tunnel or your deployed URL.
+ * behind localhost - use a tunnel or your deployed URL.
  */
 export function resolveAppPublicOrigin(fallbackOrigin: string): string {
   const configured = env().APP_PUBLIC_ORIGIN;

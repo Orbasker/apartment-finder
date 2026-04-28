@@ -6,12 +6,12 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 export function formatNis(value: number | null | undefined): string {
-  if (value == null) return "—";
+  if (value == null) return "-";
   return `₪${value.toLocaleString("en-US")}`;
 }
 
 export function relTime(date: Date | null | undefined): string {
-  if (!date) return "—";
+  if (!date) return "-";
   const diff = Date.now() - date.getTime();
   const mins = Math.round(diff / 60_000);
   if (mins < 60) return `${mins}m ago`;

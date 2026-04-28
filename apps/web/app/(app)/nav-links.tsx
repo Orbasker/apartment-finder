@@ -13,7 +13,11 @@ export const links = [
 
 export function HeaderBrandLink() {
   return (
-    <Link href="/dashboard" prefetch className="inline-flex items-center gap-2 text-lg font-semibold">
+    <Link
+      href="/dashboard"
+      prefetch
+      className="inline-flex items-center gap-2 text-lg font-semibold"
+    >
       <LinkPendingIndicator />
       Apartment Finder
     </Link>

@@ -56,7 +56,7 @@ export async function geocode(addressKey: string): Promise<GeocodeResult> {
 
   const apiKey = env().GOOGLE_GEOCODING_API_KEY;
   if (!apiKey) {
-    log.warn("GOOGLE_GEOCODING_API_KEY not set — skipping geocode");
+    log.warn("GOOGLE_GEOCODING_API_KEY not set - skipping geocode");
     return NULL_RESULT;
   }
 

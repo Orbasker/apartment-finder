@@ -6,7 +6,7 @@ import { Footer } from "./footer";
 
 export const metadata = {
   title: "Apartment Finder",
-  description: "מציאת דירה בתל אביב — התראות מיידיות לפי הסינונים שלך.",
+  description: "מציאת דירה בתל אביב - התראות מיידיות לפי הסינונים שלך.",
 };
 
 export const viewport = {

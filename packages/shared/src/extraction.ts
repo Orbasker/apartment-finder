@@ -4,7 +4,7 @@ import { ApartmentAttributeKeySchema } from "./filters";
 // ---------------------------------------------------------------------------
 // Extraction schema (P3 rebuild). The AI extractor returns structured fields
 // + an array of *known* attributes. Unknown attributes are simply not in the
-// array — there's no NULL value, no tri-state. This mirrors the
+// array - there's no NULL value, no tri-state. This mirrors the
 // `listing_attributes` KV table where absence-of-row = unknown.
 // ---------------------------------------------------------------------------
 
@@ -20,7 +20,7 @@ export const ExtractionSchema = z.object({
   rooms: z.number().nullable(),
   sqm: z.number().int().nullable(),
   floor: z.number().int().nullable(),
-  // Address — what the AI saw before geocoding.
+  // Address - what the AI saw before geocoding.
   rawAddress: z.string().nullable(),
   street: z.string().nullable(),
   houseNumber: z.string().nullable(),
@@ -33,7 +33,7 @@ export const ExtractionSchema = z.object({
   isAgency: z.boolean().nullable(),
   phoneE164: z.string().nullable(),
   // Boolean attributes the AI was confident about. Omit any attribute the AI
-  // could not determine — absence ≠ false; it means "unknown".
+  // could not determine - absence ≠ false; it means "unknown".
   attributes: z.array(ExtractionAttributeSchema).default([]),
   extras: z.record(z.string(), z.unknown()).nullable(),
 });

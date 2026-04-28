@@ -24,22 +24,22 @@
   --color-success: oklch(0.7 0.17 150);
   --color-success-foreground: oklch(0.99 0 0);
 
-  /* Brand colors (literal — used by source/destination tiles in the landing diagram) */
-  --color-brand-yad2: #FFD400;
-  --color-brand-facebook: #1877F2;
-  --color-brand-madlan: #0F1A2B;
-  --color-brand-madlan-leaf: #14C17B;
-  --color-brand-email: #0A66C2;
-  --color-brand-whatsapp: #25D366;
-  --color-brand-telegram: #229ED9;
-  --color-brand-google-blue: #4285F4;
-  --color-brand-google-green: #34A853;
-  --color-brand-google-yellow: #FBBC05;
-  --color-brand-google-red: #EA4335;
+  /* Brand colors (literal - used by source/destination tiles in the landing diagram) */
+  --color-brand-yad2: #ffd400;
+  --color-brand-facebook: #1877f2;
+  --color-brand-madlan: #0f1a2b;
+  --color-brand-madlan-leaf: #14c17b;
+  --color-brand-email: #0a66c2;
+  --color-brand-whatsapp: #25d366;
+  --color-brand-telegram: #229ed9;
+  --color-brand-google-blue: #4285f4;
+  --color-brand-google-green: #34a853;
+  --color-brand-google-yellow: #fbbc05;
+  --color-brand-google-red: #ea4335;
 
   /* Type scale (relative units) */
-  --text-2xs: 0.6875rem; /* 11px — micro labels / pills */
-  --text-3xs: 0.625rem;  /* 10px — diagram captions */
+  --text-2xs: 0.6875rem; /* 11px - micro labels / pills */
+  --text-3xs: 0.625rem; /* 10px - diagram captions */
 }
 
 @layer base {

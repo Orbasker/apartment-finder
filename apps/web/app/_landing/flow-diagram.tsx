@@ -13,7 +13,7 @@ import {
  * The container is aspect-square so the SVG and the absolutely-positioned
  * icon overlay share the exact same coordinate space (1% in CSS == 1 unit in SVG).
  *
- * Layout (RTL viewport — sources on the right, destinations on the left):
+ * Layout (RTL viewport - sources on the right, destinations on the left):
  *   Top row    y≈18:  Facebook(x=15)  Madlan(x=50)  Yad2(x=85)
  *   Brain          :  (x=50, y=50)
  *   Bottom row y≈82:  Telegram(x=15)  WhatsApp(x=50)  Email(x=85)
@@ -35,12 +35,54 @@ export function FlowDiagram() {
         xmlns="http://www.w3.org/2000/svg"
       >
         <g className="text-foreground/35">
-          <path id="path-fb-brain" d="M 15 25 Q 30 38 50 44" fill="none" stroke="currentColor" strokeWidth="0.4" strokeDasharray="1.4 1.4" />
-          <path id="path-md-brain" d="M 50 25 L 50 44" fill="none" stroke="currentColor" strokeWidth="0.4" strokeDasharray="1.4 1.4" />
-          <path id="path-y2-brain" d="M 85 25 Q 70 38 50 44" fill="none" stroke="currentColor" strokeWidth="0.4" strokeDasharray="1.4 1.4" />
-          <path id="path-brain-tg" d="M 50 56 Q 30 62 15 75" fill="none" stroke="currentColor" strokeWidth="0.4" strokeDasharray="1.4 1.4" />
-          <path id="path-brain-wa" d="M 50 56 L 50 75" fill="none" stroke="currentColor" strokeWidth="0.4" strokeDasharray="1.4 1.4" />
-          <path id="path-brain-em" d="M 50 56 Q 70 62 85 75" fill="none" stroke="currentColor" strokeWidth="0.4" strokeDasharray="1.4 1.4" />
+          <path
+            id="path-fb-brain"
+            d="M 15 25 Q 30 38 50 44"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.4"
+            strokeDasharray="1.4 1.4"
+          />
+          <path
+            id="path-md-brain"
+            d="M 50 25 L 50 44"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.4"
+            strokeDasharray="1.4 1.4"
+          />
+          <path
+            id="path-y2-brain"
+            d="M 85 25 Q 70 38 50 44"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.4"
+            strokeDasharray="1.4 1.4"
+          />
+          <path
+            id="path-brain-tg"
+            d="M 50 56 Q 30 62 15 75"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.4"
+            strokeDasharray="1.4 1.4"
+          />
+          <path
+            id="path-brain-wa"
+            d="M 50 56 L 50 75"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.4"
+            strokeDasharray="1.4 1.4"
+          />
+          <path
+            id="path-brain-em"
+            d="M 50 56 Q 70 62 85 75"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.4"
+            strokeDasharray="1.4 1.4"
+          />
         </g>
 
         <g>
@@ -118,15 +160,7 @@ function Tile({
   );
 }
 
-function Particle({
-  href,
-  color,
-  begin,
-}: {
-  href: string;
-  color: string;
-  begin: string;
-}) {
+function Particle({ href, color, begin }: { href: string; color: string; begin: string }) {
   return (
     <circle r="1" fill={color}>
       <animateMotion dur="2.5s" repeatCount="indefinite" begin={begin}>

@@ -8,11 +8,11 @@ type Msg = { role: "assistant" | "user"; text: string };
 const SCRIPT: Msg[] = [
   {
     role: "assistant",
-    text: "שלום! בכמה שאלות נכין לך התראות מדויקות. נתחיל מהתקציב — מה הסכום המקסימלי לחודש?",
+    text: "שלום! בכמה שאלות נכין לך התראות מדויקות. נתחיל מהתקציב - מה הסכום המקסימלי לחודש?",
   },
   { role: "user", text: "עד 8,000 ש״ח" },
   { role: "assistant", text: "מצוין. כמה חדרים? אפשר לציין טווח." },
-  { role: "user", text: "2.5–3.5" },
+  { role: "user", text: "2.5-3.5" },
   { role: "assistant", text: "אילו שכונות? אפשר לכתוב כמה." },
   { role: "user", text: "פלורנטין, נווה צדק, רוטשילד" },
   { role: "assistant", text: "מעולה. יש משהו שחובה שיהיה? (מעלית, מרפסת, חניה…)" },
@@ -63,7 +63,7 @@ export function ChatPreview() {
           <span className="inline-flex h-2 w-2 rounded-full bg-success" aria-hidden="true" />
           <span className="text-xs font-medium text-muted-foreground">צ׳אט אונבורדינג</span>
         </div>
-        <span className="text-3xs uppercase tracking-wider text-muted-foreground">demo</span>
+        <span className="text-3xs uppercase tracking-wider text-muted-foreground">הדגמה</span>
       </div>
       <div ref={ref} className="flex-1 space-y-2.5 overflow-y-auto p-3 sm:p-4">
         {shown.map((m, i) => (
@@ -80,7 +80,9 @@ export function ChatPreview() {
       <div className="border-t p-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-2 rounded-md border bg-background px-2.5 py-2">
           <span className="opacity-60">כתוב/י תשובה…</span>
-          <span className="ms-auto rounded-md bg-muted px-1.5 py-0.5 text-3xs">Enter</span>
+          <span className="ms-auto rounded-md bg-muted px-1.5 py-0.5 text-3xs" aria-hidden="true">
+            ↵
+          </span>
         </div>
       </div>
     </div>

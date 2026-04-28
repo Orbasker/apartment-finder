@@ -14,7 +14,7 @@ describe("haversineMeters", () => {
   });
 
   test("kilometers scale", () => {
-    // Tel Aviv to Jaffa Old City — ~5 km
+    // Tel Aviv to Jaffa Old City - ~5 km
     const d = haversineMeters(32.0853, 34.7818, 32.054, 34.7517);
     expect(d).toBeGreaterThan(4_000);
     expect(d).toBeLessThan(6_000);

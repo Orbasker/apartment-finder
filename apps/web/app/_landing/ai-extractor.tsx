@@ -75,8 +75,11 @@ export function AiExtractor() {
               </>
             ) : (
               <>
-                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
-                AI Extractor
+                <span
+                  className="inline-flex h-1.5 w-1.5 rounded-full bg-accent"
+                  aria-hidden="true"
+                />
+                מחלץ AI
               </>
             )}
           </span>
@@ -86,10 +89,25 @@ export function AiExtractor() {
             stage === "done" ? "opacity-100" : "opacity-30 blur-[1px]"
           }`}
         >
-          <Field label="חדרים" value={<bdi>{EXTRACTED.rooms}</bdi>} delay={0} active={stage === "done"} />
-          <Field label="שטח" value={<bdi>{EXTRACTED.area}</bdi>} delay={80} active={stage === "done"} />
+          <Field
+            label="חדרים"
+            value={<bdi>{EXTRACTED.rooms}</bdi>}
+            delay={0}
+            active={stage === "done"}
+          />
+          <Field
+            label="שטח"
+            value={<bdi>{EXTRACTED.area}</bdi>}
+            delay={80}
+            active={stage === "done"}
+          />
           <Field label="רחוב" value={EXTRACTED.street} delay={160} active={stage === "done"} />
-          <Field label="מחיר" value={<bdi>{EXTRACTED.price}</bdi>} delay={240} active={stage === "done"} />
+          <Field
+            label="מחיר"
+            value={<bdi>{EXTRACTED.price}</bdi>}
+            delay={240}
+            active={stage === "done"}
+          />
         </dl>
         <div
           className={`mt-3 flex flex-wrap gap-1.5 transition-opacity duration-500 ${
@@ -112,13 +130,7 @@ export function AiExtractor() {
   );
 }
 
-function Header({
-  children,
-  tone,
-}: {
-  children: React.ReactNode;
-  tone: "muted" | "brain";
-}) {
+function Header({ children, tone }: { children: React.ReactNode; tone: "muted" | "brain" }) {
   const c = tone === "brain" ? "text-accent" : "text-muted-foreground";
   return <div className={`text-xs font-semibold ${c}`}>{children}</div>;
 }

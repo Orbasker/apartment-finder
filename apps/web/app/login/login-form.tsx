@@ -86,7 +86,10 @@ export function LoginForm({
     setPendingAction("google");
     setError(null);
     try {
-      const { error } = await authClient.signIn.social({ provider: "google", callbackURL: "/dashboard" });
+      const { error } = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard",
+      });
       if (error) throw new Error(error.message ?? "התחברות עם Google נכשלה");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
