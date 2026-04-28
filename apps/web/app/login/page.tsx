@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isGoogleConfigured } from "@/lib/auth";
 import { LoginForm } from "./login-form";
 
 export const metadata = {
@@ -26,7 +27,7 @@ export default async function LoginPage({
           <CardTitle>כניסה</CardTitle>
         </CardHeader>
         <CardContent>
-          <LoginForm initialError={urlError} />
+          <LoginForm initialError={urlError} googleEnabled={isGoogleConfigured()} />
         </CardContent>
       </Card>
     </main>
