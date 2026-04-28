@@ -75,7 +75,7 @@ export function LoginForm({
     try {
       const { error } = await authClient.signIn.emailOtp({ email, otp });
       if (error) throw new Error(error.message ?? "קוד שגוי");
-      window.location.href = "/";
+      window.location.href = "/dashboard";
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setPendingAction(null);
@@ -86,7 +86,7 @@ export function LoginForm({
     setPendingAction("google");
     setError(null);
     try {
-      const { error } = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+      const { error } = await authClient.signIn.social({ provider: "google", callbackURL: "/dashboard" });
       if (error) throw new Error(error.message ?? "התחברות עם Google נכשלה");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
