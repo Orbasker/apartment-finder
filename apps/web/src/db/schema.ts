@@ -1,9 +1,11 @@
 import {
   bigserial,
   boolean,
+  doublePrecision,
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   primaryKey,
   real,
@@ -14,227 +16,327 @@ import {
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
-// Three-layer pipeline (P1):
-//   raw_posts           — immutable per-source observation
-//   extractions         — versioned AI output (one per raw post per schema_version)
-//   canonical_apartments — one row per real-world apartment
-// Plus: canonical_attributes (merged tri-state amenities), apartment_sources
-// (M:N), merge_candidates (review queue).
+// Lean MVP schema. Flow: collect → extract → geocode → embed → unify → match.
+// Boolean attributes live in a KV table with a Postgres enum key; structured
+// fields live in dedicated columns; open-text in arrays/jsonb.
 // ---------------------------------------------------------------------------
 
-export const rawPosts = pgTable(
-  "raw_posts",
+export const listingSourceEnum = pgEnum("listing_source", ["yad2", "facebook"]);
+
+export const listingStatusEnum = pgEnum("listing_status", [
+  "pending",
+  "extracted",
+  "geocoded",
+  "embedded",
+  "unified",
+  "failed",
+]);
+
+export const apartmentAttributeKeyEnum = pgEnum("apartment_attribute_key", [
+  "elevator",
+  "parking",
+  "balcony",
+  "air_conditioning",
+  "furnished",
+  "renovated",
+  "pet_friendly",
+  "safe_room",
+  "storage",
+  "accessible",
+  "bars",
+  "ground_floor",
+  "roof_access",
+  "shared_apartment",
+  "is_legitimate_rental",
+]);
+
+export const attributeRequirementEnum = pgEnum("attribute_requirement", [
+  "required_true",
+  "required_false",
+  "preferred_true",
+  "dont_care",
+]);
+
+export const attributeSourceEnum = pgEnum("attribute_source", ["ai", "user", "manual"]);
+
+export const filterTextKindEnum = pgEnum("filter_text_kind", ["wish", "dealbreaker"]);
+
+// ---------------------------------------------------------------------------
+// listings: one row per source observation.
+// ---------------------------------------------------------------------------
+
+export const listings = pgTable(
+  "listings",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    source: text("source").notNull(),
+    source: listingSourceEnum("source").notNull(),
     sourceId: text("source_id").notNull(),
     url: text("url").notNull(),
-    rawJson: jsonb("raw_json"),
     rawText: text("raw_text"),
-    contentHash: text("content_hash"),
-    fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow().notNull(),
+    rawJson: jsonb("raw_json"),
+    contentHash: text("content_hash").notNull(),
     postedAt: timestamp("posted_at", { withTimezone: true }),
-    sourceGroupUrl: text("source_group_url"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow().notNull(),
     authorName: text("author_name"),
     authorProfile: text("author_profile"),
-    extractionStatus: text("extraction_status").default("pending").notNull(),
+    sourceGroupUrl: text("source_group_url"),
+    status: listingStatusEnum("status").default("pending").notNull(),
+    failureReason: text("failure_reason"),
+    retries: smallint("retries").default(0).notNull(),
   },
   (t) => ({
-    sourceUnique: uniqueIndex("raw_posts_source_unique").on(t.source, t.sourceId),
-    extractionStatusIdx: index("raw_posts_extraction_status_idx").on(t.extractionStatus),
-    fetchedAtIdx: index("raw_posts_fetched_at_idx").on(t.fetchedAt.desc()),
-    sourceIdx: index("raw_posts_source_idx").on(t.source),
+    sourceUnique: uniqueIndex("listings_source_unique").on(t.source, t.sourceId),
+    statusIdx: index("listings_status_idx").on(t.status),
+    postedAtIdx: index("listings_posted_at_idx").on(t.postedAt.desc()),
   }),
 );
 
-export const extractions = pgTable(
-  "extractions",
+// ---------------------------------------------------------------------------
+// listing_extractions: AI-extracted structured fields per listing version.
+// Includes the embedding used for unification.
+// ---------------------------------------------------------------------------
+
+export const listingExtractions = pgTable(
+  "listing_extractions",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    rawPostId: integer("raw_post_id")
+    listingId: integer("listing_id")
       .notNull()
-      .references(() => rawPosts.id, { onDelete: "cascade" }),
+      .references(() => listings.id, { onDelete: "cascade" }),
     schemaVersion: integer("schema_version").default(1).notNull(),
-    model: text("model"),
-    // Core typed fields.
+    model: text("model").notNull(),
+    // Structured numeric/text fields
     priceNis: integer("price_nis"),
     rooms: real("rooms"),
     sqm: integer("sqm"),
     floor: integer("floor"),
+    // Address — what the AI saw before geocoding.
+    rawAddress: text("raw_address"),
     street: text("street"),
     houseNumber: text("house_number"),
     neighborhood: text("neighborhood"),
     city: text("city"),
+    // Geocoded — populated after Google Geocoding step.
+    placeId: text("place_id"),
+    lat: doublePrecision("lat"),
+    lon: doublePrecision("lon"),
+    geocodeConfidence: text("geocode_confidence"),
+    // Open-text
+    description: text("description"),
     condition: text("condition"),
+    // Misc
     isAgency: boolean("is_agency"),
     phoneE164: text("phone_e164"),
-    // Tri-state amenity flags (NULL = unknown). Snake_case mirrors AMENITY_KEYS.
-    hasElevator: boolean("has_elevator"),
-    hasParking: boolean("has_parking"),
-    hasBalcony: boolean("has_balcony"),
-    hasAirConditioning: boolean("has_air_conditioning"),
-    hasFurnished: boolean("has_furnished"),
-    hasRenovated: boolean("has_renovated"),
-    hasPetFriendly: boolean("has_pet_friendly"),
-    hasSafeRoom: boolean("has_safe_room"),
-    hasStorage: boolean("has_storage"),
-    hasAccessible: boolean("has_accessible"),
-    hasBars: boolean("has_bars"),
     extras: jsonb("extras"),
-    // pgvector embedding. The CREATE EXTENSION + ALTER TABLE are handled by the
-    // manual reset SQL; Drizzle generates `vector(768)` here for type safety.
-    embedding: vector("embedding", { dimensions: 768 }),
+    // Embedding — gemini-embedding-001 at 1536 dims (HNSW supports up to 2000 for `vector`).
+    embedding: vector("embedding", { dimensions: 1536 }),
     extractedAt: timestamp("extracted_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
-    rawPostVersionUnique: uniqueIndex("extractions_raw_post_id_schema_version_unique").on(
-      t.rawPostId,
+    listingVersionUnique: uniqueIndex("listing_extractions_unique").on(
+      t.listingId,
       t.schemaVersion,
     ),
-    rawPostIdIdx: index("extractions_raw_post_id_idx").on(t.rawPostId),
+    placeIdIdx: index("listing_extractions_place_id_idx").on(t.placeId),
+    geoIdx: index("listing_extractions_geo_idx").on(t.lat, t.lon),
   }),
 );
 
-export const canonicalApartments = pgTable(
-  "canonical_apartments",
+// ---------------------------------------------------------------------------
+// listing_attributes: KV booleans. Absence-of-row = unknown; value column is
+// NOT NULL true/false. This avoids 3-valued logic in the matcher SQL.
+// ---------------------------------------------------------------------------
+
+export const listingAttributes = pgTable(
+  "listing_attributes",
+  {
+    listingId: integer("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    key: apartmentAttributeKeyEnum("key").notNull(),
+    value: boolean("value").notNull(),
+    source: attributeSourceEnum("source").default("ai").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.listingId, t.key] }),
+    keyValueIdx: index("listing_attributes_key_value_idx").on(t.key, t.value),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// apartments: canonical dedup'd entity.
+// ---------------------------------------------------------------------------
+
+export const apartments = pgTable(
+  "apartments",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    primaryAddress: text("primary_address"),
+    placeId: text("place_id"),
+    lat: doublePrecision("lat"),
+    lon: doublePrecision("lon"),
+    formattedAddress: text("formatted_address"),
     street: text("street"),
     houseNumber: text("house_number"),
-    city: text("city"),
     neighborhood: text("neighborhood"),
+    city: text("city"),
     rooms: real("rooms"),
     sqm: integer("sqm"),
-    matchKey: text("match_key"),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    floor: integer("floor"),
+    priceNisLatest: integer("price_nis_latest"),
+    primaryListingId: integer("primary_listing_id"),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
-    matchKeyIdx: index("canonical_apartments_match_key_idx").on(t.matchKey),
+    placeIdIdx: index("apartments_place_id_idx").on(t.placeId),
+    geoIdx: index("apartments_geo_idx").on(t.lat, t.lon),
   }),
 );
 
-export const canonicalAttributes = pgTable("canonical_attributes", {
-  canonicalId: integer("canonical_id")
+// ---------------------------------------------------------------------------
+// apartment_listings: M:N (one apartment → many listing observations). The
+// reverse direction is enforced unique (one listing → one apartment).
+// ---------------------------------------------------------------------------
+
+export const apartmentListings = pgTable(
+  "apartment_listings",
+  {
+    apartmentId: integer("apartment_id")
+      .notNull()
+      .references(() => apartments.id, { onDelete: "cascade" }),
+    listingId: integer("listing_id")
+      .notNull()
+      .references(() => listings.id, { onDelete: "cascade" }),
+    confidence: real("confidence").notNull(),
+    matchedBy: text("matched_by").notNull(),
+    linkedAt: timestamp("linked_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.apartmentId, t.listingId] }),
+    listingUnique: uniqueIndex("apartment_listings_listing_unique").on(t.listingId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// user_filters: one row per user. Hot-path columns + arrays for fast SQL
+// prefilter; attribute requirements normalized into a child table.
+// ---------------------------------------------------------------------------
+
+export const userFilters = pgTable("user_filters", {
+  userId: uuid("user_id")
     .primaryKey()
-    .references(() => canonicalApartments.id, { onDelete: "cascade" }),
-  hasElevator: boolean("has_elevator"),
-  hasParking: boolean("has_parking"),
-  hasBalcony: boolean("has_balcony"),
-  hasAirConditioning: boolean("has_air_conditioning"),
-  hasFurnished: boolean("has_furnished"),
-  hasRenovated: boolean("has_renovated"),
-  hasPetFriendly: boolean("has_pet_friendly"),
-  hasSafeRoom: boolean("has_safe_room"),
-  hasStorage: boolean("has_storage"),
-  hasAccessible: boolean("has_accessible"),
-  hasBars: boolean("has_bars"),
-  extras: jsonb("extras"),
-  lastMergedAt: timestamp("last_merged_at", { withTimezone: true }).defaultNow().notNull(),
+    .references(() => user.id, { onDelete: "cascade" }),
+  priceMinNis: integer("price_min_nis"),
+  priceMaxNis: integer("price_max_nis"),
+  roomsMin: real("rooms_min"),
+  roomsMax: real("rooms_max"),
+  sqmMin: integer("sqm_min"),
+  sqmMax: integer("sqm_max"),
+  allowedNeighborhoods: text("allowed_neighborhoods")
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  blockedNeighborhoods: text("blocked_neighborhoods")
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  wishes: text("wishes")
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  dealbreakers: text("dealbreakers")
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  strictUnknowns: boolean("strict_unknowns").default(true).notNull(),
+  dailyAlertCap: integer("daily_alert_cap").default(20).notNull(),
+  maxAgeHours: integer("max_age_hours").default(48).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  onboardedAt: timestamp("onboarded_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const apartmentSources = pgTable(
-  "apartment_sources",
+export const userFilterAttributes = pgTable(
+  "user_filter_attributes",
   {
-    canonicalId: integer("canonical_id")
-      .notNull()
-      .references(() => canonicalApartments.id, { onDelete: "cascade" }),
-    extractionId: integer("extraction_id")
-      .notNull()
-      .references(() => extractions.id, { onDelete: "cascade" }),
-    confidence: real("confidence").notNull(),
-    mergedAt: timestamp("merged_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    pk: primaryKey({ columns: [t.canonicalId, t.extractionId] }),
-  }),
-);
-
-export const mergeCandidates = pgTable(
-  "merge_candidates",
-  {
-    id: bigserial("id", { mode: "number" }).primaryKey(),
-    extractionId: integer("extraction_id")
-      .notNull()
-      .references(() => extractions.id, { onDelete: "cascade" }),
-    canonicalId: integer("canonical_id")
-      .notNull()
-      .references(() => canonicalApartments.id, { onDelete: "cascade" }),
-    score: real("score").notNull(),
-    status: text("status").default("pending").notNull(),
-    reviewedBy: uuid("reviewed_by").references(() => user.id),
-    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    statusIdx: index("merge_candidates_status_idx").on(t.status),
-  }),
-);
-
-// ---------------------------------------------------------------------------
-// Existing tables that get FK-rebound from listing_id → canonical_id.
-// They restart empty (the manual reset SQL drops them so Drizzle re-creates
-// them with the new shape on the next push).
-// ---------------------------------------------------------------------------
-
-export const judgments = pgTable(
-  "judgments",
-  {
-    canonicalId: integer("canonical_id")
-      .primaryKey()
-      .references(() => canonicalApartments.id, { onDelete: "cascade" }),
-    score: integer("score"),
-    decision: text("decision"),
-    reasoning: text("reasoning"),
-    redFlags: jsonb("red_flags").$type<string[]>(),
-    positiveSignals: jsonb("positive_signals").$type<string[]>(),
-    model: text("model"),
-    judgedAt: timestamp("judged_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    decisionIdx: index("judgments_decision_idx").on(t.decision),
-    scoreIdx: index("judgments_score_idx").on(t.score),
-  }),
-);
-
-export const feedback = pgTable(
-  "feedback",
-  {
-    canonicalId: integer("canonical_id")
-      .notNull()
-      .references(() => canonicalApartments.id, { onDelete: "cascade" }),
     userId: uuid("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    rating: smallint("rating"),
-    note: text("note"),
+    key: apartmentAttributeKeyEnum("key").notNull(),
+    requirement: attributeRequirementEnum("requirement").notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.key] }),
+    reqIdx: index("user_filter_attributes_req_idx").on(t.key, t.requirement),
+  }),
+);
+
+// Embedded wishes/dealbreakers — embed once at filter-save time, then cosine-
+// compare to listing embedding at match time (advisory for wishes, gating for
+// dealbreakers).
+export const userFilterTexts = pgTable(
+  "user_filter_texts",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    kind: filterTextKindEnum("kind").notNull(),
+    text: text("text").notNull(),
+    embedding: vector("embedding", { dimensions: 1536 }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
-    pk: primaryKey({ columns: [t.canonicalId, t.userId] }),
+    userKindIdx: index("user_filter_texts_user_kind_idx").on(t.userId, t.kind),
   }),
 );
+
+// ---------------------------------------------------------------------------
+// sent_alerts: outbox dedup. One alert per (user, apartment).
+// ---------------------------------------------------------------------------
 
 export const sentAlerts = pgTable(
   "sent_alerts",
   {
-    canonicalId: integer("canonical_id").notNull(),
-    channel: text("channel").notNull(),
     userId: uuid("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    apartmentId: integer("apartment_id")
+      .notNull()
+      .references(() => apartments.id, { onDelete: "cascade" }),
     sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+    resendMessageId: text("resend_message_id"),
   },
   (t) => ({
-    pk: primaryKey({ columns: [t.canonicalId, t.channel, t.userId] }),
+    pk: primaryKey({ columns: [t.userId, t.apartmentId] }),
+    sentAtIdx: index("sent_alerts_sent_at_idx").on(t.sentAt.desc()),
   }),
 );
 
 // ---------------------------------------------------------------------------
-// Preserved tables — unchanged from pre-P1.
+// geocode_cache: keyed by normalized raw-address string. Cuts Google Geocoding
+// calls roughly 60% in Tel Aviv where the same buildings re-list constantly.
+// ---------------------------------------------------------------------------
+
+export const geocodeCache = pgTable("geocode_cache", {
+  addressKey: text("address_key").primaryKey(),
+  placeId: text("place_id"),
+  lat: doublePrecision("lat"),
+  lon: doublePrecision("lon"),
+  formattedAddress: text("formatted_address"),
+  street: text("street"),
+  houseNumber: text("house_number"),
+  neighborhood: text("neighborhood"),
+  city: text("city"),
+  confidence: text("confidence"),
+  cachedAt: timestamp("cached_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// Preserved tables.
 // ---------------------------------------------------------------------------
 
 export const blockedAuthors = pgTable("blocked_authors", {
@@ -242,66 +344,6 @@ export const blockedAuthors = pgTable("blocked_authors", {
   reason: text("reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
-
-export const preferences = pgTable("preferences", {
-  userId: uuid("user_id").primaryKey(),
-  data: jsonb("data").notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-export const pendingPatches = pgTable("pending_patches", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  toolCallId: text("tool_call_id").notNull(),
-  patch: jsonb("patch").notNull(),
-  chatId: text("chat_id").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
-
-export const monitoredGroups = pgTable("monitored_groups", {
-  url: text("url").primaryKey(),
-  label: text("label"),
-  enabled: boolean("enabled").default(true).notNull(),
-  addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
-  addedBy: uuid("added_by"),
-});
-
-export const userGroupSubscriptions = pgTable(
-  "user_group_subscriptions",
-  {
-    userId: uuid("user_id").notNull(),
-    groupUrl: text("group_url").notNull(),
-    subscribedAt: timestamp("subscribed_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    pk: primaryKey({ columns: [t.userId, t.groupUrl] }),
-  }),
-);
-
-export const telegramLinks = pgTable(
-  "telegram_links",
-  {
-    chatId: text("chat_id").primaryKey(),
-    userId: uuid("user_id").notNull(),
-    linkedAt: timestamp("linked_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    userIdIdx: index("telegram_links_user_id_idx").on(t.userId),
-  }),
-);
-
-export const telegramLinkTokens = pgTable(
-  "telegram_link_tokens",
-  {
-    token: text("token").primaryKey(),
-    userId: uuid("user_id").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    usedAt: timestamp("used_at", { withTimezone: true }),
-  },
-  (t) => ({
-    userIdIdx: index("telegram_link_tokens_user_id_idx").on(t.userId),
-  }),
-);
 
 export const aiUsage = pgTable(
   "ai_usage",
@@ -326,9 +368,7 @@ export const aiUsage = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// Better Auth tables. IDs are UUIDs to match the existing `uuid("user_id")`
-// FK columns elsewhere in this schema. With the Postgres Drizzle adapter,
-// Better Auth relies on DB-side UUID defaults for models it creates internally.
+// Better Auth tables. UUID PKs with DB-side defaults.
 // ---------------------------------------------------------------------------
 
 export const user = pgTable("user", {
@@ -387,28 +427,28 @@ export const verification = pgTable("verification", {
 });
 
 // ---------------------------------------------------------------------------
-// Type exports.
+// Row type exports.
 // ---------------------------------------------------------------------------
 
-export type MonitoredGroup = typeof monitoredGroups.$inferSelect;
-
-export type RawPost = typeof rawPosts.$inferSelect;
-export type NewRawPost = typeof rawPosts.$inferInsert;
-export type Extraction = typeof extractions.$inferSelect;
-export type NewExtraction = typeof extractions.$inferInsert;
-export type CanonicalApartment = typeof canonicalApartments.$inferSelect;
-export type NewCanonicalApartment = typeof canonicalApartments.$inferInsert;
-export type CanonicalAttributes = typeof canonicalAttributes.$inferSelect;
-export type NewCanonicalAttributes = typeof canonicalAttributes.$inferInsert;
-export type ApartmentSource = typeof apartmentSources.$inferSelect;
-export type NewApartmentSource = typeof apartmentSources.$inferInsert;
-export type MergeCandidate = typeof mergeCandidates.$inferSelect;
-export type NewMergeCandidate = typeof mergeCandidates.$inferInsert;
-
-export type JudgmentRow = typeof judgments.$inferSelect;
-export type NewJudgmentRow = typeof judgments.$inferInsert;
+export type Listing = typeof listings.$inferSelect;
+export type NewListing = typeof listings.$inferInsert;
+export type ListingExtraction = typeof listingExtractions.$inferSelect;
+export type NewListingExtraction = typeof listingExtractions.$inferInsert;
+export type ListingAttribute = typeof listingAttributes.$inferSelect;
+export type NewListingAttribute = typeof listingAttributes.$inferInsert;
+export type Apartment = typeof apartments.$inferSelect;
+export type NewApartment = typeof apartments.$inferInsert;
+export type ApartmentListing = typeof apartmentListings.$inferSelect;
+export type NewApartmentListing = typeof apartmentListings.$inferInsert;
+export type UserFilter = typeof userFilters.$inferSelect;
+export type NewUserFilter = typeof userFilters.$inferInsert;
+export type UserFilterAttribute = typeof userFilterAttributes.$inferSelect;
+export type NewUserFilterAttribute = typeof userFilterAttributes.$inferInsert;
+export type UserFilterText = typeof userFilterTexts.$inferSelect;
+export type NewUserFilterText = typeof userFilterTexts.$inferInsert;
+export type SentAlert = typeof sentAlerts.$inferSelect;
+export type NewSentAlert = typeof sentAlerts.$inferInsert;
+export type GeocodeCache = typeof geocodeCache.$inferSelect;
+export type NewGeocodeCache = typeof geocodeCache.$inferInsert;
 export type AiUsageRow = typeof aiUsage.$inferSelect;
 export type NewAiUsageRow = typeof aiUsage.$inferInsert;
-export type UserGroupSubscription = typeof userGroupSubscriptions.$inferSelect;
-export type TelegramLink = typeof telegramLinks.$inferSelect;
-export type TelegramLinkToken = typeof telegramLinkTokens.$inferSelect;
