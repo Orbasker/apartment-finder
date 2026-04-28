@@ -21,12 +21,12 @@ If the symptom is vague ("it's broken"), ask one clarifying question first — e
 
 For each hypothesis, pick the minimal evidence that proves or disproves it.
 
-| Source | When to use |
-|---|---|
-| **Vercel logs** | Runtime errors, 4xx/5xx, cron job output, webhook handlers, function timeouts. |
-| **.env** | You need a credential to query a managed service (DB, Resend, Apify). Never use it to "test" — just to read state. |
-| **Database** | Verify a row exists / has expected state, check timestamps, joins, FKs, embeddings. |
-| **Source code** | Always read the handler before blaming infra — bug is usually in code, not platform. |
+| Source          | When to use                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Vercel logs** | Runtime errors, 4xx/5xx, cron job output, webhook handlers, function timeouts.                                     |
+| **.env**        | You need a credential to query a managed service (DB, Resend, Apify). Never use it to "test" — just to read state. |
+| **Database**    | Verify a row exists / has expected state, check timestamps, joins, FKs, embeddings.                                |
+| **Source code** | Always read the handler before blaming infra — bug is usually in code, not platform.                               |
 
 Read code **first** for the suspect path, then confirm with logs/DB.
 
@@ -40,6 +40,7 @@ ls .vercel/project.json
 
 - **Exists** → linked, proceed.
 - **Missing** → stop and ask the user:
+
   > "I need to link this directory to its Vercel project to read logs. Want me to run `vercel link`? You'll need to pick the scope (`orb`/team) and the existing `apartment-finder` project — do **not** create a new one."
 
   Only run `vercel link` after the user confirms. Never run `vercel link --yes` blindly — it can create a fresh project.
@@ -64,6 +65,7 @@ vercel logs <deployment-url> --output raw | grep -E "(ERROR|api/alerts|api/apify
 ```
 
 Notes:
+
 - `vercel logs` only retains the last ~hour of runtime logs by default. If the symptom is older, ask the user for a deployment URL near the incident time.
 - Cron logs appear under the cron path (e.g. `/api/cron/scrape`). Always check `CRON_SECRET` 401s if a cron is "silently not running".
 
@@ -75,6 +77,7 @@ grep -E "^DATABASE_URL=" .env
 ```
 
 Rules:
+
 - **Never echo full secret values** in your output. When you must show one for context, mask: `postgresql://USER:****@host:6543/postgres`.
 - **Never write secrets to a file** that isn't `.env` itself.
 - Use the value only in piped, in-process commands (`psql "$DATABASE_URL" -c "..."`). Don't `export` it into a shell that lingers.
@@ -100,6 +103,7 @@ DATABASE_URL=$(grep -E "^DATABASE_URL=" .env | cut -d= -f2- | tr -d '"') \
 ```
 
 Rules:
+
 - **`SELECT` only by default.** Never `UPDATE`/`DELETE`/`ALTER`/`DROP` without the user explicitly authorizing the exact statement.
 - Always `LIMIT` reads (default 50). The DB has hundreds of thousands of rows in some tables.
 - For embeddings columns, project them out (`SELECT id, listing_id, ... FROM …`) — don't dump the vector.
@@ -115,8 +119,8 @@ psql "$DATABASE_URL" -c "\dt"
 
 Lay the evidence side by side:
 
-- **Code**: what *should* happen on this path (file:line).
-- **Logs**: what the runtime *actually* did (timestamp, request id, error message).
+- **Code**: what _should_ happen on this path (file:line).
+- **Logs**: what the runtime _actually_ did (timestamp, request id, error message).
 - **DB**: the resulting state (or the absent state).
 
 The bug lives at the first divergence. State the root cause as one sentence, citing the specific evidence (`apps/web/.../alerts.ts:142` + log line + DB row).
