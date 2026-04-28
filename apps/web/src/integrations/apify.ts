@@ -1,7 +1,4 @@
-import { eq } from "drizzle-orm";
 import { env } from "@/lib/env";
-import { getDb } from "@/db";
-import { monitoredGroups } from "@/db/schema";
 
 const FB_GROUPS_ACTOR_ID = "apify~facebook-groups-scraper";
 const APIFY_API_BASE = "https://api.apify.com/v2";
@@ -44,13 +41,13 @@ async function apifyFetch(
   return res.json();
 }
 
-export async function listMonitoredGroups(): Promise<Array<{ url: string; label: string | null }>> {
-  const db = getDb();
-  const rows = await db
-    .select({ url: monitoredGroups.url, label: monitoredGroups.label })
-    .from(monitoredGroups)
-    .where(eq(monitoredGroups.enabled, true));
-  return rows;
+export function listMonitoredGroups(): Array<{ url: string; label: string | null }> {
+  const raw = env().FACEBOOK_GROUP_URLS ?? "";
+  return raw
+    .split(",")
+    .map((url) => url.trim())
+    .filter(Boolean)
+    .map((url) => ({ url, label: null }));
 }
 
 export async function startFacebookGroupsRun(opts: {
@@ -58,7 +55,7 @@ export async function startFacebookGroupsRun(opts: {
   webhookSecret: string;
   maxPostsPerGroup?: number;
 }): Promise<{ runId: string; groupCount: number } | null> {
-  const groups = await listMonitoredGroups();
+  const groups = listMonitoredGroups();
   if (groups.length === 0) return null;
 
   const webhooks = [

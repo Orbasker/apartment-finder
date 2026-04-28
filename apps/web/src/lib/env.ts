@@ -16,10 +16,6 @@ const EnvSchema = z.object({
 
   AI_GATEWAY_API_KEY: z.string().optional(),
 
-  TELEGRAM_BOT_TOKEN: z.string().optional(),
-  TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
-  TELEGRAM_BOT_USERNAME: z.string().optional(),
-  NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string().optional(),
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
 
   CRON_SECRET: z.string().optional(),
@@ -28,12 +24,13 @@ const EnvSchema = z.object({
   APIFY_WEBHOOK_SECRET: z.string().optional(),
   /** Public https origin for webhooks (Vercel URL, ngrok, etc.). Required for Apify when not using a public deployment URL. */
   APP_PUBLIC_ORIGIN: z.string().url().optional(),
-
-  EXTENSION_INGEST_SECRET: z.string().optional(),
+  /** Comma-separated list of Facebook group URLs to scrape via Apify. */
+  FACEBOOK_GROUP_URLS: z.string().optional(),
 
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
-  ADMIN_SUMMARY_EMAILS: z.string().optional(),
+
+  GOOGLE_GEOCODING_API_KEY: z.string().optional(),
 
   YAD2_PROXY_URL: z.string().url().optional(),
   YAD2_PROXY_SECRET: z.string().optional(),

@@ -1,5 +1,28 @@
-import type { NormalizedListing } from "@apartment-finder/shared";
 import { createLogger, errorMessage } from "../lib/log";
+
+/**
+ * Rich Yad2 listing shape returned by the scraper. Pre-extracted structured
+ * fields ride along; PR3's ingestion writes them straight into
+ * `listing_extractions` without re-running the AI for Yad2 sources.
+ */
+export type Yad2Listing = {
+  source: "yad2";
+  sourceId: string;
+  url: string;
+  title: string | null;
+  description: string | null;
+  priceNis: number | null;
+  rooms: number | null;
+  sqm: number | null;
+  floor: number | null;
+  neighborhood: string | null;
+  street: string | null;
+  postedAt: Date | null;
+  isAgency: boolean | null;
+  authorName: string | null;
+  authorProfile: string | null;
+  rawJson: unknown;
+};
 
 const log = createLogger("scraper:yad2");
 
@@ -67,7 +90,7 @@ export class Yad2UpstreamUnavailableError extends Error {
   }
 }
 
-export async function fetchYad2Listings(opts: Yad2FetchOptions = {}): Promise<NormalizedListing[]> {
+export async function fetchYad2Listings(opts: Yad2FetchOptions = {}): Promise<Yad2Listing[]> {
   const url = opts.feedUrl ?? YAD2_FEED_URL;
   const fetchImpl = opts.fetchImpl ?? buildDefaultYad2Fetch();
   const proxied = Boolean(process.env.YAD2_PROXY_URL && process.env.YAD2_PROXY_SECRET);
@@ -126,9 +149,7 @@ export async function fetchYad2Listings(opts: Yad2FetchOptions = {}): Promise<No
       throw new Error(`Yad2 feed error: ${json.message}`);
     }
     const items: Yad2RawItem[] = json.data?.markers ?? [];
-    const normalized = items
-      .map(normalizeYad2Item)
-      .filter((l): l is NormalizedListing => l !== null);
+    const normalized = items.map(normalizeYad2Item).filter((l): l is Yad2Listing => l !== null);
 
     log.info("fetch ok", {
       rawItems: items.length,
@@ -228,7 +249,7 @@ export function buildDefaultYad2Fetch(): (
   };
 }
 
-export function normalizeYad2Item(raw: Yad2RawItem): NormalizedListing | null {
+export function normalizeYad2Item(raw: Yad2RawItem): Yad2Listing | null {
   // token is the stable item slug used in item URLs; orderId is secondary.
   const token = raw.token ? String(raw.token).trim() : "";
   const orderId = raw.orderId != null ? String(raw.orderId).trim() : "";

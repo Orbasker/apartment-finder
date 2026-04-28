@@ -10,10 +10,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:manual": "bun scripts/apply-manual-migrations.ts",
-    "db:fix-auth-uuid-defaults": "bun scripts/apply-better-auth-uuid-defaults.ts",
-    "db:push": "bun run db:manual && drizzle-kit push",
-    "db:push:auto": "bun run db:manual && DRIZZLE_PUSH_NO_STRICT=1 drizzle-kit push",
+    "db:push": "drizzle-kit push",
+    "db:push:auto": "DRIZZLE_PUSH_NO_STRICT=1 drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

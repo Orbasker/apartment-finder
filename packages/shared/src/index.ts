@@ -1,3 +1,3 @@
-export * from "./preferences";
+export * from "./filters";
 export * from "./listing";
 export * from "./extraction";
