@@ -44,19 +44,8 @@ async function main() {
     });
   }
 
-  if (!shouldIngest) {
-    console.log("\n(skipping DB insert — pass --ingest and set DATABASE_URL to test full path)");
-    return;
-  }
-
-  const { ingestNewListings } = await import("../src/pipeline/dedup");
-  const t1 = Date.now();
-  const result = await ingestNewListings(listings);
-  console.log(
-    `\ningested in ${Date.now() - t1}ms: inserted=${result.inserted.length} skippedExisting=${result.skippedExisting}`,
-  );
-  if (result.inserted[0]) {
-    console.log("first inserted row id:", result.inserted[0].id);
+  if (shouldIngest) {
+    console.log("\n(--ingest is disabled while the ingestion pipeline is being rebuilt)");
   }
 }
 

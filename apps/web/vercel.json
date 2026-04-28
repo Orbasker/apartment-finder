@@ -3,8 +3,6 @@
   "regions": ["hnd1"],
   "crons": [
     { "path": "/api/cron/poll-yad2", "schedule": "0 5,9,13,17,20 * * *" },
-    { "path": "/api/cron/poll-apify", "schedule": "0 12 * * *" },
-    { "path": "/api/cron/admin-cost-summary", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/ai-top-picks", "schedule": "30 7 * * *" }
+    { "path": "/api/cron/poll-apify", "schedule": "0 12 * * *" }
   ]
 }
