@@ -95,7 +95,7 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
         {completed && (
           <div
             role="status"
-            className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm"
+            className="rounded-md border border-success/30 bg-success/10 p-3 text-sm"
           >
             🎉 סיימנו! ההתראות פעילות. אפשר לערוך בכל רגע ב־
             <Link href="/filters" className="underline">

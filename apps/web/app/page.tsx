@@ -52,7 +52,7 @@ export default async function HomePage() {
           <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-[2.6rem]">
             דירה בתל אביב,
             <br />
-            <span className="text-[oklch(0.55_0.17_265)] dark:text-[oklch(0.78_0.15_265)]">
+            <span className="text-accent">
               לפני כולם.
             </span>
           </h1>
@@ -183,8 +183,8 @@ export default async function HomePage() {
 
 function Pill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/60 px-2.5 py-1 text-[11px] font-medium text-muted-foreground backdrop-blur-sm">
-      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[oklch(0.7_0.18_250)]" aria-hidden="true" />
+    <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/60 px-2.5 py-1 text-2xs font-medium text-muted-foreground backdrop-blur-sm">
+      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
       {children}
     </span>
   );
@@ -209,7 +209,7 @@ function Bullet({ children }: { children: React.ReactNode }) {
 
 function CheckMark() {
   return (
-    <svg className="h-3.5 w-3.5 shrink-0 text-emerald-500" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <svg className="h-3.5 w-3.5 shrink-0 text-success" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="m3 8 3.5 3.5L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -226,7 +226,7 @@ function SectionHeader({
 }) {
   return (
     <div className="max-w-2xl">
-      <div className="text-xs font-semibold uppercase tracking-wider text-[oklch(0.55_0.17_265)] dark:text-[oklch(0.78_0.15_265)]">
+      <div className="text-xs font-semibold uppercase tracking-wider text-accent">
         {eyebrow}
       </div>
       <h2 className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{title}</h2>

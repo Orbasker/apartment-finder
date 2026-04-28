@@ -44,18 +44,18 @@ export function FlowDiagram() {
         </g>
 
         <g>
-          <Particle href="#path-fb-brain" color="oklch(0.6 0.18 260)" begin="0s" />
-          <Particle href="#path-fb-brain" color="oklch(0.6 0.18 260)" begin="1.2s" />
-          <Particle href="#path-md-brain" color="oklch(0.7 0.16 30)" begin="0.4s" />
-          <Particle href="#path-md-brain" color="oklch(0.7 0.16 30)" begin="1.7s" />
-          <Particle href="#path-y2-brain" color="oklch(0.78 0.18 90)" begin="0.2s" />
-          <Particle href="#path-y2-brain" color="oklch(0.78 0.18 90)" begin="1.4s" />
+          <Particle href="#path-fb-brain" color="var(--color-brand-facebook)" begin="0s" />
+          <Particle href="#path-fb-brain" color="var(--color-brand-facebook)" begin="1.2s" />
+          <Particle href="#path-md-brain" color="var(--color-brand-madlan-leaf)" begin="0.4s" />
+          <Particle href="#path-md-brain" color="var(--color-brand-madlan-leaf)" begin="1.7s" />
+          <Particle href="#path-y2-brain" color="var(--color-brand-yad2)" begin="0.2s" />
+          <Particle href="#path-y2-brain" color="var(--color-brand-yad2)" begin="1.4s" />
         </g>
 
         <g>
-          <Particle href="#path-brain-tg" color="oklch(0.65 0.16 230)" begin="1s" />
-          <Particle href="#path-brain-wa" color="oklch(0.7 0.18 145)" begin="1.4s" />
-          <Particle href="#path-brain-em" color="oklch(0.55 0.17 250)" begin="1.8s" />
+          <Particle href="#path-brain-tg" color="var(--color-brand-telegram)" begin="1s" />
+          <Particle href="#path-brain-wa" color="var(--color-brand-whatsapp)" begin="1.4s" />
+          <Particle href="#path-brain-em" color="var(--color-brand-email)" begin="1.8s" />
         </g>
       </svg>
 
@@ -75,7 +75,7 @@ export function FlowDiagram() {
           style={{ left: "50%", top: "50%" }}
         >
           <BrainMark className="h-14 w-14 sm:h-16 sm:w-16" />
-          <span className="rounded-full border bg-background px-2 py-0.5 text-[10px] font-semibold tracking-wide">
+          <span className="rounded-full border bg-background px-2 py-0.5 text-3xs font-semibold tracking-wide">
             AI
           </span>
         </div>
@@ -111,7 +111,7 @@ function Tile({
       style={{ left: `${cx}%`, top: `${cy}%` }}
     >
       <div className="rounded-xl bg-card p-1 shadow-sm ring-1 ring-border">{children}</div>
-      <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur-sm">
+      <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-3xs font-medium text-muted-foreground backdrop-blur-sm">
         {label}
       </span>
     </div>

@@ -61,7 +61,7 @@ export function AiExtractor() {
         <Header tone="muted">פוסט גולמי</Header>
         <p className="mt-3 text-sm leading-relaxed text-foreground/90">{RAW_LISTING}</p>
         <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
           נסרק ממקור
         </div>
       </div>
@@ -75,7 +75,7 @@ export function AiExtractor() {
               </>
             ) : (
               <>
-                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[oklch(0.7_0.18_250)]" aria-hidden="true" />
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-accent" aria-hidden="true" />
                 AI Extractor
               </>
             )}
@@ -119,7 +119,7 @@ function Header({
   children: React.ReactNode;
   tone: "muted" | "brain";
 }) {
-  const c = tone === "brain" ? "text-[oklch(0.55_0.17_265)] dark:text-[oklch(0.78_0.15_265)]" : "text-muted-foreground";
+  const c = tone === "brain" ? "text-accent" : "text-muted-foreground";
   return <div className={`text-xs font-semibold ${c}`}>{children}</div>;
 }
 
@@ -158,11 +158,11 @@ function Tag({
 }) {
   const c =
     tone === "success"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      ? "border-success/30 bg-success/10 text-success"
       : "border-border bg-muted text-foreground/80";
   return (
     <span
-      className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] transition-all ${c} ${
+      className={`inline-flex rounded-full border px-2 py-0.5 text-2xs transition-all ${c} ${
         active ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
       }`}
       style={{ transitionDelay: active ? `${delay}ms` : "0ms" }}

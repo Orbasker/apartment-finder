@@ -26,8 +26,36 @@ Defined in `apps/web/app/globals.css` using OKLch (perceptually uniform). All UI
 | `--color-primary` | `oklch(0.22 0 0)` | `oklch(0.96 0 0)` | Primary action (near-black flips in dark) |
 | `--color-primary-foreground` | inverse | inverse | Text on primary |
 | `--color-destructive` | `oklch(0.6 0.22 27)` | `oklch(0.68 0.22 27)` | Delete / error |
+| `--color-accent` | `oklch(0.55 0.17 265)` | `oklch(0.78 0.15 265)` | AI accent — eyebrow labels, highlighted headline word, brain |
+| `--color-accent-foreground` | `oklch(0.99 0 0)` | `oklch(0.16 0 0)` | Text on accent |
+| `--color-success` | `oklch(0.7 0.17 150)` | `oklch(0.78 0.18 150)` | OK checkmarks, status dots |
+| `--color-success-foreground` | `oklch(0.99 0 0)` | `oklch(0.16 0 0)` | Text on success |
 
-**Brand accent.** The single non-neutral color used in the landing page is the AI accent `oklch(0.55 0.17 265)` (light) / `oklch(0.78 0.15 265)` (dark) — used for eyebrow labels, the highlighted word in the headline, the "AI" pill, and the brain glow. Used sparingly to mark the AI as "the smart part of the product." It is always applied as a solid color — never as a gradient.
+**Rule.** No component uses raw `oklch(...)`, `#hex`, or `bg-emerald-500`-style palette colors. Every color is a token (`bg-card`, `text-accent`, `border-success/30`, …) so light/dark themes flip in one place.
+
+### Brand colors
+The landing flow diagram needs the literal Yad2 yellow, Facebook blue, etc. — these *are* the brand identities, so they're also tokens but live in their own namespace:
+
+| Token | Value | Used by |
+|---|---|---|
+| `--color-brand-yad2` | `#FFD400` | Yad2 source tile + particle |
+| `--color-brand-facebook` | `#1877F2` | Facebook source tile + particle |
+| `--color-brand-madlan` | `#0F1A2B` | Madlan tile background |
+| `--color-brand-madlan-leaf` | `#14C17B` | Madlan leaf glyph + particle |
+| `--color-brand-email` | `#0A66C2` | Email destination tile + particle |
+| `--color-brand-whatsapp` | `#25D366` | WhatsApp destination tile + particle |
+| `--color-brand-telegram` | `#229ED9` | Telegram destination tile + particle |
+| `--color-brand-google-{blue,green,yellow,red}` | `#4285F4` … | Google sign-in icon segments |
+
+Brand tokens stay the same in light and dark — the brand identity does not flip with the theme.
+
+### Type scale tokens
+Custom relative-unit sizes registered via `@theme` so they're usable as `text-2xs` / `text-3xs`:
+
+| Token | Value | Use |
+|---|---|---|
+| `--text-2xs` | `0.6875rem` (11px) | Pills, badges (e.g. the hero eyebrow pill) |
+| `--text-3xs` | `0.625rem` (10px) | Diagram captions, "demo" / "Enter" hints |
 
 ## Typography
 
@@ -38,7 +66,7 @@ Defined in `apps/web/app/globals.css` using OKLch (perceptually uniform). All UI
   - Eyebrow: `text-xs uppercase tracking-wider font-semibold` (in accent color)
   - Body: `text-sm sm:text-base leading-relaxed`
   - UI label: `text-sm font-medium`
-  - Microcopy: `text-xs` / `text-[11px]`
+  - Microcopy: `text-xs` / `text-2xs` / `text-3xs` (custom relative-unit tokens)
 - **Numbers.** Always wrapped in `<bdi>` to prevent RTL flipping. Use `tabular-nums` when columns of numbers must align.
 
 ## Spacing & layout

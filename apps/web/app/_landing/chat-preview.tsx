@@ -60,10 +60,10 @@ export function ChatPreview() {
     <div className="flex h-[420px] flex-col overflow-hidden rounded-lg border bg-card shadow-sm sm:h-[460px]">
       <div className="flex items-center justify-between border-b px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+          <span className="inline-flex h-2 w-2 rounded-full bg-success" aria-hidden="true" />
           <span className="text-xs font-medium text-muted-foreground">צ׳אט אונבורדינג</span>
         </div>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">demo</span>
+        <span className="text-3xs uppercase tracking-wider text-muted-foreground">demo</span>
       </div>
       <div ref={ref} className="flex-1 space-y-2.5 overflow-y-auto p-3 sm:p-4">
         {shown.map((m, i) => (
@@ -80,7 +80,7 @@ export function ChatPreview() {
       <div className="border-t p-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-2 rounded-md border bg-background px-2.5 py-2">
           <span className="opacity-60">כתוב/י תשובה…</span>
-          <span className="ms-auto rounded-md bg-muted px-1.5 py-0.5 text-[10px]">Enter</span>
+          <span className="ms-auto rounded-md bg-muted px-1.5 py-0.5 text-3xs">Enter</span>
         </div>
       </div>
     </div>
