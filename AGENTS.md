@@ -276,7 +276,7 @@ Add tests for pure logic when changing it. DB-touching code stays integration-te
 
 ## In progress
 
-All 6 plan PRs are open and stacked. Once #56 (demolition) merges, rebase the chain onto main in order: #57 → #58 → #59 → #60 → #61.
+All planned MVP PRs (#56 demolition → #62 schema → #63 ingestion → #64 onboarding → #65 React Email → #66 polish) are merged. Current branch ships email-OTP sign-in, the React Email convention, and the `db:reset` script.
 
 ## Accessibility notes
 
