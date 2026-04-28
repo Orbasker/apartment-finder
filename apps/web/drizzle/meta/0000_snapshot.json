@@ -1,5 +1,5 @@
 {
-  "id": "6c86e559-144d-4054-806e-161ad77c40ed",
+  "id": "b660595b-5f3e-40fc-9836-6fb5d320969e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -795,6 +795,42 @@
         },
         "phone_e164": {
           "name": "phone_e164",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "arnona_nis": {
+          "name": "arnona_nis",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vaad_bayit_nis": {
+          "name": "vaad_bayit_nis",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entry_date": {
+          "name": "entry_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "balcony_sqm": {
+          "name": "balcony_sqm",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_floors": {
+          "name": "total_floors",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "furniture_status": {
+          "name": "furniture_status",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -1707,7 +1743,9 @@
         "ground_floor",
         "roof_access",
         "shared_apartment",
-        "is_legitimate_rental"
+        "garden",
+        "pool",
+        "solar_water_heater"
       ]
     },
     "public.attribute_requirement": {

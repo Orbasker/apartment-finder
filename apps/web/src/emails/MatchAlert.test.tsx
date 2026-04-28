@@ -13,6 +13,14 @@ const baseProps: MatchAlertProps = {
   sourceUrl: "https://example.com/listing/42",
   filtersUrl: "https://example.com/filters",
   matchedAttributes: ["elevator", "parking"],
+  pricePerSqm: 125,
+  arnonaNis: 500,
+  vaadBayitNis: 200,
+  condition: "משופץ",
+  entryDate: "מיידי",
+  balconySqm: 5,
+  totalFloors: 5,
+  furnitureStatus: "included",
 };
 
 describe("MatchAlertEmail", () => {
@@ -60,8 +68,30 @@ describe("MatchAlertEmail", () => {
         sourceUrl: null,
         filtersUrl: null,
         matchedAttributes: [],
+        pricePerSqm: null,
+        arnonaNis: null,
+        vaadBayitNis: null,
+        condition: null,
+        entryDate: null,
+        balconySqm: null,
+        totalFloors: null,
+        furnitureStatus: null,
       }),
     );
     expect(html).toContain("דירה חדשה תואמת לסינונים שלך");
+    expect(html).not.toContain("מידע נוסף על הנכס");
+  });
+
+  test("renders the מידע נוסף על הנכס section with new fields", async () => {
+    const html = await render(MatchAlertEmail(baseProps));
+    expect(html).toContain("מידע נוסף על הנכס");
+    expect(html).toContain("מחיר למ&quot;ר");
+    expect(html).toContain("ארנונה");
+    expect(html).toContain("ועד בית");
+    expect(html).toContain("תאריך כניסה");
+    expect(html).toContain("מיידי");
+    expect(html).toContain("ריהוט");
+    expect(html).toContain("כולל");
+    expect(html).toMatch(/<bdi>₪500<\/bdi>/);
   });
 });

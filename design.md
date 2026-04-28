@@ -78,7 +78,7 @@ Custom relative-unit sizes registered via `@theme` so they're usable as `text-2x
 - **Container.** App pages: `max-w-3xl`. Landing page: `max-w-5xl`. Login card: `max-w-md`. Dashboard content: `max-w-2xl`.
 - **Page padding.** `px-4 py-4 sm:px-6 sm:py-6` - never less on mobile.
 - **Section rhythm.** Major landing sections separated by `mt-16 sm:mt-24`.
-- **Stack gap.** `gap-2` (tight), `gap-3` (default), `gap-4–6` (loose).
+- **Stack gap.** `gap-2` (tight), `gap-3` (default), `gap-4` to `gap-6` (loose).
 - **Card padding.** `p-4` (compact) / `p-5` (default, from `Card`) / `p-6 sm:p-10` (hero-card).
 
 ## Radii & elevation

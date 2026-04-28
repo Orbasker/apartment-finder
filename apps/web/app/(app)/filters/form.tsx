@@ -97,7 +97,7 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
         </div>
       </Section>
 
-      <Section title="דרישות">
+      <Section title="מפרט מלא">
         <ul className="space-y-3">
           {APARTMENT_ATTRIBUTE_KEYS.map((key) => (
             <li key={key} className="rounded-md border p-3">

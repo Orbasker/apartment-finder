@@ -101,6 +101,12 @@ export async function processListing(listingId: number): Promise<ProcessOutcome>
         condition: extracted.condition,
         isAgency: extracted.isAgency,
         phoneE164: extracted.phoneE164,
+        arnonaNis: extracted.arnonaNis,
+        vaadBayitNis: extracted.vaadBayitNis,
+        entryDate: extracted.entryDate,
+        balconySqm: extracted.balconySqm,
+        totalFloors: extracted.totalFloors,
+        furnitureStatus: extracted.furnitureStatus,
         extras: extracted.extras as never,
         embedding,
       })
@@ -119,16 +125,6 @@ export async function processListing(listingId: number): Promise<ProcessOutcome>
           })),
         )
         .onConflictDoNothing();
-    }
-
-    // Anti-spam gate: if AI marked is_legitimate_rental=false, do not unify or notify.
-    const legitFalse = extracted.attributes.find(
-      (a) => a.key === "is_legitimate_rental" && a.value === false,
-    );
-    if (legitFalse) {
-      await markStatus(listingId, "unified");
-      log.info("skipped non-legitimate rental", { listingId });
-      return { listingId, status: "unified", matchedUsers: 0, alertsSent: 0 };
     }
 
     // 5) unify
