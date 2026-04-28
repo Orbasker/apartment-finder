@@ -4,7 +4,7 @@ import { APARTMENT_ATTRIBUTE_KEYS } from "./filters";
 
 // ---------------------------------------------------------------------------
 // Lean extraction schema. Structured fields + an array of {key, value:bool}
-// for known attributes. Unknown attributes are simply absent — no NULL.
+// for known attributes. Unknown attributes are simply absent - no NULL.
 // ---------------------------------------------------------------------------
 
 describe("ExtractionSchema: structured fields", () => {

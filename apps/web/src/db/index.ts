@@ -13,7 +13,7 @@ function createClient() {
   const sql = postgres(url, {
     prepare: false,
     // Allow a single lambda's Promise.all fan-out to run in parallel instead
-    // of serializing through one socket. Pages do ~5–20 queries per render;
+    // of serializing through one socket. Pages do ~5-20 queries per render;
     // max:1 made every "parallel" query effectively sequential.
     max: 10,
     connect_timeout: 30,

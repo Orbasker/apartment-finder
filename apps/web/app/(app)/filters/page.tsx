@@ -6,7 +6,7 @@ import { FiltersForm } from "./form";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "סינונים — Apartment Finder",
+  title: "סינונים - Apartment Finder",
 };
 
 export default async function FiltersPage() {

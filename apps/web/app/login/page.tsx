@@ -3,7 +3,7 @@ import { isGoogleConfigured } from "@/lib/auth";
 import { LoginForm } from "./login-form";
 
 export const metadata = {
-  title: "כניסה — Apartment Finder",
+  title: "כניסה - Apartment Finder",
   description: "כניסה לחיפוש דירה בתל אביב.",
 };
 

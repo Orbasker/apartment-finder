@@ -3,6 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /* Surfaces & text */
   --color-background: oklch(0.99 0 0);
   --color-foreground: oklch(0.14 0 0);
   --color-card: oklch(1 0 0);
@@ -11,9 +12,34 @@
   --color-border: oklch(0.92 0 0);
   --color-input: oklch(0.92 0 0);
   --color-ring: oklch(0.64 0.15 240);
+
+  /* Actions */
   --color-primary: oklch(0.22 0 0);
   --color-primary-foreground: oklch(0.99 0 0);
   --color-destructive: oklch(0.6 0.22 27);
+
+  /* Semantic accents */
+  --color-accent: oklch(0.55 0.17 265);
+  --color-accent-foreground: oklch(0.99 0 0);
+  --color-success: oklch(0.7 0.17 150);
+  --color-success-foreground: oklch(0.99 0 0);
+
+  /* Brand colors (literal - used by source/destination tiles in the landing diagram) */
+  --color-brand-yad2: #ffd400;
+  --color-brand-facebook: #1877f2;
+  --color-brand-madlan: #0f1a2b;
+  --color-brand-madlan-leaf: #14c17b;
+  --color-brand-email: #0a66c2;
+  --color-brand-whatsapp: #25d366;
+  --color-brand-telegram: #229ed9;
+  --color-brand-google-blue: #4285f4;
+  --color-brand-google-green: #34a853;
+  --color-brand-google-yellow: #fbbc05;
+  --color-brand-google-red: #ea4335;
+
+  /* Type scale (relative units) */
+  --text-2xs: 0.6875rem; /* 11px - micro labels / pills */
+  --text-3xs: 0.625rem; /* 10px - diagram captions */
 }
 
 @layer base {
@@ -29,6 +55,10 @@
     --color-primary: oklch(0.96 0 0);
     --color-primary-foreground: oklch(0.16 0 0);
     --color-destructive: oklch(0.68 0.22 27);
+    --color-accent: oklch(0.78 0.15 265);
+    --color-accent-foreground: oklch(0.16 0 0);
+    --color-success: oklch(0.78 0.18 150);
+    --color-success-foreground: oklch(0.16 0 0);
   }
 
   * {

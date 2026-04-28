@@ -1,18 +1,20 @@
 # AGENTS.md
 
-Living documentation for AI agents and contributors working on this repo. Reflects the **current** state — keep this file updated as you change the system.
+Living documentation for AI agents and contributors working on this repo. Reflects the **current** state - keep this file updated as you change the system.
 
 ## Product
 
-Hebrew-only Tel Aviv apartment finder. Users define their preferences via a conversational chat (or edit form), and get **instant email alerts** the moment a new listing matches. No browse UI, no admin panel — chat + email only.
+Hebrew-only Tel Aviv apartment finder. Users define their preferences via a conversational chat (or edit form), and get **instant email alerts** the moment a new listing matches. No browse UI, no admin panel - chat + email only.
 
 The system is multi-user with [Better Auth](https://better-auth.dev) (email-OTP via Resend, optional Google OAuth). Each user has their own filter set; matching is filter-only (no AI judging/scoring).
 
 ## Non-negotiable conventions
 
-- **Hebrew-only**, RTL. `<html lang="he" dir="rtl">`. Use Tailwind v4 logical classes (`ms-*` / `me-*` / `ps-*` / `pe-*`, `start-*` / `end-*`) — never the LTR-physical (`ml-*`, `mr-*`).
-- **Mobile-first**. Design for ~375px viewport first; scale up via `sm:`/`md:`/`lg:` modifiers. Tap targets ≥ 44px. Single-column at base.
+- **Hebrew-only**, RTL. `<html lang="he" dir="rtl">`. Use Tailwind v4 logical classes (`ms-*` / `me-*` / `ps-*` / `pe-*`, `start-*` / `end-*`) - never the LTR-physical (`ml-*`, `mr-*`). Every user-visible string is Hebrew. The only allowed Latin in copy is brand names (Yad2, Madlan, Facebook, WhatsApp, Telegram, Apartment Finder) and the acronym AI - no other English words.
+- **Mobile-first**. Design for ~375px viewport first; scale up via `sm:`/`md:`/`lg:` modifiers. Tap targets >= 44px. Single-column at base.
 - **Bidi safety**: wrap numerics/Latin inside Hebrew copy in `<bdi>` (e.g. `<bdi>₪7,500</bdi>`).
+- **Design tokens only**. No component is allowed to use raw `oklch(...)`, `#hex`, or palette classes (`bg-emerald-500`, `text-blue-600`, etc.). Every color comes from a token defined in `apps/web/app/globals.css` (`bg-card`, `text-accent`, `border-success/30`, `fill="var(--color-brand-facebook)"`, …). Brand colors live in their own `--color-brand-*` namespace. The same applies to micro type sizes - use `text-2xs` / `text-3xs` (registered via `@theme`), not `text-[10px]`.
+- **No em-dashes** (the `—` character, the long dash AI text generators love). Always use a regular ASCII hyphen `-` instead, in user copy, code comments, and docs. Same for the en-dash `–`.
 - **All outbound email goes through React Email.** Never construct raw HTML strings inline in `auth.ts`, `notify.ts`, or anywhere else. Add a component under `apps/web/src/emails/<Name>.tsx` using `@react-email/components` (`Html`, `Body`, `Container`, `Section`, `Heading`, `Text`, `Button`, `Preview`, etc.), then `await render(<Component {...props} />)` from `@react-email/render` at the call site and pass both `html` and `text` (with `{ plainText: true }`) to `resend.emails.send`. Always set `<Html lang="he" dir="rtl">` and wrap numerics/Latin in `<bdi>`. Preview each new template with `bun run email:dev`.
 - **No backward compatibility**. Schema is fresh, migrations don't preserve legacy data, drop-and-recreate is OK.
 - Default to **no comments**. Only document non-obvious WHY.
@@ -56,8 +58,8 @@ User side:
 - **Drizzle ORM 0.36** + `postgres` driver
 - **Postgres** on Supabase (pgvector ≥ 0.5 required for HNSW)
 - **AI Gateway** (`@ai-sdk/gateway`) → Gemini 2.5 Flash + `gemini-embedding-001`
-- **AI SDK 5** (`ai`) — `generateObject`, `embed`, `streamText`. `@ai-sdk/react@2` for `useChat` (pinned to v2 to match `ai@5`; v3 transitively pulls in `ai@6` which has incompatible types)
-- **Resend 6** for outbound email (sign-in OTP + match alerts) + **React Email** (`@react-email/components`, `@react-email/render`) for every template — see `apps/web/src/emails/`
+- **AI SDK 5** (`ai`) - `generateObject`, `embed`, `streamText`. `@ai-sdk/react@2` for `useChat` (pinned to v2 to match `ai@5`; v3 transitively pulls in `ai@6` which has incompatible types)
+- **Resend 6** for outbound email (sign-in OTP + match alerts) + **React Email** (`@react-email/components`, `@react-email/render`) for every template - see `apps/web/src/emails/`
 - **Apify** for Facebook group scraping
 - **Yad2 proxy** (`services/yad2-proxy/`) for Israeli-IP egress; Yad2 blocks Vercel IPs
 - **Bun 1.3** workspace, **Turbo 2.9**, **vitest** for tests, **knip** for dead-code
@@ -68,8 +70,14 @@ User side:
 apps/
   web/                          Next.js app
     app/                        App Router routes
+      page.tsx                  Public marketing landing (`/`). Auth-aware CTAs.
+      _landing/                 Components colocated with the landing (private folder)
+        flow-diagram.tsx        SVG-only animated sources -> AI brain -> destinations
+        brand-icons.tsx         Yad2 / Madlan / Facebook / Email / WhatsApp / Telegram + BrainMark
+        ai-extractor.tsx        Looped "raw post -> structured fields" demo
+        chat-preview.tsx        Scripted onboarding-chat preview
       (app)/                    Auth-gated layout group
-        page.tsx                Status home (redirects to /onboarding if onboardedAt is null)
+        dashboard/page.tsx      Status home at `/dashboard` (redirects to /onboarding if onboardedAt is null)
         layout.tsx              Header (brand + nav + user menu)
         nav-links.tsx           HeaderBrandLink + PrimaryNav (Hebrew)
         user-menu.tsx           Profile dropdown + sign-out
@@ -85,8 +93,8 @@ apps/
       api/
         auth/[...all]/          better-auth routes
         chat/onboarding/        Streaming chat endpoint (streamText + tools)
-        cron/poll-yad2/         Cron handler — fetch + process inline
-        cron/poll-apify/        Cron handler — kicks off Apify run
+        cron/poll-yad2/         Cron handler - fetch + process inline
+        cron/poll-apify/        Cron handler - kicks off Apify run
         webhooks/apify/         Receives Apify completion, processes dataset
     drizzle/                    Migrations (single 0000_*.sql init)
     src/
@@ -99,7 +107,7 @@ apps/
                                   markOnboarded / countActive
       onboarding/
         agent.ts                ONBOARDING_MODEL + ONBOARDING_SYSTEM (Hebrew prompt)
-        tools.ts                buildOnboardingTools(userId) — 10 tools the
+        tools.ts                buildOnboardingTools(userId) - 10 tools the
                                   chat agent calls to upsert filters
       emails/                   React Email templates (RTL Hebrew, mobile-
                                   friendly card layout, plain-text fallback).
@@ -167,46 +175,48 @@ Single `0000_*.sql` migration (drizzle-generated, hand-extended with `CREATE EXT
 
 ### Tables
 
-- **`listings`** — per-source observation. Unique `(source, source_id)`. `status` advances through the pipeline.
-- **`listing_extractions`** — AI-extracted structured fields per listing+schema_version. Includes `embedding vector(1536)` (HNSW index, cosine ops). Geocoded fields (`place_id`, `lat`, `lon`, `geocode_confidence`).
-- **`listing_attributes`** — KV booleans, **NOT NULL value** (absence-of-row = unknown). PK `(listing_id, key)`.
-- **`apartments`** — canonical entity with Google `place_id` + lat/lon + latest price/rooms/sqm.
-- **`apartment_listings`** — M:N linking apartments to listings, with `confidence` and `matched_by` (`place_id` / `geo_radius` / `embedding` / `created`). Unique on `listing_id` (one listing → one apartment).
-- **`user_filters`** — one row per user. Hot-path columns (price/rooms/sqm), text arrays for neighborhoods/wishes/dealbreakers, `strict_unknowns`, `daily_alert_cap`, `is_active`.
-- **`user_filter_attributes`** — normalized per-attribute requirements. PK `(user_id, key)`.
-- **`user_filter_texts`** — embedded wishes/dealbreakers. `vector(1536)` with HNSW. Cosine-compared against listing embedding at match time.
-- **`sent_alerts`** — outbox dedup. PK `(user_id, apartment_id)`.
-- **`geocode_cache`** — keyed by normalized address string. Cuts Google Geocoding spend ~60%.
-- **`ai_usage`** — token + cost telemetry per AI call.
-- **`blocked_authors`** — anti-spam list (FB profiles).
+- **`listings`** - per-source observation. Unique `(source, source_id)`. `status` advances through the pipeline.
+- **`listing_extractions`** - AI-extracted structured fields per listing+schema_version. Includes `embedding vector(1536)` (HNSW index, cosine ops). Geocoded fields (`place_id`, `lat`, `lon`, `geocode_confidence`).
+- **`listing_attributes`** - KV booleans, **NOT NULL value** (absence-of-row = unknown). PK `(listing_id, key)`.
+- **`apartments`** - canonical entity with Google `place_id` + lat/lon + latest price/rooms/sqm.
+- **`apartment_listings`** - M:N linking apartments to listings, with `confidence` and `matched_by` (`place_id` / `geo_radius` / `embedding` / `created`). Unique on `listing_id` (one listing → one apartment).
+- **`user_filters`** - one row per user. Hot-path columns (price/rooms/sqm), text arrays for neighborhoods/wishes/dealbreakers, `strict_unknowns`, `daily_alert_cap`, `is_active`.
+- **`user_filter_attributes`** - normalized per-attribute requirements. PK `(user_id, key)`.
+- **`user_filter_texts`** - embedded wishes/dealbreakers. `vector(1536)` with HNSW. Cosine-compared against listing embedding at match time.
+- **`sent_alerts`** - outbox dedup. PK `(user_id, apartment_id)`.
+- **`geocode_cache`** - keyed by normalized address string. Cuts Google Geocoding spend ~60%.
+- **`ai_usage`** - token + cost telemetry per AI call.
+- **`blocked_authors`** - anti-spam list (FB profiles).
 - Better-Auth tables: **`user`**, **`session`**, **`account`**, **`verification`** (UUID PKs with DB-side defaults).
 
 ## Ingestion pipeline (per listing)
 
 Implemented inline in cron + webhook handlers with concurrency=4. `maxDuration=300`.
 
-1. **extract** (`ingestion/extract.ts`) — Gemini 2.5 Flash via `generateObject`. Returns `{ structured fields, attributes: [{key, value: bool}] }`. Unknown attributes are simply absent.
-2. **geocode** (`ingestion/geocode.ts`) — Google Geocoding (`language=he&region=il`) with `geocode_cache` lookup/write.
-3. **embed** (`ingestion/embed.ts`) — `gemini-embedding-001` with `providerOptions.google.outputDimensionality=1536`. Embeds composed text: `${neighborhood} ${street} ${rooms} ${sqm} ${description}`.
-4. **persist** — write `listing_extractions` + `listing_attributes` rows.
-5. **unify** (`ingestion/unify.ts`) — priority match:
+1. **extract** (`ingestion/extract.ts`) - Gemini 2.5 Flash via `generateObject`. Returns `{ structured fields, attributes: [{key, value: bool}] }`. Unknown attributes are simply absent.
+2. **geocode** (`ingestion/geocode.ts`) - Google Geocoding (`language=he&region=il`) with `geocode_cache` lookup/write.
+3. **embed** (`ingestion/embed.ts`) - `gemini-embedding-001` with `providerOptions.google.outputDimensionality=1536`. Embeds composed text: `${neighborhood} ${street} ${rooms} ${sqm} ${description}`.
+4. **persist** - write `listing_extractions` + `listing_attributes` rows.
+5. **anti-spam gate** - if AI marked `is_legitimate_rental=false`, skip unify/notify.
+6. **unify** (`ingestion/unify.ts`) - priority match:
    1. exact `place_id` (confidence 0.95)
    2. lat/lon ≤ 25m + |rooms| ≤ 0.5 + sqm within 15% (0.85)
    3. embedding cosine ≥ 0.92 within ±200m bbox (0.70)
    4. create new apartment (1.0)
-6. **match** (`ingestion/match.ts`) — SQL prefilter on `user_filters` (price/rooms/sqm/neighborhoods, all-active only). Per-candidate: load `user_filter_attributes`, run `checkAttributeRequirements` (strictUnknowns honored). Then dealbreaker cosine ≤ 0.35 → fail.
-7. **notify** (`ingestion/notify.ts`) — Resend HTML email (Hebrew RTL, `<bdi>` for numerics, matched-attribute summary, "מידע נוסף על הנכס" data table from the primary listing's extraction). Enforces `sent_alerts` dedup + per-user `daily_alert_cap`.
+7. **match** (`ingestion/match.ts`) - SQL prefilter on `user_filters` (price/rooms/sqm/neighborhoods, all-active only). Per-candidate: load `user_filter_attributes`, run `checkAttributeRequirements` (strictUnknowns honored). Then dealbreaker cosine ≤ 0.35 → fail.
+8. **notify** (`ingestion/notify.ts`) - Resend HTML email (Hebrew RTL, `<bdi>` for numerics, matched-attribute summary, "מידע נוסף על הנכס" data table from the primary listing's extraction). Enforces `sent_alerts` dedup + per-user `daily_alert_cap`.
 
 ## Pages
 
-| Path          | Auth     | Purpose                                                                                                                                                                                                                  |
-| ------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/login`      | public   | Hebrew sign-in (Google OAuth + 6-digit email OTP via Resend, two-step UI).                                                                                                                                               |
-| `/`           | required | Status home. Redirects to `/onboarding` when `user_filters.onboarded_at` is null; otherwise shows alert status + links.                                                                                                  |
-| `/onboarding` | required | Conversational chat agent (Hebrew, mobile-first). Walks user through ≥3 filters via 10 tools, then calls `completeOnboarding` to set `onboarded_at`.                                                                     |
-| `/filters`    | required | Form-based filter editor. Save action upserts `user_filters`, replaces `user_filter_attributes` row-by-row, replaces `user_filter_texts` (and re-embeds wishes/dealbreakers). Submitting also marks onboarding complete. |
+| Path          | Auth     | Purpose                                                                                                                                                                                                                                             |
+| ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/login`      | public   | Hebrew sign-in (Google OAuth + 6-digit email OTP via Resend, two-step UI).                                                                                                                                                                          |
+| `/`           | public   | Marketing landing (Hebrew). Animated sources -> AI brain -> destinations diagram, AI extractor demo, scripted onboarding-chat preview. Auth-aware CTAs: logged-out -> `/login`, logged-in -> `/dashboard`. Components colocated in `app/_landing/`. |
+| `/dashboard`  | required | Status home. Redirects to `/onboarding` when `user_filters.onboarded_at` is null; otherwise shows alert status + links.                                                                                                                             |
+| `/onboarding` | required | Conversational chat agent (Hebrew, mobile-first). Walks user through >=3 filters via 10 tools, then calls `completeOnboarding` to set `onboarded_at`.                                                                                               |
+| `/filters`    | required | Form-based filter editor. Save action upserts `user_filters`, replaces `user_filter_attributes` row-by-row, replaces `user_filter_texts` (and re-embeds wishes/dealbreakers). Submitting also marks onboarding complete.                            |
 
-The onboarding chat route is `POST /api/chat/onboarding` — `streamText` with the `ONBOARDING_SYSTEM` prompt, tools from `buildOnboardingTools(userId)`, capped at 8 steps (`stopWhen: stepCountIs(8)`).
+The onboarding chat route is `POST /api/chat/onboarding` - `streamText` with the `ONBOARDING_SYSTEM` prompt, tools from `buildOnboardingTools(userId)`, capped at 8 steps (`stopWhen: stepCountIs(8)`).
 
 ## Auth
 
@@ -222,8 +232,8 @@ The onboarding chat route is `POST /api/chat/onboarding` — `streamText` with t
 
 `apps/web/vercel.json`:
 
-- `/api/cron/poll-yad2` — `0 5,9,13,17,20 * * *`
-- `/api/cron/poll-apify` — `0 12 * * *`
+- `/api/cron/poll-yad2` - `0 5,9,13,17,20 * * *`
+- `/api/cron/poll-apify` - `0 12 * * *`
 
 Apify webhooks hit `/api/webhooks/apify` directly.
 
@@ -264,11 +274,11 @@ CI runs from repo root via Bun + Turbo.
 
 70 vitest tests, no live DB:
 
-- `db/schema.test.ts` — pin enums, tables, FKs, indexes, dimensions.
-- `ingestion/match.test.ts` — `checkAttributeRequirements` matrix.
-- `ingestion/unify.test.ts` — haversine + vector literal.
+- `db/schema.test.ts` - pin enums, tables, FKs, indexes, dimensions.
+- `ingestion/match.test.ts` - `checkAttributeRequirements` matrix.
+- `ingestion/unify.test.ts` - haversine + vector literal.
 - `lib/{schedule,aiUsage,contentHash}.test.ts`.
-- `scrapers/yad2.test.ts` — mocked fetch.
+- `scrapers/yad2.test.ts` - mocked fetch.
 - `packages/shared/src/extraction.test.ts`.
 
 Add tests for pure logic when changing it. DB-touching code stays integration-tested manually for now.
@@ -290,5 +300,5 @@ All planned MVP PRs (#56 demolition → #62 schema → #63 ingestion → #64 onb
 
 - **Vercel Workflow** for the per-listing pipeline. Today the cron handler runs everything inline with concurrency=4. Fine at MVP scale; revisit if budgets get tight.
 - **Browse UI** is intentionally absent. Don't add one without product approval.
-- **Telegram / browser extension / admin panel** — all removed in PR1; do not bring back.
-- **AI judging / scoring** — removed; matching is filter-only.
+- **Telegram / browser extension / admin panel** - all removed in PR1; do not bring back.
+- **AI judging / scoring** - removed; matching is filter-only.

@@ -6,7 +6,7 @@ import { OnboardingChat } from "./chat-ui";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "אונבורדינג — Apartment Finder",
+  title: "אונבורדינג - Apartment Finder",
 };
 
 export default async function OnboardingPage() {

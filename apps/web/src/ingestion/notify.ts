@@ -96,12 +96,12 @@ export async function sendInstantAlert(input: {
     : null;
 
   if (!env().RESEND_API_KEY) {
-    log.warn("RESEND_API_KEY not set — skipping send", { userId: input.userId });
+    log.warn("RESEND_API_KEY not set - skipping send", { userId: input.userId });
     return { sent: false, reason: "no_resend" };
   }
   const from = env().RESEND_FROM_EMAIL;
   if (!from) {
-    log.warn("RESEND_FROM_EMAIL not set — skipping send", { userId: input.userId });
+    log.warn("RESEND_FROM_EMAIL not set - skipping send", { userId: input.userId });
     return { sent: false, reason: "no_resend" };
   }
 

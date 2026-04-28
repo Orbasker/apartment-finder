@@ -115,13 +115,13 @@ export const listingExtractions = pgTable(
     rooms: real("rooms"),
     sqm: integer("sqm"),
     floor: integer("floor"),
-    // Address — what the AI saw before geocoding.
+    // Address - what the AI saw before geocoding.
     rawAddress: text("raw_address"),
     street: text("street"),
     houseNumber: text("house_number"),
     neighborhood: text("neighborhood"),
     city: text("city"),
-    // Geocoded — populated after Google Geocoding step.
+    // Geocoded - populated after Google Geocoding step.
     placeId: text("place_id"),
     lat: doublePrecision("lat"),
     lon: doublePrecision("lon"),
@@ -140,7 +140,7 @@ export const listingExtractions = pgTable(
     totalFloors: integer("total_floors"),
     furnitureStatus: text("furniture_status"),
     extras: jsonb("extras"),
-    // Embedding — gemini-embedding-001 at 1536 dims (HNSW supports up to 2000 for `vector`).
+    // Embedding - gemini-embedding-001 at 1536 dims (HNSW supports up to 2000 for `vector`).
     embedding: vector("embedding", { dimensions: 1536 }),
     extractedAt: timestamp("extracted_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -283,7 +283,7 @@ export const userFilterAttributes = pgTable(
   }),
 );
 
-// Embedded wishes/dealbreakers — embed once at filter-save time, then cosine-
+// Embedded wishes/dealbreakers - embed once at filter-save time, then cosine-
 // compare to listing embedding at match time (advisory for wishes, gating for
 // dealbreakers).
 export const userFilterTexts = pgTable(

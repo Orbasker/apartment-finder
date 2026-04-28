@@ -86,7 +86,7 @@ export type Filters = z.infer<typeof FiltersSchema>;
 export const FiltersPatchSchema = FiltersSchema.partial();
 export type FiltersPatch = z.infer<typeof FiltersPatchSchema>;
 
-/** Counts only filters that meaningfully constrain the match — used to gate
+/** Counts only filters that meaningfully constrain the match - used to gate
  *  onboarding completion (≥3 needed). */
 export function countActiveFilters(f: Filters): number {
   let count = 0;

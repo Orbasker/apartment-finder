@@ -8,7 +8,7 @@
 //
 // Levels: error > warn > info > debug. `debug` is for per-item / chatty
 // output and is OFF by default. To enable it, set `LOG_DEBUG=1` (or
-// `LOG_LEVEL=debug`) on the environment — in Vercel, add it to the
+// `LOG_LEVEL=debug`) on the environment - in Vercel, add it to the
 // project env vars for the environment you want to investigate, redeploy,
 // then remove when done.
 
