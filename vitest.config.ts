@@ -7,6 +7,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "apps/web/src"),
     },
   },
+  esbuild: {
+    jsx: "automatic",
+  },
   test: {
     include: ["apps/**/*.test.{ts,tsx}", "packages/**/*.test.{ts,tsx}"],
     exclude: ["**/node_modules/**", "**/.next/**", "**/dist/**", "**/.turbo/**"],

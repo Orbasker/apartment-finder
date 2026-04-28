@@ -1,11 +1,12 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import { Resend } from "resend";
+import { render } from "@react-email/render";
 import { getDb } from "@/db";
 import { apartments, sentAlerts, user, userFilters } from "@/db/schema";
 import { env } from "@/lib/env";
 import { createLogger, errorMessage } from "@/lib/log";
 import type { ApartmentAttributeKey } from "@apartment-finder/shared";
-import { APARTMENT_ATTRIBUTE_LABELS } from "@apartment-finder/shared";
+import { MatchAlertEmail } from "@/emails/MatchAlert";
 
 const log = createLogger("ingestion:notify");
 
@@ -30,7 +31,6 @@ export async function sendInstantAlert(input: {
 }): Promise<NotifyOutcome> {
   const db = getDb();
 
-  // Already sent?
   const existing = await db
     .select({ apartmentId: sentAlerts.apartmentId })
     .from(sentAlerts)
@@ -38,7 +38,6 @@ export async function sendInstantAlert(input: {
     .limit(1);
   if (existing.length > 0) return { sent: false, reason: "already_sent" };
 
-  // Cap check: count today's sends for the user.
   const [filter] = await db
     .select({ dailyAlertCap: userFilters.dailyAlertCap })
     .from(userFilters)
@@ -52,7 +51,6 @@ export async function sendInstantAlert(input: {
     .where(and(eq(sentAlerts.userId, input.userId), gte(sentAlerts.sentAt, since)));
   if ((today?.count ?? 0) >= cap) return { sent: false, reason: "cap_reached" };
 
-  // Recipient address.
   const [u] = await db
     .select({ email: user.email })
     .from(user)
@@ -60,7 +58,6 @@ export async function sendInstantAlert(input: {
     .limit(1);
   if (!u?.email) return { sent: false, reason: "no_email" };
 
-  // Apartment payload.
   const [apt] = await db
     .select({
       id: apartments.id,
@@ -82,8 +79,46 @@ export async function sendInstantAlert(input: {
     return { sent: false, reason: "no_resend" };
   }
 
-  const subject = buildSubject(apt);
-  const html = buildHtml(apt, input.matchedAttributes);
+  const siteOrigin = (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  const sourceUrl =
+    apt.primaryListingId && siteOrigin ? `${siteOrigin}/listings/${apt.primaryListingId}` : null;
+  const filtersUrl = siteOrigin ? `${siteOrigin}/filters` : null;
+
+  const subject = buildSubject({
+    neighborhood: apt.neighborhood,
+    rooms: apt.rooms,
+    priceNisLatest: apt.priceNisLatest,
+  });
+
+  const html = await render(
+    MatchAlertEmail({
+      apartmentId: apt.id,
+      neighborhood: apt.neighborhood,
+      formattedAddress: apt.formattedAddress,
+      rooms: apt.rooms,
+      sqm: apt.sqm,
+      floor: apt.floor,
+      priceNis: apt.priceNisLatest,
+      sourceUrl,
+      filtersUrl,
+      matchedAttributes: input.matchedAttributes,
+    }),
+  );
+  const text = await render(
+    MatchAlertEmail({
+      apartmentId: apt.id,
+      neighborhood: apt.neighborhood,
+      formattedAddress: apt.formattedAddress,
+      rooms: apt.rooms,
+      sqm: apt.sqm,
+      floor: apt.floor,
+      priceNis: apt.priceNisLatest,
+      sourceUrl,
+      filtersUrl,
+      matchedAttributes: input.matchedAttributes,
+    }),
+    { plainText: true },
+  );
 
   try {
     const result = await getResend().emails.send({
@@ -91,6 +126,7 @@ export async function sendInstantAlert(input: {
       to: u.email,
       subject,
       html,
+      text,
     });
     const messageId = (result as { data?: { id?: string } | null }).data?.id ?? null;
     await db.insert(sentAlerts).values({
@@ -120,56 +156,4 @@ function buildSubject(apt: {
   if (apt.rooms != null) parts.push(`${apt.rooms} חדרים`);
   if (apt.priceNisLatest != null) parts.push(`₪${apt.priceNisLatest.toLocaleString("he-IL")}`);
   return parts.join(" · ");
-}
-
-function buildHtml(
-  apt: {
-    id: number;
-    neighborhood: string | null;
-    formattedAddress: string | null;
-    rooms: number | null;
-    sqm: number | null;
-    floor: number | null;
-    priceNisLatest: number | null;
-    primaryListingId: number | null;
-  },
-  matched: ApartmentAttributeKey[],
-): string {
-  const sourceUrl = apt.primaryListingId
-    ? `${(env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "")}/listings/${apt.primaryListingId}`
-    : null;
-  const meta = [
-    apt.priceNisLatest != null ? `<bdi>₪${apt.priceNisLatest.toLocaleString("he-IL")}</bdi>` : null,
-    apt.rooms != null ? `<bdi>${apt.rooms} חדרים</bdi>` : null,
-    apt.sqm != null ? `<bdi>${apt.sqm} מ"ר</bdi>` : null,
-    apt.floor != null ? `<bdi>קומה ${apt.floor}</bdi>` : null,
-    apt.neighborhood,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const attrs =
-    matched.length > 0
-      ? `<p style="margin:8px 0;">תואם לסינונים שלך: ${matched
-          .map((k) => APARTMENT_ATTRIBUTE_LABELS[k] ?? k)
-          .join(" · ")}</p>`
-      : "";
-  return [
-    '<div dir="rtl" style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.5;">',
-    `<h2 style="margin:0 0 8px 0;">דירה חדשה תואמת לסינונים שלך</h2>`,
-    apt.formattedAddress ? `<p style="margin:0;">${escapeHtml(apt.formattedAddress)}</p>` : "",
-    `<p style="margin:8px 0;">${meta}</p>`,
-    attrs,
-    sourceUrl ? `<p><a href="${escapeHtml(sourceUrl)}">פתח את המודעה</a></p>` : "",
-    "</div>",
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
