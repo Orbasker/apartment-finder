@@ -1,14 +1,19 @@
-import { fetchYad2Listings, Yad2UpstreamUnavailableError } from "@/scrapers/yad2";
+import { fetchYad2Listings, Yad2UpstreamUnavailableError, type Yad2Listing } from "@/scrapers/yad2";
 import { isApifyConfigured, startFacebookGroupsRun } from "@/integrations/apify";
 import { describeLocalSchedule, shouldRunApifyPoll, shouldRunYad2Poll } from "@/lib/schedule";
 import { env } from "@/lib/env";
 import { isLoopbackOrigin, resolveAppPublicOrigin } from "@/lib/appOrigin";
 import { createLogger, errorMessage, newId } from "@/lib/log";
+import { bulkInsertListings, type CollectedListing } from "@/ingestion/insert";
+import { processListing } from "@/ingestion/pipeline";
+import { contentHash } from "@/lib/contentHash";
 
 export type JobRunResult = {
   status: number;
   payload: Record<string, unknown>;
 };
+
+const PROCESS_CONCURRENCY = 4;
 
 export async function runYad2PollJob(options?: {
   enforceSchedule?: boolean;
@@ -27,17 +32,29 @@ export async function runYad2PollJob(options?: {
 
   try {
     const listings = await fetchYad2Listings();
-    log.info("yad2 fetched", {
-      listings: listings.length,
+    log.info("yad2 fetched", { listings: listings.length });
+
+    const collected = listings.map(yad2ToCollected);
+    const { inserted, skippedExisting } = await bulkInsertListings(collected);
+    log.info("ingested", { inserted: inserted.length, skippedExisting });
+
+    const stats = await processBatch(
+      inserted.map((row) => row.id),
+      log,
+    );
+
+    log.info("job finished", {
       durationMs: Date.now() - startedAt,
+      ...stats,
     });
     return {
       status: 200,
       payload: {
         ok: true,
         fetched: listings.length,
-        ingested: 0,
-        note: "ingestion pipeline rebuild in progress",
+        inserted: inserted.length,
+        skippedExisting,
+        ...stats,
         localTime,
         durationMs: Date.now() - startedAt,
       },
@@ -105,4 +122,47 @@ export async function runApifyPollJob(options: {
       payload: { ok: false, error: err instanceof Error ? err.message : String(err) },
     };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function yad2ToCollected(listing: Yad2Listing): CollectedListing {
+  return {
+    source: "yad2",
+    sourceId: listing.sourceId,
+    url: listing.url,
+    rawText: null,
+    rawJson: listing.rawJson,
+    contentHash: contentHash(listing.rawJson ?? listing.url),
+    postedAt: listing.postedAt,
+    authorName: listing.authorName,
+    authorProfile: listing.authorProfile,
+  };
+}
+
+type BatchStats = { processed: number; unified: number; failed: number; alertsSent: number };
+
+async function processBatch(
+  listingIds: number[],
+  log: ReturnType<typeof createLogger>,
+): Promise<BatchStats> {
+  const stats: BatchStats = { processed: 0, unified: 0, failed: 0, alertsSent: 0 };
+  for (let i = 0; i < listingIds.length; i += PROCESS_CONCURRENCY) {
+    const slice = listingIds.slice(i, i + PROCESS_CONCURRENCY);
+    const results = await Promise.allSettled(slice.map((id) => processListing(id)));
+    for (const r of results) {
+      stats.processed++;
+      if (r.status === "fulfilled") {
+        if (r.value.status === "unified") stats.unified++;
+        else if (r.value.status === "failed") stats.failed++;
+        stats.alertsSent += r.value.alertsSent ?? 0;
+      } else {
+        stats.failed++;
+        log.error("process unhandled rejection", { error: errorMessage(r.reason) });
+      }
+    }
+  }
+  return stats;
 }
