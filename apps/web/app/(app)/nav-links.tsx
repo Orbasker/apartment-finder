@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
-const links = [
+export const links = [
   { href: "/", label: "בית" },
   { href: "/filters", label: "סינונים" },
   { href: "/onboarding", label: "צ׳אט" },
