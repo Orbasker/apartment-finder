@@ -50,7 +50,9 @@ export const apartmentAttributeKeyEnum = pgEnum("apartment_attribute_key", [
   "ground_floor",
   "roof_access",
   "shared_apartment",
-  "is_legitimate_rental",
+  "garden",
+  "pool",
+  "solar_water_heater",
 ]);
 
 export const attributeRequirementEnum = pgEnum("attribute_requirement", [
@@ -130,6 +132,13 @@ export const listingExtractions = pgTable(
     // Misc
     isAgency: boolean("is_agency"),
     phoneE164: text("phone_e164"),
+    // Additional structured fields shown in the email "מידע נוסף על הנכס" table.
+    arnonaNis: integer("arnona_nis"),
+    vaadBayitNis: integer("vaad_bayit_nis"),
+    entryDate: text("entry_date"),
+    balconySqm: integer("balcony_sqm"),
+    totalFloors: integer("total_floors"),
+    furnitureStatus: text("furniture_status"),
     extras: jsonb("extras"),
     // Embedding — gemini-embedding-001 at 1536 dims (HNSW supports up to 2000 for `vector`).
     embedding: vector("embedding", { dimensions: 1536 }),

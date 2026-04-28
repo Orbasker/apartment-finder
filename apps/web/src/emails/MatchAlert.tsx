@@ -11,7 +11,12 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import { APARTMENT_ATTRIBUTE_LABELS, type ApartmentAttributeKey } from "@apartment-finder/shared";
+import {
+  APARTMENT_ATTRIBUTE_LABELS,
+  FURNITURE_STATUS_LABELS,
+  type ApartmentAttributeKey,
+  type FurnitureStatus,
+} from "@apartment-finder/shared";
 
 export type MatchAlertProps = {
   apartmentId: number;
@@ -24,6 +29,14 @@ export type MatchAlertProps = {
   sourceUrl: string | null;
   filtersUrl: string | null;
   matchedAttributes: ApartmentAttributeKey[];
+  pricePerSqm: number | null;
+  arnonaNis: number | null;
+  vaadBayitNis: number | null;
+  condition: string | null;
+  entryDate: string | null;
+  balconySqm: number | null;
+  totalFloors: number | null;
+  furnitureStatus: FurnitureStatus | null;
 };
 
 const containerStyle = {
@@ -72,6 +85,40 @@ const link = { color: "#111827" };
 
 const hr = { border: "none", borderTop: "1px solid #e5e7eb", margin: "16px 0" };
 
+const sectionHeading = {
+  margin: "0 0 12px 0",
+  fontSize: "14px",
+  fontWeight: 600,
+  color: "#111827",
+};
+
+const infoTable = {
+  width: "100%",
+  borderCollapse: "separate" as const,
+  borderSpacing: "8px",
+};
+
+const infoCell = {
+  backgroundColor: "#f3f4f6",
+  borderRadius: "8px",
+  padding: "10px 12px",
+  width: "50%",
+  verticalAlign: "middle" as const,
+};
+
+const infoLabel = {
+  margin: 0,
+  fontSize: "12px",
+  color: "#6b7280",
+};
+
+const infoValue = {
+  margin: "2px 0 0 0",
+  fontSize: "14px",
+  fontWeight: 600,
+  color: "#111827",
+};
+
 export function MatchAlertEmail(props: MatchAlertProps) {
   const previewLine = buildPreview(props);
   return (
@@ -92,6 +139,8 @@ export function MatchAlertEmail(props: MatchAlertProps) {
             <Text style={paragraph}>
               <Meta {...props} />
             </Text>
+
+            <AdditionalInfo {...props} />
 
             {props.matchedAttributes.length > 0 ? (
               <>
@@ -131,6 +180,84 @@ export function MatchAlertEmail(props: MatchAlertProps) {
         </Container>
       </Body>
     </Html>
+  );
+}
+
+type InfoRow = { label: string; value: React.ReactNode };
+
+function AdditionalInfo(props: MatchAlertProps) {
+  const rows: InfoRow[] = [];
+  if (props.pricePerSqm != null) {
+    rows.push({
+      label: 'מחיר למ"ר',
+      value: <bdi>{`₪${props.pricePerSqm.toLocaleString("he-IL")}`}</bdi>,
+    });
+  }
+  if (props.arnonaNis != null) {
+    rows.push({
+      label: "ארנונה",
+      value: <bdi>{`₪${props.arnonaNis.toLocaleString("he-IL")}`}</bdi>,
+    });
+  }
+  if (props.condition) {
+    rows.push({ label: "מצב הנכס", value: props.condition });
+  }
+  if (props.vaadBayitNis != null) {
+    rows.push({
+      label: "ועד בית",
+      value: <bdi>{`₪${props.vaadBayitNis.toLocaleString("he-IL")}`}</bdi>,
+    });
+  }
+  if (props.entryDate) {
+    rows.push({ label: "תאריך כניסה", value: props.entryDate });
+  }
+  if (props.balconySqm != null) {
+    rows.push({
+      label: "מרפסת",
+      value: <bdi>{`${props.balconySqm} מ"ר`}</bdi>,
+    });
+  }
+  if (props.totalFloors != null) {
+    rows.push({
+      label: "קומות בבניין",
+      value: <bdi>{props.totalFloors}</bdi>,
+    });
+  }
+  if (props.furnitureStatus) {
+    rows.push({ label: "ריהוט", value: FURNITURE_STATUS_LABELS[props.furnitureStatus] });
+  }
+
+  if (rows.length === 0) return null;
+
+  const pairs: [InfoRow, InfoRow | null][] = [];
+  for (let i = 0; i < rows.length; i += 2) {
+    pairs.push([rows[i]!, rows[i + 1] ?? null]);
+  }
+
+  return (
+    <>
+      <Hr style={hr} />
+      <Text style={sectionHeading}>מידע נוסף על הנכס</Text>
+      <table role="presentation" cellPadding={0} cellSpacing={0} style={infoTable}>
+        <tbody>
+          {pairs.map((pair, idx) => (
+            <tr key={idx}>
+              <InfoCell row={pair[0]} />
+              {pair[1] ? <InfoCell row={pair[1]} /> : <td style={infoCell} />}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+function InfoCell({ row }: { row: InfoRow }) {
+  return (
+    <td style={infoCell}>
+      <p style={infoLabel}>{row.label}</p>
+      <p style={infoValue}>{row.value}</p>
+    </td>
   );
 }
 

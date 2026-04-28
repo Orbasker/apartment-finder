@@ -23,10 +23,18 @@ describe("ExtractionSchema: structured fields", () => {
       condition: "renovated",
       isAgency: false,
       phoneE164: "+972501234567",
+      arnonaNis: 500,
+      vaadBayitNis: 200,
+      entryDate: "מיידי",
+      balconySqm: 5,
+      totalFloors: 5,
+      furnitureStatus: "included",
       attributes: [
         { key: "elevator", value: true },
         { key: "parking", value: false },
-        { key: "is_legitimate_rental", value: true },
+        { key: "garden", value: true },
+        { key: "pool", value: false },
+        { key: "solar_water_heater", value: true },
       ],
       extras: { customNote: "near park" },
     };
@@ -48,6 +56,12 @@ describe("ExtractionSchema: structured fields", () => {
       condition: null,
       isAgency: null,
       phoneE164: null,
+      arnonaNis: null,
+      vaadBayitNis: null,
+      entryDate: null,
+      balconySqm: null,
+      totalFloors: null,
+      furnitureStatus: null,
       attributes: [],
       extras: null,
     };
@@ -61,6 +75,28 @@ describe("ExtractionSchema: structured fields", () => {
 
   test("rooms allows fractional values", () => {
     expect(() => ExtractionSchema.parse(baseExtraction({ rooms: 2.5 }))).not.toThrow();
+  });
+
+  test("arnonaNis and balconySqm must be integers", () => {
+    expect(() => ExtractionSchema.parse(baseExtraction({ arnonaNis: 500.5 }))).toThrow();
+    expect(() => ExtractionSchema.parse(baseExtraction({ balconySqm: 5.5 }))).toThrow();
+  });
+
+  test("furnitureStatus accepts only the three known values", () => {
+    expect(() =>
+      ExtractionSchema.parse(baseExtraction({ furnitureStatus: "included" })),
+    ).not.toThrow();
+    expect(() =>
+      ExtractionSchema.parse(baseExtraction({ furnitureStatus: "partial" })),
+    ).not.toThrow();
+    expect(() =>
+      ExtractionSchema.parse(baseExtraction({ furnitureStatus: "not_included" })),
+    ).not.toThrow();
+    expect(() =>
+      ExtractionSchema.parse(
+        baseExtraction({ furnitureStatus: "yes" as never }),
+      ),
+    ).toThrow();
   });
 });
 
@@ -108,6 +144,12 @@ function baseExtraction(overrides: Partial<Extracted> = {}): Extracted {
     condition: null,
     isAgency: null,
     phoneE164: null,
+    arnonaNis: null,
+    vaadBayitNis: null,
+    entryDate: null,
+    balconySqm: null,
+    totalFloors: null,
+    furnitureStatus: null,
     attributes: [],
     extras: null,
     ...overrides,

@@ -14,6 +14,15 @@ export const ExtractionAttributeSchema = z.object({
 });
 export type ExtractionAttribute = z.infer<typeof ExtractionAttributeSchema>;
 
+export const FurnitureStatusSchema = z.enum(["included", "partial", "not_included"]);
+export type FurnitureStatus = z.infer<typeof FurnitureStatusSchema>;
+
+export const FURNITURE_STATUS_LABELS: Record<FurnitureStatus, string> = {
+  included: "כולל",
+  partial: "חלקי",
+  not_included: "לא כולל",
+};
+
 export const ExtractionSchema = z.object({
   // Structured numeric/text fields.
   priceNis: z.number().int().nullable(),
@@ -32,6 +41,13 @@ export const ExtractionSchema = z.object({
   // Misc
   isAgency: z.boolean().nullable(),
   phoneE164: z.string().nullable(),
+  // Additional structured fields shown in the email "מידע נוסף על הנכס" table.
+  arnonaNis: z.number().int().nullable(),
+  vaadBayitNis: z.number().int().nullable(),
+  entryDate: z.string().nullable(),
+  balconySqm: z.number().int().nullable(),
+  totalFloors: z.number().int().nullable(),
+  furnitureStatus: FurnitureStatusSchema.nullable(),
   // Boolean attributes the AI was confident about. Omit any attribute the AI
   // could not determine — absence ≠ false; it means "unknown".
   attributes: z.array(ExtractionAttributeSchema).default([]),

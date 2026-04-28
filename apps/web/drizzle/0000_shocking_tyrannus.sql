@@ -1,5 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS vector;--> statement-breakpoint
-CREATE TYPE "public"."apartment_attribute_key" AS ENUM('elevator', 'parking', 'balcony', 'air_conditioning', 'furnished', 'renovated', 'pet_friendly', 'safe_room', 'storage', 'accessible', 'bars', 'ground_floor', 'roof_access', 'shared_apartment', 'is_legitimate_rental');--> statement-breakpoint
+CREATE TYPE "public"."apartment_attribute_key" AS ENUM('elevator', 'parking', 'balcony', 'air_conditioning', 'furnished', 'renovated', 'pet_friendly', 'safe_room', 'storage', 'accessible', 'bars', 'ground_floor', 'roof_access', 'shared_apartment', 'garden', 'pool', 'solar_water_heater');--> statement-breakpoint
 CREATE TYPE "public"."attribute_requirement" AS ENUM('required_true', 'required_false', 'preferred_true', 'dont_care');--> statement-breakpoint
 CREATE TYPE "public"."attribute_source" AS ENUM('ai', 'user', 'manual');--> statement-breakpoint
 CREATE TYPE "public"."filter_text_kind" AS ENUM('wish', 'dealbreaker');--> statement-breakpoint
@@ -114,6 +114,12 @@ CREATE TABLE "listing_extractions" (
 	"condition" text,
 	"is_agency" boolean,
 	"phone_e164" text,
+	"arnona_nis" integer,
+	"vaad_bayit_nis" integer,
+	"entry_date" text,
+	"balcony_sqm" integer,
+	"total_floors" integer,
+	"furniture_status" text,
 	"extras" jsonb,
 	"embedding" vector(1536),
 	"extracted_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -243,6 +249,6 @@ CREATE INDEX "listings_status_idx" ON "listings" USING btree ("status");--> stat
 CREATE INDEX "listings_posted_at_idx" ON "listings" USING btree ("posted_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "sent_alerts_sent_at_idx" ON "sent_alerts" USING btree ("sent_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "user_filter_attributes_req_idx" ON "user_filter_attributes" USING btree ("key","requirement");--> statement-breakpoint
-CREATE INDEX "user_filter_texts_user_kind_idx" ON "user_filter_texts" USING btree ("user_id","kind");--> statement-breakpoint
 CREATE INDEX "listing_extractions_embedding_hnsw" ON "listing_extractions" USING hnsw ("embedding" vector_cosine_ops);--> statement-breakpoint
-CREATE INDEX "user_filter_texts_embedding_hnsw" ON "user_filter_texts" USING hnsw ("embedding" vector_cosine_ops);
+CREATE INDEX "user_filter_texts_embedding_hnsw" ON "user_filter_texts" USING hnsw ("embedding" vector_cosine_ops);--> statement-breakpoint
+CREATE INDEX "user_filter_texts_user_kind_idx" ON "user_filter_texts" USING btree ("user_id","kind");

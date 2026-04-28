@@ -21,7 +21,9 @@ export const APARTMENT_ATTRIBUTE_KEYS = [
   "ground_floor",
   "roof_access",
   "shared_apartment",
-  "is_legitimate_rental",
+  "garden",
+  "pool",
+  "solar_water_heater",
 ] as const;
 export type ApartmentAttributeKey = (typeof APARTMENT_ATTRIBUTE_KEYS)[number];
 
@@ -32,18 +34,20 @@ export const APARTMENT_ATTRIBUTE_LABELS: Record<ApartmentAttributeKey, string> =
   elevator: "מעלית",
   parking: "חניה",
   balcony: "מרפסת",
-  air_conditioning: "מזגן",
+  air_conditioning: "מיזוג אוויר",
   furnished: "מרוהט",
   renovated: "משופץ",
   pet_friendly: "ידידותי לחיות מחמד",
-  safe_room: "ממ״ד",
+  safe_room: "מרחב מוגן",
   storage: "מחסן",
-  accessible: "נגיש",
+  accessible: "נגיש לנכים",
   bars: "סורגים",
   ground_floor: "קומת קרקע",
   roof_access: "גישה לגג",
   shared_apartment: "דירת שותפים",
-  is_legitimate_rental: "מודעת השכרה אמיתית",
+  garden: "גינה",
+  pool: "בריכה",
+  solar_water_heater: "דוד שמש",
 };
 
 export const AttributeRequirementSchema = z.enum([
