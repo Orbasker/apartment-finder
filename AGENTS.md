@@ -56,7 +56,7 @@ User side:
 - **Postgres** on Supabase (pgvector ≥ 0.5 required for HNSW)
 - **AI Gateway** (`@ai-sdk/gateway`) → Gemini 2.5 Flash + `gemini-embedding-001`
 - **AI SDK 5** (`ai`) — `generateObject`, `embed`, `streamText`. `@ai-sdk/react@2` for `useChat` (pinned to v2 to match `ai@5`; v3 transitively pulls in `ai@6` which has incompatible types)
-- **Resend 6** for email (magic-link + match alerts)
+- **Resend 6** for email (magic-link + match alerts) + **React Email** (`@react-email/components`, `@react-email/render`) for the match-alert template
 - **Apify** for Facebook group scraping
 - **Yad2 proxy** (`services/yad2-proxy/`) for Israeli-IP egress; Yad2 blocks Vercel IPs
 - **Bun 1.3** workspace, **Turbo 2.9**, **vitest** for tests, **knip** for dead-code
@@ -100,6 +100,10 @@ apps/
         agent.ts                ONBOARDING_MODEL + ONBOARDING_SYSTEM (Hebrew prompt)
         tools.ts                buildOnboardingTools(userId) — 10 tools the
                                   chat agent calls to upsert filters
+      emails/
+        MatchAlert.tsx          React Email template (RTL Hebrew, mobile-
+                                  friendly card layout, plain-text fallback)
+        MatchAlert.test.tsx     Render-output assertions
       ingestion/                Collect → extract → ... → notify
         extract.ts              Gemini extraction
         geocode.ts              Google Geocoding + geocode_cache
@@ -269,8 +273,7 @@ Add tests for pure logic when changing it. DB-touching code stays integration-te
 
 ## In progress
 
-- **PR5** (next): React Email template for the match alert (replaces the inline HTML in `notify.ts`).
-- **PR6**: polish — accessibility, latency tuning, alert cap defaults.
+- **PR6** (next): polish — accessibility audit, latency tuning, alert cap defaults, CI rebase to main once PRs 1–5 land.
 
 ## Things deferred
 
