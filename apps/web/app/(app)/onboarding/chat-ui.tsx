@@ -101,8 +101,6 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
               if (part.type?.startsWith("tool-")) {
                 const toolName = part.type.slice("tool-".length);
                 const result = readToolResult(part);
-                const telegramConnectUrl =
-                  typeof result?.telegramConnectUrl === "string" ? result.telegramConnectUrl : null;
                 if (toolName === "searchCity" && result) {
                   const candidates = readCityCandidates(result);
                   if (candidates.length > 0) {
@@ -124,6 +122,13 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
                     );
                   }
                 }
+                if (toolName === "setNotificationDestinations" && result) {
+                  const url =
+                    typeof result.telegramConnectUrl === "string"
+                      ? result.telegramConnectUrl
+                      : null;
+                  if (url) return <TelegramConnect key={idx} url={url} />;
+                }
                 return (
                   <span
                     key={idx}
@@ -131,16 +136,6 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
                     aria-label={`tool ${toolName}`}
                   >
                     ✓ <bdi>{toolName}</bdi>
-                    {telegramConnectUrl ? (
-                      <a
-                        href={telegramConnectUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-2 inline-flex h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90"
-                      >
-                        התחבר ל־Telegram
-                      </a>
-                    ) : null}
                   </span>
                 );
               }
@@ -275,6 +270,27 @@ function NeighborhoodChips({
         );
       })}
     </ul>
+  );
+}
+
+function TelegramConnect({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#229ED9] px-4 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="h-4 w-4"
+        aria-hidden="true"
+        fill="currentColor"
+      >
+        <path d="M22 3 2.5 10.5l5.7 1.9 2.2 7.1 3.7-3.4 5.4 4 2.5-17.1ZM9.4 13.7l8.5-5.4-6.7 6.4-.3 3.6-1.5-4.6Z" />
+      </svg>
+      התחבר ל־Telegram
+    </a>
   );
 }
 

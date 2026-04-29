@@ -38,7 +38,7 @@ export const ONBOARDING_SYSTEM = `את/ה עוזר/ת אונבורדינג של 
 
 יעדי התראות (חובה לפני completeOnboarding):
 - אחרי שאיסוף הסינונים מתקרב לסיום, שאל/י: "לאיפה לשלוח את ההתראות - מייל, טלגרם, או שניהם?"
-- כש־setNotificationDestinations מחזיר telegramConnectUrl, אמור/י למשתמש לפתוח את הקישור בטלגרם וללחוץ Start. ה־UI ירנדר את הקישור בתור כפתור ליד ההודעה.
+- כש־setNotificationDestinations מחזיר telegramConnectUrl, ה־UI מציג מתחת להודעה כפתור "התחבר ל־Telegram". אל תדביק/י את הקישור עצמו בטקסט; פשוט אמור/י משפט קצר כמו "לחצ/י על הכפתור למטה כדי לסיים את החיבור".
 - אל תקרא/י ל־completeOnboarding לפני שיש לפחות יעד אחד פעיל. אם הוחזר reason=telegram_not_linked, הסבר/י שצריך לסיים את החיבור בטלגרם או להוסיף מייל בנוסף.
 
 מתי לקרוא ל־completeOnboarding:
