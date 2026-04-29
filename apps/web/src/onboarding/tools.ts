@@ -13,6 +13,9 @@ import {
   setAttribute as setAttr,
   upsertFilters,
 } from "@/filters/store";
+import { activeChannels, loadDestinations, upsertDestinations } from "@/notifications/destinations";
+import { mintLinkToken } from "@/notifications/telegram-tokens";
+import { env } from "@/lib/env";
 
 const optInt = z.number().int().nullable();
 const optNum = z.number().nullable();
@@ -124,9 +127,63 @@ export function buildOnboardingTools(userId: string) {
       },
     }),
 
+    setNotificationDestinations: tool({
+      description:
+        "Set the user's notification destinations: email, Telegram, or both. At least one must be true. If telegram is true and the user has not yet linked their account, the result includes `telegramConnectUrl` - render it as a button so the user can link the bot. Once they hit /start, the bot binds the chat ID and returns control to the chat.",
+      inputSchema: z.object({
+        email: z.boolean(),
+        telegram: z.boolean(),
+      }),
+      execute: async ({ email, telegram }) => {
+        if (!email && !telegram) {
+          return {
+            ok: false,
+            reason: "no_channel_selected",
+            message: "צריך לבחור לפחות ערוץ אחד - מייל, טלגרם, או שניהם.",
+          };
+        }
+        await upsertDestinations(userId, { emailEnabled: email, telegramEnabled: telegram });
+        const destinations = await loadDestinations(userId);
+        const telegramAlreadyLinked = Boolean(destinations.telegramChatId);
+        const channelsActive = activeChannels(destinations);
+
+        if (telegram && !telegramAlreadyLinked) {
+          const botUsername = env().NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
+          if (!botUsername) {
+            return {
+              ok: false,
+              reason: "telegram_not_configured",
+              message:
+                "טלגרם לא מוגדר במערכת כרגע. אפשר להפעיל מייל לבד ולהגדיר טלגרם מאוחר יותר מהדאשבורד.",
+            };
+          }
+          const token = await mintLinkToken(userId);
+          const telegramConnectUrl = `https://t.me/${botUsername}?start=${token}`;
+          return {
+            ok: true,
+            email,
+            telegram,
+            telegramLinked: false,
+            telegramConnectUrl,
+            channelsActive,
+            message:
+              "פתחי את הקישור לטלגרם ולחצי 'Start' שם כדי לסיים את החיבור. אפשר לחזור לכאן אחרי זה.",
+          };
+        }
+
+        return {
+          ok: true,
+          email,
+          telegram,
+          telegramLinked: telegramAlreadyLinked,
+          channelsActive,
+        };
+      },
+    }),
+
     completeOnboarding: tool({
       description:
-        "Mark onboarding complete and activate alerts. Requires at least 3 active filters.",
+        "Mark onboarding complete and activate alerts. Requires at least 3 active filters AND at least one active notification destination (email or linked Telegram).",
       inputSchema: z.object({}),
       execute: async () => {
         const f = await loadFilters(userId);
@@ -139,8 +196,27 @@ export function buildOnboardingTools(userId: string) {
             message: "צריך לפחות 3 סינונים פעילים כדי להפעיל התראות.",
           };
         }
+        const destinations = await loadDestinations(userId);
+        const channelsActive = activeChannels(destinations);
+        if (channelsActive.length === 0) {
+          // Either nothing chosen yet, or telegram was chosen but the link
+          // never completed. Tell the model so it can re-prompt.
+          if (destinations.telegramEnabled && !destinations.telegramChatId) {
+            return {
+              ok: false,
+              reason: "telegram_not_linked",
+              message:
+                "עוד לא סיימנו לחבר את הטלגרם. אפשר להשלים את הקישור שם, או לבחור גם מייל בינתיים.",
+            };
+          }
+          return {
+            ok: false,
+            reason: "needs_destination",
+            message: "איפה לשלוח את ההתראות? מייל, טלגרם, או שניהם?",
+          };
+        }
         await markOnboarded(userId);
-        return { ok: true, activeCount: active };
+        return { ok: true, activeCount: active, channelsActive };
       },
     }),
   };

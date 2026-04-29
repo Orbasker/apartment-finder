@@ -4,7 +4,7 @@ Living documentation for AI agents and contributors working on this repo. Reflec
 
 ## Product
 
-Hebrew-only Tel Aviv apartment finder. Users define their preferences via a conversational chat (or edit form), and get **instant email alerts** the moment a new listing matches. No browse UI, no admin panel - chat + email only.
+Hebrew-only Tel Aviv apartment finder. Users define their preferences via a conversational chat (or edit form), and get **instant alerts** (email and/or Telegram - user picks) the moment a new listing matches. No browse UI, no admin panel.
 
 The system is multi-user with [Better Auth](https://better-auth.dev) (email-OTP via Resend, optional Google OAuth). Each user has their own filter set; matching is filter-only (no AI judging/scoring).
 
@@ -61,6 +61,7 @@ User side:
 - **AI Gateway** (`@ai-sdk/gateway`) → Gemini 2.5 Flash + `gemini-embedding-001`
 - **AI SDK 5** (`ai`) - `generateObject`, `embed`, `streamText`. `@ai-sdk/react@2` for `useChat` (pinned to v2 to match `ai@5`; v3 transitively pulls in `ai@6` which has incompatible types)
 - **Resend 6** for outbound email (sign-in OTP + match alerts) + **React Email** (`@react-email/components`, `@react-email/render`) for every template - see `apps/web/src/emails/`
+- **grammy** Telegram bot client. Match alerts can be delivered to email, Telegram, or both, per `user_notification_destinations`. Webhook: `POST /api/webhooks/telegram` (validates `X-Telegram-Bot-Api-Secret-Token`). Linking flow: dashboard mints a one-time token, user opens `t.me/<bot>?start=<token>`, bot binds `chat_id` on `/start`.
 - **Apify** for Facebook group scraping
 - **Yad2 proxy** (`services/yad2-proxy/`) for Israeli-IP egress; Yad2 blocks Vercel IPs
 - **Bun 1.3** workspace, **Turbo 2.9**, **vitest** for tests, **knip** for dead-code
@@ -90,6 +91,10 @@ apps/
           page.tsx              Server shell, loads filters
           form.tsx              Client form (RTL, mobile-first, sticky submit)
           actions.ts            saveFiltersAction (server action)
+        notifications/          Notification-destinations editor
+          page.tsx              Server shell, loads destinations
+          form.tsx              Client form (email/telegram toggles + connect button)
+          actions.ts            save/connect/disconnect server actions
       login/                    Email-OTP + Google sign-in (Hebrew, two-step, mobile-first)
       api/
         auth/[...all]/          better-auth routes
@@ -97,6 +102,7 @@ apps/
         cron/poll-yad2/         Cron handler - fetch + process inline
         cron/poll-apify/        Cron handler - kicks off Apify run
         webhooks/apify/         Receives Apify completion, processes dataset
+        webhooks/telegram/      Receives Telegram updates, handles /start &lt;token&gt;
     drizzle/                    Migrations (single 0000_*.sql init)
     src/
       db/
@@ -122,9 +128,13 @@ apps/
         embed.ts                gemini-embedding-001 @ 1536 dims
         unify.ts                find-or-create apartment
         match.ts                SQL prefilter + attribute + dealbreaker
-        notify.ts               Resend HTML alert (RTL Hebrew)
+        notify.ts               Multi-channel dispatcher (email + Telegram fan-out)
+        telegram.ts             grammy bot client + Hebrew HTML message builder
         insert.ts               bulkInsertListings()
         pipeline.ts             processListing() orchestrator
+      notifications/
+        destinations.ts         loadDestinations / upsertDestinations / activeChannels
+        telegram-tokens.ts      mintLinkToken / consumeLinkToken (15-min TTL)
       jobs/cron.ts              runYad2PollJob() / runApifyPollJob()
       scrapers/yad2.ts          Yad2 fetch + normalize
       integrations/apify.ts     Apify run + dataset fetch
@@ -184,7 +194,9 @@ Single `0000_*.sql` migration (drizzle-generated, hand-extended with `CREATE EXT
 - **`user_filters`** - one row per user. Hot-path columns (price/rooms/sqm), text arrays for neighborhoods/wishes/dealbreakers, `strict_unknowns`, `daily_alert_cap`, `is_active`.
 - **`user_filter_attributes`** - normalized per-attribute requirements. PK `(user_id, key)`.
 - **`user_filter_texts`** - embedded wishes/dealbreakers. `vector(1536)` with HNSW. Cosine-compared against listing embedding at match time.
-- **`sent_alerts`** - outbox dedup. PK `(user_id, apartment_id)`.
+- **`sent_alerts`** - outbox dedup. PK `(user_id, apartment_id, destination)` so the same listing can fan out to email and Telegram independently. `destination` is the `notification_destination` enum (`email`, `telegram`).
+- **`user_notification_destinations`** - per-user channel toggles (1:1 with `user`). Holds `email_enabled`, `telegram_enabled`, the bound `telegram_chat_id`, and `telegram_linked_at`. Default for legacy users is email-only.
+- **`telegram_link_tokens`** - short-lived (15 min) single-use tokens for the deep-link flow. The bot consumes them on `/start <token>`.
 - **`geocode_cache`** - keyed by normalized address string. Cuts Google Geocoding spend ~60%.
 - **`ai_usage`** - token + cost telemetry per AI call.
 - **`blocked_authors`** - anti-spam list (FB profiles).
@@ -205,17 +217,18 @@ Implemented inline in cron + webhook handlers with concurrency=4. `maxDuration=3
    3. embedding cosine ≥ 0.92 within ±200m bbox (0.70)
    4. create new apartment (1.0)
 7. **match** (`ingestion/match.ts`) - SQL prefilter on `user_filters` (price/rooms/sqm/neighborhoods, all-active only). Per-candidate: load `user_filter_attributes`, run `checkAttributeRequirements` (strictUnknowns honored). Then dealbreaker cosine ≤ 0.35 → fail.
-8. **notify** (`ingestion/notify.ts`) - Resend HTML email (Hebrew RTL, `<bdi>` for numerics, matched-attribute summary, "מידע נוסף על הנכס" data table from the primary listing's extraction). Enforces `sent_alerts` dedup + per-user `daily_alert_cap`.
+8. **notify** (`ingestion/notify.ts`) - Loads the user's `user_notification_destinations`, fans out to each active channel (email via Resend + React Email, Telegram via grammy with HTML + inline button), and writes one `sent_alerts` row per (user, apartment, channel). Strict failure semantics: a Telegram failure does **not** fall back to email. Enforces `sent_alerts` dedup + per-user `daily_alert_cap`.
 
 ## Pages
 
-| Path          | Auth     | Purpose                                                                                                                                                                                                                                             |
-| ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/login`      | public   | Hebrew sign-in (Google OAuth + 6-digit email OTP via Resend, two-step UI).                                                                                                                                                                          |
-| `/`           | public   | Marketing landing (Hebrew). Animated sources -> AI brain -> destinations diagram, AI extractor demo, scripted onboarding-chat preview. Auth-aware CTAs: logged-out -> `/login`, logged-in -> `/dashboard`. Components colocated in `app/_landing/`. |
-| `/dashboard`  | required | Status home. Redirects to `/onboarding` when `user_filters.onboarded_at` is null; otherwise shows alert status + links.                                                                                                                             |
-| `/onboarding` | required | Conversational chat agent (Hebrew, mobile-first). Walks user through >=3 filters via 10 tools, then calls `completeOnboarding` to set `onboarded_at`.                                                                                               |
-| `/filters`    | required | Form-based filter editor. Save action upserts `user_filters`, replaces `user_filter_attributes` row-by-row, replaces `user_filter_texts` (and re-embeds wishes/dealbreakers). Submitting also marks onboarding complete.                            |
+| Path             | Auth     | Purpose                                                                                                                                                                                                                                             |
+| ---------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/login`         | public   | Hebrew sign-in (Google OAuth + 6-digit email OTP via Resend, two-step UI).                                                                                                                                                                          |
+| `/`              | public   | Marketing landing (Hebrew). Animated sources -> AI brain -> destinations diagram, AI extractor demo, scripted onboarding-chat preview. Auth-aware CTAs: logged-out -> `/login`, logged-in -> `/dashboard`. Components colocated in `app/_landing/`. |
+| `/dashboard`     | required | Status home. Redirects to `/onboarding` when `user_filters.onboarded_at` is null; otherwise shows alert status + links.                                                                                                                             |
+| `/onboarding`    | required | Conversational chat agent (Hebrew, mobile-first). Walks user through >=3 filters via 10 tools, then calls `completeOnboarding` to set `onboarded_at`.                                                                                               |
+| `/filters`       | required | Form-based filter editor. Save action upserts `user_filters`, replaces `user_filter_attributes` row-by-row, replaces `user_filter_texts` (and re-embeds wishes/dealbreakers). Submitting also marks onboarding complete.                            |
+| `/notifications` | required | Per-user destination toggles (email + Telegram) with a "Connect Telegram" button that mints a deep-link token. Refuses to save with both channels off, or with telegram=on while unlinked. Reachable from the user-menu dropdown.                   |
 
 The onboarding chat route is `POST /api/chat/onboarding` - `streamText` with the `ONBOARDING_SYSTEM` prompt, tools from `buildOnboardingTools(userId)`, capped at 8 steps (`stopWhen: stepCountIs(8)`).
 
@@ -253,6 +266,7 @@ See `.env.example` for the full list. Required for full pipeline:
 - `CRON_SECRET`
 - `APIFY_TOKEN`, `APIFY_WEBHOOK_SECRET`, `APP_PUBLIC_ORIGIN`, `FACEBOOK_GROUP_URLS` (comma-separated)
 - `YAD2_PROXY_URL`, `YAD2_PROXY_SECRET` (Cloud Run proxy)
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` (Telegram delivery; run `bun apps/web/scripts/setup-telegram-webhook.ts` once after deploy to register the webhook)
 
 ## Local dev
 
@@ -301,7 +315,7 @@ All planned MVP PRs (#56 demolition → #62 schema → #63 ingestion → #64 onb
 
 - **Vercel Workflow** for the per-listing pipeline. Today the cron handler runs everything inline with concurrency=4. Fine at MVP scale; revisit if budgets get tight.
 - **Browse UI** is intentionally absent. Don't add one without product approval.
-- **Telegram / browser extension / admin panel** - all removed in PR1; do not bring back.
+- **Browser extension / admin panel** - removed in PR1; do not bring back.
 - **AI judging / scoring** - removed; matching is filter-only.
 
 <!-- VERCEL BEST PRACTICES START -->

@@ -68,6 +68,9 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
               }
               if (part.type?.startsWith("tool-")) {
                 const toolName = part.type.slice("tool-".length);
+                const result = readToolResult(part);
+                const telegramConnectUrl =
+                  typeof result?.telegramConnectUrl === "string" ? result.telegramConnectUrl : null;
                 return (
                   <span
                     key={idx}
@@ -75,6 +78,16 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
                     aria-label={`tool ${toolName}`}
                   >
                     ✓ <bdi>{toolName}</bdi>
+                    {telegramConnectUrl ? (
+                      <a
+                        href={telegramConnectUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90"
+                      >
+                        התחבר ל־Telegram
+                      </a>
+                    ) : null}
                   </span>
                 );
               }
@@ -128,6 +141,17 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
       </form>
     </div>
   );
+}
+
+function readToolResult(part: unknown): Record<string, unknown> | null {
+  // AI SDK v5 surfaces the tool result on the part as either `output` or
+  // `result` depending on the streaming version. Probe both.
+  if (!part || typeof part !== "object") return null;
+  const p = part as { state?: string; output?: unknown; result?: unknown };
+  if (p.state && p.state !== "output-available") return null;
+  const value = p.output ?? p.result;
+  if (!value || typeof value !== "object") return null;
+  return value as Record<string, unknown>;
 }
 
 function Bubble({

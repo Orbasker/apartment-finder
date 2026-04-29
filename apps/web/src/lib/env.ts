@@ -34,6 +34,10 @@ const EnvSchema = z.object({
 
   YAD2_PROXY_URL: z.string().url().optional(),
   YAD2_PROXY_SECRET: z.string().optional(),
+
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
+  NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

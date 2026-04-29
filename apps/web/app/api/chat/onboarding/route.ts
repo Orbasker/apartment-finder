@@ -25,7 +25,7 @@ export async function POST(req: Request): Promise<Response> {
       system: ONBOARDING_SYSTEM,
       messages: convertToModelMessages(messages),
       tools: buildOnboardingTools(user.id),
-      stopWhen: stepCountIs(8),
+      stopWhen: stepCountIs(10),
       onFinish: async ({ usage, response }) => {
         await recordAiUsage({
           feature: "onboarding.chat",
