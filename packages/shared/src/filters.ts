@@ -73,10 +73,13 @@ export const CitySelectionSchema = z.object({
 export type CitySelection = z.infer<typeof CitySelectionSchema>;
 
 // Each neighborhood selection caches Google Places' place_id + display name +
-// city name. Both the dashboard typeahead and the chat picker write this shape.
+// the city's place_id + city name (denormalized). The cityPlaceId is the FK
+// link to user_filter_cities; the cityNameHe is kept on the row for fast
+// match-time text comparison without a join.
 export const NeighborhoodSelectionSchema = z.object({
   placeId: z.string().min(1),
   nameHe: z.string().min(1),
+  cityPlaceId: z.string().min(1),
   cityNameHe: z.string().min(1),
 });
 export type NeighborhoodSelection = z.infer<typeof NeighborhoodSelectionSchema>;

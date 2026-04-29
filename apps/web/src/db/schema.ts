@@ -2,6 +2,7 @@ import {
   bigserial,
   boolean,
   doublePrecision,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -319,8 +320,11 @@ export const userFilterNeighborhoods = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    cityPlaceId: text("city_place_id").notNull(),
     placeId: text("place_id").notNull(),
     nameHe: text("name_he").notNull(),
+    // Denormalized from user_filter_cities for cheap match-time string compare
+    // against apartments.city. Kept in sync via the form action / chat tools.
     cityNameHe: text("city_name_he").notNull(),
     kind: neighborhoodFilterKindEnum("kind").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -328,6 +332,11 @@ export const userFilterNeighborhoods = pgTable(
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.placeId, t.kind] }),
     userKindIdx: index("user_filter_neighborhoods_user_kind_idx").on(t.userId, t.kind),
+    cityFk: foreignKey({
+      columns: [t.userId, t.cityPlaceId],
+      foreignColumns: [userFilterCities.userId, userFilterCities.placeId],
+      name: "user_filter_neighborhoods_city_fk",
+    }).onDelete("cascade"),
   }),
 );
 

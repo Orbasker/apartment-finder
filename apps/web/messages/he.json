@@ -34,8 +34,6 @@
     }
   },
   "Neighborhoods": {
-    "sectionTitle": "שכונות",
-    "sectionDescription": "בחר/י שכונות מהמאגר הרשמי. השאר/י ריק כדי לא להגביל.",
     "allowedTitle": "שכונות מותרות",
     "blockedTitle": "שכונות חסומות",
     "searchPlaceholder": "חפש/י שכונה",
@@ -45,12 +43,14 @@
     "removeChip": "הסר/י"
   },
   "Cities": {
-    "sectionTitle": "ערים",
-    "sectionDescription": "באילו ערים את/ה מחפש/ת? אפשר להוסיף כמה. ריק = ללא הגבלה לעיר.",
+    "sectionTitle": "ערים ושכונות",
+    "sectionDescription": "הוסיפ/י עיר ולאחר מכן את השכונות בה. אפשר להוסיף כמה ערים.",
+    "emptyState": "טרם נבחרה עיר. הוסיפ/י עיר כדי להתחיל.",
+    "addCity": "הוספת עיר",
+    "removeCity": "הסר/י עיר",
     "searchPlaceholder": "חפש/י עיר",
     "typeToSearch": "התחל/י להקליד כדי לחפש",
     "loading": "טוען…",
-    "noResults": "לא נמצאה עיר",
-    "removeChip": "הסר/י"
+    "noResults": "לא נמצאה עיר"
   }
 }

@@ -14,8 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
-import { NeighborhoodPicker } from "@/components/neighborhood-picker";
-import { CityPicker } from "@/components/city-picker";
+import { CityNeighborhoodsWizard } from "@/components/city-neighborhoods-wizard";
 import { saveFiltersAction } from "./actions";
 import type { StoredFilters } from "@/filters/store";
 
@@ -30,7 +29,6 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
   const attrMap = new Map<ApartmentAttributeKey, AttributeRequirement>(
     filters.attributes.map((a) => [a.key, a.requirement]),
   );
-  const t = useTranslations("Neighborhoods");
   const tCities = useTranslations("Cities");
 
   return (
@@ -79,26 +77,11 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
       </Section>
 
       <Section title={tCities("sectionTitle")} description={tCities("sectionDescription")}>
-        <CityPicker name="cities" defaultSelections={filters.cities} />
-      </Section>
-
-      <Section title={t("sectionTitle")} description={t("sectionDescription")}>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>{t("allowedTitle")}</Label>
-            <NeighborhoodPicker
-              name="allowedNeighborhoods"
-              defaultSelections={filters.allowedNeighborhoods}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t("blockedTitle")}</Label>
-            <NeighborhoodPicker
-              name="blockedNeighborhoods"
-              defaultSelections={filters.blockedNeighborhoods}
-            />
-          </div>
-        </div>
+        <CityNeighborhoodsWizard
+          defaultCities={filters.cities}
+          defaultAllowed={filters.allowedNeighborhoods}
+          defaultBlocked={filters.blockedNeighborhoods}
+        />
       </Section>
 
       <Section title="מפרט מלא">

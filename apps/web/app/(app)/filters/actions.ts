@@ -68,14 +68,17 @@ function parseNeighborhoodSelections(formData: FormData, name: string): Neighbor
       if (
         typeof parsed.placeId === "string" &&
         typeof parsed.nameHe === "string" &&
+        typeof parsed.cityPlaceId === "string" &&
         typeof parsed.cityNameHe === "string" &&
         parsed.placeId &&
         parsed.nameHe &&
+        parsed.cityPlaceId &&
         parsed.cityNameHe
       ) {
         out.push({
           placeId: parsed.placeId,
           nameHe: parsed.nameHe,
+          cityPlaceId: parsed.cityPlaceId,
           cityNameHe: parsed.cityNameHe,
         });
       }
@@ -103,18 +106,21 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
     maxAgeHours: parseOptionalInt(formData.get("maxAgeHours")) ?? 48,
   });
 
-  await replaceCities(user.id, parseCitySelections(formData, "cities"));
-
-  await replaceNeighborhoods(
-    user.id,
-    "allowed",
-    parseNeighborhoodSelections(formData, "allowedNeighborhoods"),
+  // Cities must land first so the FK on user_filter_neighborhoods.city_place_id
+  // is satisfied. Drop neighborhoods whose city wasn't submitted (e.g. left
+  // over after a city was removed in the UI but the form somehow still has
+  // them — shouldn't happen, but be defensive).
+  const cities = parseCitySelections(formData, "cities");
+  await replaceCities(user.id, cities);
+  const cityIds = new Set(cities.map((c) => c.placeId));
+  const allowed = parseNeighborhoodSelections(formData, "allowedNeighborhoods").filter((n) =>
+    cityIds.has(n.cityPlaceId),
   );
-  await replaceNeighborhoods(
-    user.id,
-    "blocked",
-    parseNeighborhoodSelections(formData, "blockedNeighborhoods"),
+  const blocked = parseNeighborhoodSelections(formData, "blockedNeighborhoods").filter((n) =>
+    cityIds.has(n.cityPlaceId),
   );
+  await replaceNeighborhoods(user.id, "allowed", allowed);
+  await replaceNeighborhoods(user.id, "blocked", blocked);
 
   const attrs: Array<{ key: ApartmentAttributeKey; requirement: AttributeRequirement }> = [];
   for (const key of APARTMENT_ATTRIBUTE_KEYS) {

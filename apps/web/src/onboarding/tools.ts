@@ -78,25 +78,34 @@ export function buildOnboardingTools(userId: string) {
 
     searchNeighborhoods: tool({
       description:
-        "Find neighborhoods inside a city via Google Places. The chat UI renders the result as clickable chips — clicking a chip saves that neighborhood under `kind` for the current user, so DO NOT also call addNeighborhoodFilter for chips. Pass an empty `query` together with `cityNameHe` to browse the city's neighborhoods when the user doesn't know names; pass a non-empty `query` for typeahead. Always specify `kind`.",
+        "Find neighborhoods inside a specific city via Google Places. The chat UI renders the result as clickable chips — clicking a chip saves the neighborhood (and its parent city) for the current user, so DO NOT call any save tool for chips. Pass an empty `query` plus `cityNameHe` + `cityPlaceId` to browse the city's neighborhoods; pass a non-empty `query` for typeahead. Always specify `kind`. Both `cityPlaceId` and `cityNameHe` MUST come from a prior searchCity result for the same city.",
       inputSchema: z.object({
         query: z
           .string()
           .describe("User's typed neighborhood name in Hebrew, or empty string to browse."),
-        cityNameHe: z
+        cityPlaceId: z
           .string()
           .min(1)
-          .describe("Hebrew city name (from a prior searchCity result)."),
+          .describe("Google place_id of the parent city (from a prior searchCity result)."),
+        cityNameHe: z.string().min(1).describe("Hebrew city name of the parent city."),
         kind: z
           .enum(["allowed", "blocked"])
           .describe("Whether a chip click adds the choice to the allowed or blocked list."),
       }),
-      execute: async ({ query, cityNameHe, kind }) => {
+      execute: async ({ query, cityPlaceId, cityNameHe, kind }) => {
         const trimmed = query.trim();
-        const candidates =
+        const raw =
           trimmed === ""
             ? await listNeighborhoodsInCity(cityNameHe)
             : await autocompleteNeighborhoods(trimmed, cityNameHe);
+        // Stamp the parent cityPlaceId/cityNameHe onto every candidate so the
+        // chip click has the FK link without a second lookup.
+        const candidates = raw.map((c) => ({
+          placeId: c.placeId,
+          nameHe: c.nameHe,
+          cityPlaceId,
+          cityNameHe,
+        }));
         return { ok: true, kind, candidates };
       },
     }),

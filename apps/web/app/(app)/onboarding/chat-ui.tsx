@@ -7,9 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
+import { pickCityAction } from "./city-pick.action";
 import { pickNeighborhoodAction } from "./neighborhood-pick.action";
 
-type NeighborhoodCandidate = { placeId: string; nameHe: string; cityNameHe: string };
+type NeighborhoodCandidate = {
+  placeId: string;
+  nameHe: string;
+  cityPlaceId: string;
+  cityNameHe: string;
+};
 type CityCandidate = { placeId: string; nameHe: string };
 type ChipKind = "allowed" | "blocked";
 
@@ -19,6 +25,7 @@ const FIRST_PROMPT =
 export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean }) {
   const [input, setInput] = useState("");
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
+  const [pickedCityIds, setPickedCityIds] = useState<Set<string>>(new Set());
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat/onboarding" }),
   });
@@ -44,10 +51,23 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
   );
 
   const onPickCity = useCallback(
-    (city: CityCandidate) => {
-      sendMessage({ text: `העיר היא ${city.nameHe}` });
+    async (city: CityCandidate) => {
+      if (pickedCityIds.has(city.placeId)) return;
+      setPickedCityIds((prev) => new Set(prev).add(city.placeId));
+      const result = await pickCityAction(city);
+      if (!result.ok) {
+        setPickedCityIds((prev) => {
+          const next = new Set(prev);
+          next.delete(city.placeId);
+          return next;
+        });
+        return;
+      }
+      sendMessage({
+        text: `נבחרה העיר ${city.nameHe} (place_id: ${city.placeId}). העבר/י לחיפוש שכונות בעיר זו.`,
+      });
     },
-    [sendMessage],
+    [pickedCityIds, sendMessage],
   );
 
   useEffect(() => {
@@ -104,7 +124,14 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
                 if (toolName === "searchCity" && result) {
                   const candidates = readCityCandidates(result);
                   if (candidates.length > 0) {
-                    return <CityChips key={idx} candidates={candidates} onPick={onPickCity} />;
+                    return (
+                      <CityChips
+                        key={idx}
+                        candidates={candidates}
+                        pickedIds={pickedCityIds}
+                        onPick={onPickCity}
+                      />
+                    );
                   }
                 }
                 if (toolName === "searchNeighborhoods" && result) {
@@ -212,9 +239,15 @@ function readNeighborhoodCandidates(result: Record<string, unknown>): Neighborho
     if (
       typeof c.placeId === "string" &&
       typeof c.nameHe === "string" &&
+      typeof c.cityPlaceId === "string" &&
       typeof c.cityNameHe === "string"
     ) {
-      out.push({ placeId: c.placeId, nameHe: c.nameHe, cityNameHe: c.cityNameHe });
+      out.push({
+        placeId: c.placeId,
+        nameHe: c.nameHe,
+        cityPlaceId: c.cityPlaceId,
+        cityNameHe: c.cityNameHe,
+      });
     }
   }
   return out;
@@ -291,24 +324,36 @@ function TelegramConnect({ url }: { url: string }) {
 
 function CityChips({
   candidates,
+  pickedIds,
   onPick,
 }: {
   candidates: CityCandidate[];
+  pickedIds: Set<string>;
   onPick: (city: CityCandidate) => void;
 }) {
   return (
     <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="ערים לבחירה">
-      {candidates.map((c) => (
-        <li key={c.placeId}>
-          <button
-            type="button"
-            onClick={() => onPick(c)}
-            className="inline-flex items-center gap-1 rounded-full border bg-background px-3 py-1 text-xs text-foreground transition hover:bg-accent"
-          >
-            <span className="font-medium">{c.nameHe}</span>
-          </button>
-        </li>
-      ))}
+      {candidates.map((c) => {
+        const picked = pickedIds.has(c.placeId);
+        return (
+          <li key={c.placeId}>
+            <button
+              type="button"
+              onClick={() => onPick(c)}
+              disabled={picked}
+              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition disabled:cursor-default ${
+                picked
+                  ? "border-success bg-success/10 text-foreground"
+                  : "bg-background text-foreground hover:bg-accent"
+              }`}
+              aria-pressed={picked}
+            >
+              <span className="font-medium">{c.nameHe}</span>
+              <span aria-hidden="true">{picked ? "✓" : "+"}</span>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }

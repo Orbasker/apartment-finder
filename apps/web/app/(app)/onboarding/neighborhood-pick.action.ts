@@ -6,13 +6,18 @@ import { getCurrentUser } from "@/lib/auth-server";
 type Kind = "allowed" | "blocked";
 
 export async function pickNeighborhoodAction(
-  selection: { placeId: string; nameHe: string; cityNameHe: string },
+  selection: {
+    placeId: string;
+    nameHe: string;
+    cityPlaceId: string;
+    cityNameHe: string;
+  },
   kind: Kind,
 ): Promise<{ ok: boolean; reason?: string }> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, reason: "unauthorized" };
   if (kind !== "allowed" && kind !== "blocked") return { ok: false, reason: "bad_kind" };
-  if (!selection.placeId || !selection.nameHe || !selection.cityNameHe) {
+  if (!selection.placeId || !selection.nameHe || !selection.cityPlaceId || !selection.cityNameHe) {
     return { ok: false, reason: "missing_fields" };
   }
   await addNeighborhoodFilter(user.id, kind, selection);
