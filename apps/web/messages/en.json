@@ -71,7 +71,6 @@
     "unknownsNotifyLabel": "Send me the alert anyway — I'll decide for myself",
     "unknownsNotifyHelp": "Recommended if you'd rather see more listings and filter manually. We'll mark which field we couldn't verify.",
     "unknownsStrictLabel": "Skip it — only alert me when every must-have is confirmed",
-    "unknownsStrictHelp": "You'll get fewer alerts, but each one will definitely meet all your hard requirements.",
-    "alertUnverifiedHeader": "Couldn't verify from the listing (worth checking the post yourself):"
+    "unknownsStrictHelp": "You'll get fewer alerts, but each one will definitely meet all your hard requirements."
   }
 }

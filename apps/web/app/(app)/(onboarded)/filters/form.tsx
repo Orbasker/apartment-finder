@@ -117,10 +117,7 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
         />
       </Section>
 
-      <Section
-        title={tUnknowns("unknownsTitle")}
-        description={tUnknowns("unknownsQuestion")}
-      >
+      <Section title={tUnknowns("unknownsTitle")} description={tUnknowns("unknownsQuestion")}>
         <UnknownsChoice
           defaultStrict={filters.strictUnknowns}
           notifyLabel={tUnknowns("unknownsNotifyLabel")}
