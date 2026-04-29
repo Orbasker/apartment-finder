@@ -28,8 +28,9 @@
     "db:reset": "bun run --filter @apartment-finder/web db:reset",
     "db:studio": "bun run --filter @apartment-finder/web db:studio",
     "db:check": "bun run scripts/check-migrations.ts",
+    "i18n:check": "bun run scripts/check-i18n.ts",
     "email:dev": "bun run --filter @apartment-finder/web email:dev",
-    "ci": "clear && bun run format:write && bun run lint:fix && bun run knip && bun run build && bun run test"
+    "ci": "clear && bun run format:write && bun run lint:fix && bun run i18n:check && bun run knip && bun run build && bun run test"
   },
   "devDependencies": {
     "knip": "^5.40.0",

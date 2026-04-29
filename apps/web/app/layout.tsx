@@ -1,13 +1,18 @@
 import type { ReactNode } from "react";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { Footer } from "./footer";
 
-export const metadata = {
-  title: "Apartment Finder",
-  description: "מציאת דירה בתל אביב - התראות מיידיות לפי הסינונים שלך.",
-};
+export async function generateMetadata() {
+  const t = await getTranslations("Layout.metadata");
+  return {
+    title: "Apartment Finder",
+    description: t("description"),
+  };
+}
 
 export const viewport = {
   width: "device-width",
@@ -26,21 +31,26 @@ const themeInitScript = `
   })();
 `;
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+  const t = await getTranslations("Layout");
   return (
-    <html lang="he" dir="rtl" suppressHydrationWarning>
+    <html lang={locale} dir="rtl" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="flex min-h-screen flex-col bg-background font-sans antialiased">
-        <a
-          href="#main-content"
-          className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:start-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-primary-foreground"
-        >
-          דלג לתוכן
-        </a>
-        <div className="flex flex-1 flex-col">{children}</div>
-        <Footer />
+        <NextIntlClientProvider messages={messages}>
+          <a
+            href="#main-content"
+            className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:start-4 focus-visible:top-4 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-primary focus-visible:px-4 focus-visible:py-2 focus-visible:text-primary-foreground"
+          >
+            {t("skipToContent")}
+          </a>
+          <div className="flex flex-1 flex-col">{children}</div>
+          <Footer />
+        </NextIntlClientProvider>
         <Analytics />
         <SpeedInsights />
       </body>
