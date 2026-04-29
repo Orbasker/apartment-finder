@@ -27,8 +27,8 @@ const EnvSchema = z.object({
   APIFY_WEBHOOK_SECRET: z.string().optional(),
   /** Public https origin for webhooks (Vercel URL, ngrok, etc.). Required for Apify when not using a public deployment URL. */
   APP_PUBLIC_ORIGIN: z.string().url().optional(),
-  /** Comma-separated list of Facebook group URLs to scrape via Apify. */
-  FACEBOOK_GROUP_URLS: z.string().optional(),
+  /** Semicolon-separated list of Facebook group URLs to scrape via Apify. */
+  APIFY_GROUPS: z.string().optional(),
 
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
