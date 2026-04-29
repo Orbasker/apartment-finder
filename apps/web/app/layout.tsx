@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { isLocale, LOCALE_DIRECTIONS, DEFAULT_LOCALE } from "@/i18n/locales";
 import "./globals.css";
 import { Footer } from "./footer";
 
@@ -35,8 +36,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const locale = await getLocale();
   const messages = await getMessages();
   const t = await getTranslations("Layout");
+  const dir = LOCALE_DIRECTIONS[isLocale(locale) ? locale : DEFAULT_LOCALE];
   return (
-    <html lang={locale} dir="rtl" suppressHydrationWarning>
+    <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

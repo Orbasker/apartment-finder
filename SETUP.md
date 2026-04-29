@@ -33,11 +33,15 @@ Auth is handled by Better Auth, not Supabase. We just use Supabase for managed P
 2. Set `BETTER_AUTH_URL` to the public origin (e.g. `http://localhost:3000` or `https://<your-host>`).
 3. Create a Google OAuth client at https://console.cloud.google.com/apis/credentials:
    - Application type: **Web application**.
-   - Authorized redirect URIs (add ALL hosts you sign in from):
-     - `http://localhost:3000/api/auth/callback/google`
-     - `https://<your-vercel-host>/api/auth/callback/google`
-   - Copy the Client ID + Client secret into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-4. Magic-link emails go through Resend (see Phase 4) — `RESEND_API_KEY` and a verified `RESEND_FROM_EMAIL` are required for sign-in via email.
+   - Authorized redirect URIs (add ALL hosts you sign in from — Google does not allow wildcards):
+     - `http://localhost:3000/api/auth/callback/google` (local dev)
+     - `https://<production-domain>/api/auth/callback/google` (production)
+     - For Vercel preview URLs, register the stable preview alias for the branch you're testing (e.g. `https://apartment-finder-git-main-<team>.vercel.app/api/auth/callback/google`). Per-deploy preview URLs change on every commit and are not practical to register; sign-in via Google is therefore expected to work on the production alias and any preview alias you explicitly add.
+   - Copy the Client ID + Client secret into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Set them in `.env.local` for dev and in Vercel project env for Preview + Production.
+4. The "Continue with Google" button on `/login` only renders when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are present (gated by `isGoogleConfigured()` in `src/lib/auth.ts`). Email OTP works regardless.
+5. Account linking: Google sign-in is configured as a trusted provider, so a user signing in with Google using the same email as an existing OTP-only account links to the same `user` row (one user, one `account` row per provider).
+6. (Optional) Set `ADMIN_EMAIL` to auto-promote that email to `role = 'admin'` on first sign-in (replaces the manual SQL in [Admin access](#admin-access) below).
+7. Magic-link emails go through Resend (see Phase 4) — `RESEND_API_KEY` and a verified `RESEND_FROM_EMAIL` are required for sign-in via email.
 
 ## 3. Create the Telegram bot
 
@@ -198,7 +202,9 @@ To tune without the dashboard (which lands in Phase 4), open Supabase → Table 
 
 Admin role is the `role` column on the Better Auth `"user"` table (added by the `admin` plugin). Possible values: `"user"` (default) or `"admin"`. Server code checks via `isAdmin(user)` which compares `user.role === "admin"`.
 
-**Promote a user to admin** — run against the Postgres DB (Supabase SQL editor or `psql $DATABASE_URL`):
+**Bootstrap an admin (preferred)** — set `ADMIN_EMAIL` in your environment. The first time that email signs in (via OTP or Google), Better Auth's `databaseHooks.user.create.after` hook in `src/lib/auth.ts` promotes the new user row to `role = 'admin'` automatically. No SQL required.
+
+**Promote an existing user to admin** — run against the Postgres DB (Supabase SQL editor or `psql $DATABASE_URL`):
 
 ```sql
 update "user" set role = 'admin' where email = 'orbasker@gmail.com';

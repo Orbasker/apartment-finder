@@ -6,7 +6,9 @@ import ts from "typescript";
 const ROOT = new URL("..", import.meta.url).pathname;
 const WEB_DIR = join(ROOT, "apps/web");
 const SCAN_DIRS = [join(WEB_DIR, "app"), join(WEB_DIR, "src")];
-const CATALOG_PATH = join(WEB_DIR, "messages/he.json");
+const MESSAGES_DIR = join(WEB_DIR, "messages");
+const SOURCE_LOCALE = "he";
+const CATALOG_PATH = join(MESSAGES_DIR, `${SOURCE_LOCALE}.json`);
 const SKIP_DIRS = new Set(["node_modules", ".next", "dist", "out"]);
 const SKIP_SUFFIXES = [".test.ts", ".test.tsx", ".d.ts"];
 const SELF_PATH = join(WEB_DIR, "src/i18n/request.ts");
@@ -157,11 +159,40 @@ if (dynamicCalls.length) {
   exitCode = 1;
 }
 
+// Locale parity: every other messages/<locale>.json must define the same keys
+// as the source-of-truth catalog. Missing or extra keys in any locale fail CI.
+const otherLocaleFiles = readdirSync(MESSAGES_DIR)
+  .filter((f) => f.endsWith(".json") && f !== `${SOURCE_LOCALE}.json`)
+  .map((f) => ({ name: f.replace(/\.json$/, ""), path: join(MESSAGES_DIR, f) }));
+
+for (const { name, path: filePath } of otherLocaleFiles) {
+  const localeDefined = flatten(JSON.parse(readFileSync(filePath, "utf8")));
+  const missingHere = [...defined].filter((k) => !localeDefined.has(k)).sort();
+  const extraHere = [...localeDefined].filter((k) => !defined.has(k)).sort();
+  if (missingHere.length) {
+    console.error(
+      `\n❌ ${missingHere.length} key(s) defined in ${SOURCE_LOCALE}.json but missing from ${name}.json:`,
+    );
+    for (const k of missingHere) console.error(`   - ${k}`);
+    exitCode = 1;
+  }
+  if (extraHere.length) {
+    console.error(
+      `\n❌ ${extraHere.length} key(s) defined in ${name}.json but missing from ${SOURCE_LOCALE}.json:`,
+    );
+    for (const k of extraHere) console.error(`   - ${k}`);
+    exitCode = 1;
+  }
+}
+
 if (exitCode === 0) {
-  console.log(`✓ i18n keys in sync (${used.size} key(s) used, ${defined.size} defined).`);
+  const localeNames = [SOURCE_LOCALE, ...otherLocaleFiles.map((l) => l.name)].join(", ");
+  console.log(
+    `✓ i18n keys in sync (${used.size} key(s) used, ${defined.size} defined; locales: ${localeNames}).`,
+  );
 } else {
   console.error(
-    "\nFix: add missing keys to apps/web/messages/he.json, remove unused keys, or replace dynamic t() calls with literals.",
+    "\nFix: add missing keys to apps/web/messages/<locale>.json, remove unused or extra keys, or replace dynamic t() calls with literals.",
   );
 }
 

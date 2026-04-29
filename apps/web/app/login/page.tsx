@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { isGoogleConfigured } from "@/lib/auth";
+import { LocaleSwitcher } from "./locale-switcher";
 import { LoginForm } from "./login-form";
 
 export async function generateMetadata() {
@@ -33,6 +34,9 @@ export default async function LoginPage({
           <LoginForm initialError={urlError} googleEnabled={isGoogleConfigured()} />
         </CardContent>
       </Card>
+      <div className="mt-6">
+        <LocaleSwitcher />
+      </div>
     </main>
   );
 }
