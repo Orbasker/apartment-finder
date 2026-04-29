@@ -8,7 +8,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { pickCitiesAction } from "./city-pick.action";
 import { pickNeighborhoodsAction } from "./neighborhood-pick.action";
 
 type NeighborhoodCandidate = {
@@ -17,7 +16,6 @@ type NeighborhoodCandidate = {
   cityPlaceId: string;
   cityNameHe: string;
 };
-type CityCandidate = { placeId: string; nameHe: string };
 type ChipKind = "allowed" | "blocked";
 
 const FIRST_PROMPT =
@@ -26,7 +24,6 @@ const FIRST_PROMPT =
 export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean }) {
   const router = useRouter();
   const [input, setInput] = useState("");
-  const [submittedCityIds, setSubmittedCityIds] = useState<Set<string>>(new Set());
   const [submittedNeighborhoodIds, setSubmittedNeighborhoodIds] = useState<Set<string>>(new Set());
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat/onboarding" }),
@@ -46,25 +43,6 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
       const verb = kind === "allowed" ? "בחרתי" : "לחסום";
       const list = selections.map((s) => `${s.nameHe} (${s.cityNameHe})`).join(", ");
       sendMessage({ text: `${verb} ${list}` });
-      return { ok: true as const };
-    },
-    [sendMessage],
-  );
-
-  const onSubmitCities = useCallback(
-    async (cities: CityCandidate[]) => {
-      if (cities.length === 0) return { ok: false as const };
-      const result = await pickCitiesAction(cities);
-      if (!result.ok) return { ok: false as const };
-      setSubmittedCityIds((prev) => {
-        const next = new Set(prev);
-        for (const c of cities) next.add(c.placeId);
-        return next;
-      });
-      const list = cities.map((c) => `${c.nameHe} (place_id: ${c.placeId})`).join(", ");
-      sendMessage({
-        text: `נבחרו הערים: ${list}. העבר/י לחיפוש שכונות בערים אלו.`,
-      });
       return { ok: true as const };
     },
     [sendMessage],
@@ -119,19 +97,6 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
               if (part.type?.startsWith("tool-")) {
                 const toolName = part.type.slice("tool-".length);
                 const result = readToolResult(part);
-                if (toolName === "searchCity" && result) {
-                  const candidates = readCityCandidates(result);
-                  if (candidates.length > 0) {
-                    return (
-                      <CityChips
-                        key={idx}
-                        candidates={candidates}
-                        submittedIds={submittedCityIds}
-                        onSubmit={onSubmitCities}
-                      />
-                    );
-                  }
-                }
                 if (toolName === "searchNeighborhoods" && result) {
                   const candidates = readNeighborhoodCandidates(result);
                   const kind: ChipKind = result.kind === "blocked" ? "blocked" : "allowed";
@@ -255,20 +220,6 @@ function readNeighborhoodCandidates(result: Record<string, unknown>): Neighborho
   return out;
 }
 
-function readCityCandidates(result: Record<string, unknown>): CityCandidate[] {
-  const raw = result.candidates;
-  if (!Array.isArray(raw)) return [];
-  const out: CityCandidate[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object") continue;
-    const c = item as Record<string, unknown>;
-    if (typeof c.placeId === "string" && typeof c.nameHe === "string") {
-      out.push({ placeId: c.placeId, nameHe: c.nameHe });
-    }
-  }
-  return out;
-}
-
 function NeighborhoodChips({
   candidates,
   kind,
@@ -369,88 +320,6 @@ function TelegramConnect({ url }: { url: string }) {
       </svg>
       התחבר ל־Telegram
     </a>
-  );
-}
-
-function CityChips({
-  candidates,
-  submittedIds,
-  onSubmit,
-}: {
-  candidates: CityCandidate[];
-  submittedIds: Set<string>;
-  onSubmit: (cities: CityCandidate[]) => Promise<{ ok: boolean }>;
-}) {
-  const [pending, setPending] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState(false);
-
-  function toggle(placeId: string) {
-    if (submittedIds.has(placeId) || busy) return;
-    setPending((prev) => {
-      const next = new Set(prev);
-      if (next.has(placeId)) next.delete(placeId);
-      else next.add(placeId);
-      return next;
-    });
-  }
-
-  async function handleSubmit() {
-    if (busy || pending.size === 0) return;
-    const picks = candidates.filter((c) => pending.has(c.placeId));
-    if (picks.length === 0) return;
-    setBusy(true);
-    const result = await onSubmit(picks);
-    setBusy(false);
-    if (result.ok) setPending(new Set());
-  }
-
-  return (
-    <div className="mt-2 flex flex-col gap-2">
-      <ul className="flex flex-wrap gap-1.5" aria-label="ערים לבחירה">
-        {candidates.map((c) => {
-          const submitted = submittedIds.has(c.placeId);
-          const selected = pending.has(c.placeId);
-          const disabled = submitted || busy;
-          return (
-            <li key={c.placeId}>
-              <button
-                type="button"
-                onClick={() => toggle(c.placeId)}
-                disabled={disabled}
-                aria-pressed={selected || submitted}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition disabled:cursor-default ${
-                  submitted
-                    ? "border-success bg-success/10 text-foreground"
-                    : selected
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "bg-background text-foreground hover:bg-accent"
-                }`}
-              >
-                <span className="font-medium">{c.nameHe}</span>
-                <span aria-hidden="true">{submitted ? "✓" : selected ? "✓" : "+"}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-      {pending.size > 0 && (
-        <div className="flex items-center justify-end gap-2">
-          <span className="text-xs text-muted-foreground">
-            <bdi>{pending.size}</bdi> נבחרו
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleSubmit}
-            disabled={busy}
-            className="h-8 shrink-0 px-3 text-xs"
-          >
-            {busy && <Spinner className="h-3 w-3" />}
-            {busy ? "שולח…" : "אשר/י ערים"}
-          </Button>
-        </div>
-      )}
-    </div>
   );
 }
 

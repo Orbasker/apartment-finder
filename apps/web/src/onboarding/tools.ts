@@ -7,6 +7,7 @@ import {
   countActiveFilters,
 } from "@apartment-finder/shared";
 import {
+  addCity,
   addText,
   loadFilters,
   markOnboarded,
@@ -66,13 +67,26 @@ export function buildOnboardingTools(userId: string) {
 
     searchCity: tool({
       description:
-        "Find the user's city via Google Places. The chat UI renders the result as clickable chips; clicking one captures the city for the next step. ALWAYS call this BEFORE searching neighborhoods — neighborhoods need a city for context.",
+        "Resolve a user-typed city name to Google Places candidates. Returns up to a few options; the model should pick the best match (or ask the user to disambiguate when ambiguous), then call `selectCity` with the chosen placeId+nameHe. The UI does NOT render chips for this tool. ALWAYS resolve a city this way BEFORE searchNeighborhoods, which needs an authoritative cityPlaceId.",
       inputSchema: z.object({
         query: z.string().min(1).describe("User's typed city name in Hebrew, e.g. 'תל אביב'."),
       }),
       execute: async ({ query }) => {
         const candidates = await autocompleteCities(query);
         return { ok: true, candidates };
+      },
+    }),
+
+    selectCity: tool({
+      description:
+        "Save the chosen city to the user's filter set. Pass the exact placeId+nameHe from a prior searchCity result — never invent place_ids. Call this immediately after picking the best candidate (or after user disambiguation). After it succeeds, move on to searchNeighborhoods using the same cityPlaceId+cityNameHe.",
+      inputSchema: z.object({
+        placeId: z.string().min(1).describe("Google place_id from searchCity."),
+        nameHe: z.string().min(1).describe("Hebrew city name from searchCity."),
+      }),
+      execute: async ({ placeId, nameHe }) => {
+        await addCity(userId, { placeId, nameHe });
+        return { ok: true, placeId, nameHe };
       },
     }),
 
