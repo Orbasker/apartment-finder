@@ -64,6 +64,14 @@ export const FilterAttributeSchema = z.object({
 });
 export type FilterAttribute = z.infer<typeof FilterAttributeSchema>;
 
+// City the user is searching in (Google Places `place_id` + Hebrew display name).
+// Scopes the neighborhood pickers and is matched against `apartments.city`.
+export const CitySelectionSchema = z.object({
+  placeId: z.string().min(1),
+  nameHe: z.string().min(1),
+});
+export type CitySelection = z.infer<typeof CitySelectionSchema>;
+
 // Each neighborhood selection caches Google Places' place_id + display name +
 // city name. Both the dashboard typeahead and the chat picker write this shape.
 export const NeighborhoodSelectionSchema = z.object({
@@ -80,6 +88,7 @@ export const FiltersSchema = z.object({
   roomsMax: z.number().min(0).nullable(),
   sqmMin: z.number().int().positive().nullable(),
   sqmMax: z.number().int().positive().nullable(),
+  city: CitySelectionSchema.nullable().default(null),
   allowedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
   blockedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
   wishes: z.array(z.string()).default([]),
@@ -102,6 +111,7 @@ export function countActiveFilters(f: Filters): number {
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
+  if (f.city != null) count++;
   if (f.allowedNeighborhoods.length > 0) count++;
   if (f.blockedNeighborhoods.length > 0) count++;
   for (const a of f.attributes) {
@@ -118,6 +128,7 @@ export const defaultFilters: Filters = {
   roomsMax: null,
   sqmMin: null,
   sqmMax: null,
+  city: null,
   allowedNeighborhoods: [],
   blockedNeighborhoods: [],
   wishes: [],

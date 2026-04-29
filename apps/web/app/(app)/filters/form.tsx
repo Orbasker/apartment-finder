@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { NeighborhoodPicker } from "@/components/neighborhood-picker";
+import { CityPicker } from "@/components/city-picker";
 import { saveFiltersAction } from "./actions";
 import type { StoredFilters } from "@/filters/store";
 
@@ -30,6 +31,7 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
     filters.attributes.map((a) => [a.key, a.requirement]),
   );
   const t = useTranslations("Neighborhoods");
+  const tCities = useTranslations("Cities");
 
   return (
     <form action={saveFiltersAction} className="space-y-4 pb-24 sm:space-y-6">
@@ -74,6 +76,10 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
           <Field label="מינימום" name="sqmMin" type="number" defaultValue={filters.sqmMin} />
           <Field label="מקסימום" name="sqmMax" type="number" defaultValue={filters.sqmMax} />
         </div>
+      </Section>
+
+      <Section title={tCities("sectionTitle")} description={tCities("sectionDescription")}>
+        <CityPicker name="city" defaultSelection={filters.city} />
       </Section>
 
       <Section title={t("sectionTitle")} description={t("sectionDescription")}>

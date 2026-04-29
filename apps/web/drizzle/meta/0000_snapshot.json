@@ -1,5 +1,5 @@
 {
-  "id": "90ea0ac6-9456-416c-8771-194c61be573e",
+  "id": "2f9166eb-9ebd-4c11-887a-620fd591783e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1761,6 +1761,18 @@
         "sqm_max": {
           "name": "sqm_max",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "city_place_id": {
+          "name": "city_place_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "city_name_he": {
+          "name": "city_name_he",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },

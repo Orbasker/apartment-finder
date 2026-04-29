@@ -13,9 +13,10 @@ import {
   replaceAttributes,
   replaceNeighborhoods,
   replaceTexts,
+  setCity,
   upsertFilters,
 } from "@/filters/store";
-import type { NeighborhoodSelection } from "@apartment-finder/shared";
+import type { CitySelection, NeighborhoodSelection } from "@apartment-finder/shared";
 
 function parseOptionalInt(v: FormDataEntryValue | null): number | null {
   if (typeof v !== "string" || v.trim() === "") return null;
@@ -35,6 +36,25 @@ function parseList(raw: FormDataEntryValue | null): string[] {
     .split(/\r?\n/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+function parseCitySelection(formData: FormData, name: string): CitySelection | null {
+  const raw = formData.get(name);
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<CitySelection>;
+    if (
+      typeof parsed.placeId === "string" &&
+      typeof parsed.nameHe === "string" &&
+      parsed.placeId &&
+      parsed.nameHe
+    ) {
+      return { placeId: parsed.placeId, nameHe: parsed.nameHe };
+    }
+  } catch {
+    // Fall through to null.
+  }
+  return null;
 }
 
 function parseNeighborhoodSelections(formData: FormData, name: string): NeighborhoodSelection[] {
@@ -80,6 +100,8 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
     dailyAlertCap: parseOptionalInt(formData.get("dailyAlertCap")) ?? 20,
     maxAgeHours: parseOptionalInt(formData.get("maxAgeHours")) ?? 48,
   });
+
+  await setCity(user.id, parseCitySelection(formData, "city"));
 
   await replaceNeighborhoods(
     user.id,

@@ -262,6 +262,8 @@ describe("schema: user_filters + user_filter_attributes", () => {
       "rooms_max",
       "sqm_min",
       "sqm_max",
+      "city_place_id",
+      "city_name_he",
       "wishes",
       "dealbreakers",
       "strict_unknowns",

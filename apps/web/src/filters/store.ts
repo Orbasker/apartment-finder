@@ -3,6 +3,7 @@ import {
   APARTMENT_ATTRIBUTE_KEYS,
   type ApartmentAttributeKey,
   type AttributeRequirement,
+  type CitySelection,
   type Filters,
   type NeighborhoodSelection,
 } from "@apartment-finder/shared";
@@ -56,6 +57,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       roomsMax: null,
       sqmMin: null,
       sqmMax: null,
+      city: null,
       allowedNeighborhoods,
       blockedNeighborhoods,
       wishes: [],
@@ -68,6 +70,8 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       onboardedAt: null,
     };
   }
+  const city: CitySelection | null =
+    row.cityPlaceId && row.cityNameHe ? { placeId: row.cityPlaceId, nameHe: row.cityNameHe } : null;
   return {
     priceMinNis: row.priceMinNis,
     priceMaxNis: row.priceMaxNis,
@@ -75,6 +79,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     roomsMax: row.roomsMax,
     sqmMin: row.sqmMin,
     sqmMax: row.sqmMax,
+    city,
     allowedNeighborhoods,
     blockedNeighborhoods,
     wishes: row.wishes ?? [],
@@ -95,6 +100,8 @@ type ScalarPatch = Partial<{
   roomsMax: number | null;
   sqmMin: number | null;
   sqmMax: number | null;
+  cityPlaceId: string | null;
+  cityNameHe: string | null;
   wishes: string[];
   dealbreakers: string[];
   strictUnknowns: boolean;
@@ -226,6 +233,14 @@ export async function markOnboarded(userId: string): Promise<void> {
   await upsertFilters(userId, { onboardedAt: new Date(), isActive: true });
 }
 
+/** Set or clear the user's primary search city. */
+export async function setCity(userId: string, city: CitySelection | null): Promise<void> {
+  await upsertFilters(userId, {
+    cityPlaceId: city?.placeId ?? null,
+    cityNameHe: city?.nameHe ?? null,
+  });
+}
+
 /** Replace the user's neighborhood selections of a given kind. */
 export async function replaceNeighborhoods(
   userId: string,
@@ -300,6 +315,7 @@ export function countActive(f: StoredFilters): number {
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
+  if (f.city != null) count++;
   if (f.allowedNeighborhoods.length > 0) count++;
   if (f.blockedNeighborhoods.length > 0) count++;
   for (const a of f.attributes) {

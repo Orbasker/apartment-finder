@@ -254,6 +254,8 @@ export const userFilters = pgTable("user_filters", {
   roomsMax: real("rooms_max"),
   sqmMin: integer("sqm_min"),
   sqmMax: integer("sqm_max"),
+  cityPlaceId: text("city_place_id"),
+  cityNameHe: text("city_name_he"),
   wishes: text("wishes")
     .array()
     .notNull()

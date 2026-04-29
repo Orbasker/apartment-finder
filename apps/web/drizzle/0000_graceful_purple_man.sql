@@ -224,6 +224,8 @@ CREATE TABLE "user_filters" (
 	"rooms_max" real,
 	"sqm_min" integer,
 	"sqm_max" integer,
+	"city_place_id" text,
+	"city_name_he" text,
 	"wishes" text[] DEFAULT '{}'::text[] NOT NULL,
 	"dealbreakers" text[] DEFAULT '{}'::text[] NOT NULL,
 	"strict_unknowns" boolean DEFAULT true NOT NULL,
