@@ -264,7 +264,7 @@ See `.env.example` for the full list. Required for full pipeline:
 - `GOOGLE_GEOCODING_API_KEY`
 - `RESEND_API_KEY`, `RESEND_FROM_EMAIL`
 - `CRON_SECRET`
-- `APIFY_TOKEN`, `APIFY_WEBHOOK_SECRET`, `APP_PUBLIC_ORIGIN`, `FACEBOOK_GROUP_URLS` (comma-separated)
+- `APIFY_TOKEN`, `APIFY_WEBHOOK_SECRET`, `APP_PUBLIC_ORIGIN`, `APIFY_GROUPS` (semicolon-separated Facebook group URLs; empty/missing exits cleanly)
 - `YAD2_PROXY_URL`, `YAD2_PROXY_SECRET` (Cloud Run proxy)
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME` (Telegram delivery; run `bun apps/web/scripts/setup-telegram-webhook.ts` once after deploy to register the webhook)
 
