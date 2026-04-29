@@ -10,7 +10,12 @@ import {
   type ApartmentAttributeKey,
   type FurnitureStatus,
 } from "@apartment-finder/shared";
-import { MatchAlertEmail } from "@/emails/MatchAlert";
+import { MatchAlertEmail, type MatchAlertProps } from "@/emails/MatchAlert";
+import { activeChannels, loadDestinations } from "@/notifications/destinations";
+import {
+  isTelegramConfigured,
+  sendMatchAlert as sendTelegramMatchAlert,
+} from "@/ingestion/telegram";
 
 const log = createLogger("ingestion:notify");
 
@@ -24,9 +29,20 @@ function getResend(): Resend {
   return resendClient;
 }
 
-export type NotifyOutcome =
-  | { sent: true; messageId: string | null }
-  | { sent: false; reason: "no_email" | "already_sent" | "cap_reached" | "no_resend" | "error" };
+export type NotifyChannel = "email" | "telegram";
+
+export type NotifyChannelOutcome =
+  | { channel: NotifyChannel; status: "sent"; messageId: string | null }
+  | {
+      channel: NotifyChannel;
+      status: "skipped";
+      reason: "already_sent" | "cap_reached" | "channel_off" | "channel_unconfigured";
+    }
+  | { channel: NotifyChannel; status: "failed"; error: string };
+
+export type NotifyOutcome = {
+  channels: NotifyChannelOutcome[];
+};
 
 export async function sendInstantAlert(input: {
   userId: string;
@@ -35,13 +51,14 @@ export async function sendInstantAlert(input: {
 }): Promise<NotifyOutcome> {
   const db = getDb();
 
-  const existing = await db
-    .select({ apartmentId: sentAlerts.apartmentId })
-    .from(sentAlerts)
-    .where(and(eq(sentAlerts.userId, input.userId), eq(sentAlerts.apartmentId, input.apartmentId)))
-    .limit(1);
-  if (existing.length > 0) return { sent: false, reason: "already_sent" };
+  const destinations = await loadDestinations(input.userId);
+  const channels = activeChannels(destinations);
+  if (channels.length === 0) {
+    log.warn("no active channels - skipping", { userId: input.userId });
+    return { channels: [] };
+  }
 
+  // Daily cap is computed across all destinations for the user.
   const [filter] = await db
     .select({ dailyAlertCap: userFilters.dailyAlertCap })
     .from(userFilters)
@@ -53,16 +70,90 @@ export async function sendInstantAlert(input: {
     .select({ count: sql<number>`count(*)::int` })
     .from(sentAlerts)
     .where(and(eq(sentAlerts.userId, input.userId), gte(sentAlerts.sentAt, since)));
-  if ((today?.count ?? 0) >= cap) return { sent: false, reason: "cap_reached" };
+  if ((today?.count ?? 0) >= cap) {
+    return {
+      channels: channels.map((c) => ({ channel: c, status: "skipped", reason: "cap_reached" })),
+    };
+  }
 
-  const [u] = await db
-    .select({ email: user.email })
-    .from(user)
-    .where(eq(user.id, input.userId))
-    .limit(1);
-  if (!u?.email) return { sent: false, reason: "no_email" };
+  // Pre-load apartment details once; both senders need them.
+  const apt = await loadApartmentForAlert(input.apartmentId);
+  if (!apt) {
+    log.warn("apartment not found", { apartmentId: input.apartmentId });
+    return {
+      channels: channels.map((c) => ({
+        channel: c,
+        status: "failed",
+        error: "apartment_not_found",
+      })),
+    };
+  }
 
-  const [apt] = await db
+  const outcomes: NotifyChannelOutcome[] = [];
+  for (const channel of channels) {
+    const alreadySent = await db
+      .select({ apartmentId: sentAlerts.apartmentId })
+      .from(sentAlerts)
+      .where(
+        and(
+          eq(sentAlerts.userId, input.userId),
+          eq(sentAlerts.apartmentId, input.apartmentId),
+          eq(sentAlerts.destination, channel),
+        ),
+      )
+      .limit(1);
+    if (alreadySent.length > 0) {
+      outcomes.push({ channel, status: "skipped", reason: "already_sent" });
+      continue;
+    }
+
+    if (channel === "email") {
+      outcomes.push(
+        await sendEmail({
+          userId: input.userId,
+          apartmentId: input.apartmentId,
+          matchedAttributes: input.matchedAttributes,
+          apartment: apt,
+        }),
+      );
+    } else if (channel === "telegram") {
+      outcomes.push(
+        await sendTelegram({
+          userId: input.userId,
+          apartmentId: input.apartmentId,
+          matchedAttributes: input.matchedAttributes,
+          apartment: apt,
+          chatId: destinations.telegramChatId!,
+        }),
+      );
+    }
+  }
+
+  return { channels: outcomes };
+}
+
+type ApartmentDetails = {
+  id: number;
+  neighborhood: string | null;
+  formattedAddress: string | null;
+  rooms: number | null;
+  sqm: number | null;
+  floor: number | null;
+  priceNisLatest: number | null;
+  primaryListingId: number | null;
+  condition: string | null;
+  arnonaNis: number | null;
+  vaadBayitNis: number | null;
+  entryDate: string | null;
+  balconySqm: number | null;
+  totalFloors: number | null;
+  furnitureStatus: FurnitureStatus | null;
+  pricePerSqm: number | null;
+};
+
+async function loadApartmentForAlert(apartmentId: number): Promise<ApartmentDetails | null> {
+  const db = getDb();
+  const [row] = await db
     .select({
       id: apartments.id,
       neighborhood: apartments.neighborhood,
@@ -82,33 +173,51 @@ export async function sendInstantAlert(input: {
     })
     .from(apartments)
     .leftJoin(listingExtractions, eq(listingExtractions.listingId, apartments.primaryListingId))
-    .where(eq(apartments.id, input.apartmentId))
+    .where(eq(apartments.id, apartmentId))
     .limit(1);
-  if (!apt) return { sent: false, reason: "error" };
-
+  if (!row) return null;
   const pricePerSqm =
-    apt.priceNisLatest != null && apt.sqm != null && apt.sqm > 0
-      ? Math.round(apt.priceNisLatest / apt.sqm)
+    row.priceNisLatest != null && row.sqm != null && row.sqm > 0
+      ? Math.round(row.priceNisLatest / row.sqm)
       : null;
-  const furnitureStatusParsed = FurnitureStatusSchema.safeParse(apt.furnitureStatus);
-  const furnitureStatus: FurnitureStatus | null = furnitureStatusParsed.success
-    ? furnitureStatusParsed.data
-    : null;
+  const furnitureStatusParsed = FurnitureStatusSchema.safeParse(row.furnitureStatus);
+  const furnitureStatus = furnitureStatusParsed.success ? furnitureStatusParsed.data : null;
+  return { ...row, pricePerSqm, furnitureStatus };
+}
 
-  if (!env().RESEND_API_KEY) {
-    log.warn("RESEND_API_KEY not set - skipping send", { userId: input.userId });
-    return { sent: false, reason: "no_resend" };
-  }
-  const from = env().RESEND_FROM_EMAIL;
-  if (!from) {
-    log.warn("RESEND_FROM_EMAIL not set - skipping send", { userId: input.userId });
-    return { sent: false, reason: "no_resend" };
-  }
-
+function buildSourceUrl(apt: ApartmentDetails): string | null {
   const siteOrigin = (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
-  const sourceUrl =
-    apt.primaryListingId && siteOrigin ? `${siteOrigin}/listings/${apt.primaryListingId}` : null;
+  if (!apt.primaryListingId || !siteOrigin) return null;
+  return `${siteOrigin}/listings/${apt.primaryListingId}`;
+}
+
+async function sendEmail(args: {
+  userId: string;
+  apartmentId: number;
+  matchedAttributes: ApartmentAttributeKey[];
+  apartment: ApartmentDetails;
+}): Promise<NotifyChannelOutcome> {
+  const channel: NotifyChannel = "email";
+  const db = getDb();
+
+  const [u] = await db
+    .select({ email: user.email })
+    .from(user)
+    .where(eq(user.id, args.userId))
+    .limit(1);
+  if (!u?.email) return { channel, status: "skipped", reason: "channel_off" };
+
+  const apiKey = env().RESEND_API_KEY;
+  const from = env().RESEND_FROM_EMAIL;
+  if (!apiKey || !from) {
+    log.warn("resend env not set - skipping email", { userId: args.userId });
+    return { channel, status: "skipped", reason: "channel_unconfigured" };
+  }
+
+  const apt = args.apartment;
+  const siteOrigin = (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
   const filtersUrl = siteOrigin ? `${siteOrigin}/filters` : null;
+  const sourceUrl = buildSourceUrl(apt);
 
   const subject = buildSubject({
     neighborhood: apt.neighborhood,
@@ -116,7 +225,7 @@ export async function sendInstantAlert(input: {
     priceNisLatest: apt.priceNisLatest,
   });
 
-  const emailProps = {
+  const emailProps: MatchAlertProps = {
     apartmentId: apt.id,
     neighborhood: apt.neighborhood,
     formattedAddress: apt.formattedAddress,
@@ -126,52 +235,113 @@ export async function sendInstantAlert(input: {
     priceNis: apt.priceNisLatest,
     sourceUrl,
     filtersUrl,
-    matchedAttributes: input.matchedAttributes,
-    pricePerSqm,
+    matchedAttributes: args.matchedAttributes,
+    pricePerSqm: apt.pricePerSqm,
     arnonaNis: apt.arnonaNis,
     vaadBayitNis: apt.vaadBayitNis,
     condition: apt.condition,
     entryDate: apt.entryDate,
     balconySqm: apt.balconySqm,
     totalFloors: apt.totalFloors,
-    furnitureStatus,
-  } as const;
+    furnitureStatus: apt.furnitureStatus,
+  };
   const html = await render(MatchAlertEmail(emailProps));
   const text = await render(MatchAlertEmail(emailProps), { plainText: true });
 
   try {
-    const result = await getResend().emails.send({
-      from,
-      to: u.email,
-      subject,
-      html,
-      text,
-    });
+    const result = await getResend().emails.send({ from, to: u.email, subject, html, text });
     if (result.error) {
       log.error("alert rejected by Resend", {
-        userId: input.userId,
-        apartmentId: input.apartmentId,
+        userId: args.userId,
+        apartmentId: args.apartmentId,
         from,
         error: result.error.message ?? String(result.error),
       });
-      return { sent: false, reason: "error" };
+      return { channel, status: "failed", error: result.error.message ?? "resend_error" };
     }
     const messageId = result.data?.id ?? null;
     await db.insert(sentAlerts).values({
-      userId: input.userId,
-      apartmentId: input.apartmentId,
-      resendMessageId: messageId,
+      userId: args.userId,
+      apartmentId: args.apartmentId,
+      destination: "email",
+      providerMessageId: messageId,
     });
-    log.info("alert sent", { userId: input.userId, apartmentId: input.apartmentId, messageId });
-    return { sent: true, messageId };
+    log.info("email alert sent", {
+      userId: args.userId,
+      apartmentId: args.apartmentId,
+      messageId,
+    });
+    return { channel, status: "sent", messageId };
   } catch (err) {
-    log.error("alert send failed", {
-      userId: input.userId,
-      apartmentId: input.apartmentId,
+    log.error("email alert send failed", {
+      userId: args.userId,
+      apartmentId: args.apartmentId,
       error: errorMessage(err),
     });
-    return { sent: false, reason: "error" };
+    return { channel, status: "failed", error: errorMessage(err) };
   }
+}
+
+async function sendTelegram(args: {
+  userId: string;
+  apartmentId: number;
+  matchedAttributes: ApartmentAttributeKey[];
+  apartment: ApartmentDetails;
+  chatId: string;
+}): Promise<NotifyChannelOutcome> {
+  const channel: NotifyChannel = "telegram";
+  const db = getDb();
+
+  if (!isTelegramConfigured()) {
+    log.warn("telegram env not set - skipping", { userId: args.userId });
+    return { channel, status: "skipped", reason: "channel_unconfigured" };
+  }
+
+  const apt = args.apartment;
+  const sourceUrl = buildSourceUrl(apt);
+
+  const result = await sendTelegramMatchAlert({
+    chatId: args.chatId,
+    neighborhood: apt.neighborhood,
+    formattedAddress: apt.formattedAddress,
+    rooms: apt.rooms,
+    sqm: apt.sqm,
+    floor: apt.floor,
+    priceNis: apt.priceNisLatest,
+    sourceUrl,
+    matchedAttributes: args.matchedAttributes,
+    pricePerSqm: apt.pricePerSqm,
+    arnonaNis: apt.arnonaNis,
+    vaadBayitNis: apt.vaadBayitNis,
+    condition: apt.condition,
+    entryDate: apt.entryDate,
+    balconySqm: apt.balconySqm,
+    totalFloors: apt.totalFloors,
+    furnitureStatus: apt.furnitureStatus,
+  });
+
+  if (!result.ok) {
+    log.error("telegram alert send failed", {
+      userId: args.userId,
+      apartmentId: args.apartmentId,
+      reason: result.reason,
+      error: result.error,
+    });
+    return { channel, status: "failed", error: `${result.reason}:${result.error}` };
+  }
+
+  await db.insert(sentAlerts).values({
+    userId: args.userId,
+    apartmentId: args.apartmentId,
+    destination: "telegram",
+    providerMessageId: String(result.messageId),
+  });
+  log.info("telegram alert sent", {
+    userId: args.userId,
+    apartmentId: args.apartmentId,
+    messageId: result.messageId,
+  });
+  return { channel, status: "sent", messageId: String(result.messageId) };
 }
 
 function buildSubject(apt: {
