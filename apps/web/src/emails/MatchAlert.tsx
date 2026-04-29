@@ -29,6 +29,7 @@ export type MatchAlertProps = {
   sourceUrl: string | null;
   filtersUrl: string | null;
   matchedAttributes: ApartmentAttributeKey[];
+  unverifiedAttributes: ApartmentAttributeKey[];
   pricePerSqm: number | null;
   arnonaNis: number | null;
   vaadBayitNis: number | null;
@@ -148,6 +149,20 @@ export function MatchAlertEmail(props: MatchAlertProps) {
                 <Text style={{ ...paragraph, ...muted }}>תואם לסינונים שלך:</Text>
                 <Text style={paragraph}>
                   {props.matchedAttributes
+                    .map((k) => APARTMENT_ATTRIBUTE_LABELS[k] ?? k)
+                    .join(" · ")}
+                </Text>
+              </>
+            ) : null}
+
+            {props.unverifiedAttributes.length > 0 ? (
+              <>
+                <Hr style={hr} />
+                <Text style={{ ...paragraph, ...muted }}>
+                  לא הצלחנו לאמת מהמודעה (כדאי לבדוק במודעה עצמה):
+                </Text>
+                <Text style={paragraph}>
+                  {props.unverifiedAttributes
                     .map((k) => APARTMENT_ATTRIBUTE_LABELS[k] ?? k)
                     .join(" · ")}
                 </Text>
