@@ -287,19 +287,22 @@ function NeighborhoodChips({
         })}
       </ul>
       {pending.size > 0 && (
-        <div className="flex items-center justify-end gap-2">
-          <span className="text-xs text-muted-foreground">
-            <bdi>{pending.size}</bdi> נבחרו
-          </span>
+        <div className="flex justify-end">
           <Button
             type="button"
             size="sm"
             onClick={handleSubmit}
             disabled={busy}
-            className="h-8 shrink-0 px-3 text-xs"
+            className="h-7 shrink-0 rounded-full px-3 text-xs"
           >
             {busy && <Spinner className="h-3 w-3" />}
-            {busy ? "שולח…" : submitLabel}
+            {busy ? (
+              "שולח…"
+            ) : (
+              <>
+                {submitLabel} (<bdi>{pending.size}</bdi>)
+              </>
+            )}
           </Button>
         </div>
       )}
