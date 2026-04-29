@@ -181,19 +181,23 @@ function neighborhoodPredicate(apartmentNeighborhood: string | null, apartmentCi
       AND ${userFilterNeighborhoods.kind} = 'allowed'
   )`;
 
-  const matchPair = (kind: "allowed" | "blocked") =>
-    apartmentNeighborhood != null
-      ? sql`EXISTS (
-          SELECT 1 FROM ${userFilterNeighborhoods}
-          WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
-            AND ${userFilterNeighborhoods.kind} = ${kind}
-            AND lower(trim(${userFilterNeighborhoods.nameHe})) = lower(trim(${apartmentNeighborhood}))
-            AND (
-              ${apartmentCity} IS NULL
-              OR lower(trim(${userFilterNeighborhoods.cityNameHe})) = lower(trim(${apartmentCity}))
-            )
-        )`
-      : sql`false`;
+  const matchPair = (kind: "allowed" | "blocked") => {
+    if (apartmentNeighborhood == null) return sql`false`;
+    // City clause is only included when the apartment has a city. Binding a
+    // parameter solely under `$N IS NULL` makes PG fail with "could not
+    // determine data type of parameter" — handle the null branch in JS.
+    const cityClause =
+      apartmentCity != null
+        ? sql`AND lower(trim(${userFilterNeighborhoods.cityNameHe})) = lower(trim(${apartmentCity}))`
+        : sql``;
+    return sql`EXISTS (
+      SELECT 1 FROM ${userFilterNeighborhoods}
+      WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
+        AND ${eq(userFilterNeighborhoods.kind, kind)}
+        AND lower(trim(${userFilterNeighborhoods.nameHe})) = lower(trim(${apartmentNeighborhood}))
+        ${cityClause}
+    )`;
+  };
 
   return and(or(noAllowedSelections, matchPair("allowed")), sql`NOT (${matchPair("blocked")})`);
 }
