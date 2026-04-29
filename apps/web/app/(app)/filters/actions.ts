@@ -8,7 +8,14 @@ import {
   type AttributeRequirement,
 } from "@apartment-finder/shared";
 import { getCurrentUser } from "@/lib/auth-server";
-import { markOnboarded, replaceAttributes, replaceTexts, upsertFilters } from "@/filters/store";
+import {
+  filterExistingNeighborhoodIds,
+  markOnboarded,
+  replaceAttributes,
+  replaceNeighborhoods,
+  replaceTexts,
+  upsertFilters,
+} from "@/filters/store";
 
 function parseOptionalInt(v: FormDataEntryValue | null): number | null {
   if (typeof v !== "string" || v.trim() === "") return null;
@@ -30,6 +37,14 @@ function parseList(raw: FormDataEntryValue | null): string[] {
     .filter(Boolean);
 }
 
+function parseIdList(formData: FormData, name: string): string[] {
+  return formData
+    .getAll(name)
+    .filter((v): v is string => typeof v === "string")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export async function saveFiltersAction(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
@@ -41,13 +56,26 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
     roomsMax: parseOptionalNum(formData.get("roomsMax")),
     sqmMin: parseOptionalInt(formData.get("sqmMin")),
     sqmMax: parseOptionalInt(formData.get("sqmMax")),
-    allowedNeighborhoods: parseList(formData.get("allowedNeighborhoods")),
-    blockedNeighborhoods: parseList(formData.get("blockedNeighborhoods")),
     strictUnknowns: formData.get("strictUnknowns") === "on",
     isActive: formData.get("isActive") === "on",
     dailyAlertCap: parseOptionalInt(formData.get("dailyAlertCap")) ?? 20,
     maxAgeHours: parseOptionalInt(formData.get("maxAgeHours")) ?? 48,
   });
+
+  const allowedIds = parseIdList(formData, "allowedNeighborhoodIds");
+  const blockedIds = parseIdList(formData, "blockedNeighborhoodIds");
+  const validAllowed = await filterExistingNeighborhoodIds(allowedIds);
+  const validBlocked = await filterExistingNeighborhoodIds(blockedIds);
+  await replaceNeighborhoods(
+    user.id,
+    "allowed",
+    allowedIds.filter((id) => validAllowed.has(id)),
+  );
+  await replaceNeighborhoods(
+    user.id,
+    "blocked",
+    blockedIds.filter((id) => validBlocked.has(id)),
+  );
 
   const attrs: Array<{ key: ApartmentAttributeKey; requirement: AttributeRequirement }> = [];
   for (const key of APARTMENT_ATTRIBUTE_KEYS) {

@@ -7,14 +7,21 @@ import {
   type ApartmentAttributeKey,
   type AttributeRequirement,
 } from "@apartment-finder/shared";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
+import { NeighborhoodPicker, type NeighborhoodSelection } from "@/components/neighborhood-picker";
 import { saveFiltersAction } from "./actions";
 import type { StoredFilters } from "@/filters/store";
+
+export type NeighborhoodSelections = {
+  allowed: NeighborhoodSelection[];
+  blocked: NeighborhoodSelection[];
+};
 
 const REQUIREMENT_LABELS: Record<AttributeRequirement, string> = {
   required_true: "חובה כן",
@@ -23,10 +30,17 @@ const REQUIREMENT_LABELS: Record<AttributeRequirement, string> = {
   dont_care: "לא משנה",
 };
 
-export function FiltersForm({ filters }: { filters: StoredFilters }) {
+export function FiltersForm({
+  filters,
+  neighborhoodSelections,
+}: {
+  filters: StoredFilters;
+  neighborhoodSelections: NeighborhoodSelections;
+}) {
   const attrMap = new Map<ApartmentAttributeKey, AttributeRequirement>(
     filters.attributes.map((a) => [a.key, a.requirement]),
   );
+  const t = useTranslations("Neighborhoods");
 
   return (
     <form action={saveFiltersAction} className="space-y-4 pb-24 sm:space-y-6">
@@ -73,25 +87,20 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
         </div>
       </Section>
 
-      <Section title="שכונות" description="שורה לכל שכונה. השאר/י ריק כדי לא להגביל.">
-        <div className="space-y-3">
+      <Section title={t("sectionTitle")} description={t("sectionDescription")}>
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="allowedNeighborhoods">שכונות מותרות</Label>
-            <Textarea
-              id="allowedNeighborhoods"
-              name="allowedNeighborhoods"
-              defaultValue={filters.allowedNeighborhoods.join("\n")}
-              rows={4}
-              placeholder="פלורנטין&#10;רוטשילד&#10;נווה צדק"
+            <Label>{t("allowedTitle")}</Label>
+            <NeighborhoodPicker
+              name="allowedNeighborhoodIds"
+              defaultSelections={neighborhoodSelections.allowed}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="blockedNeighborhoods">שכונות חסומות</Label>
-            <Textarea
-              id="blockedNeighborhoods"
-              name="blockedNeighborhoods"
-              defaultValue={filters.blockedNeighborhoods.join("\n")}
-              rows={3}
+            <Label>{t("blockedTitle")}</Label>
+            <NeighborhoodPicker
+              name="blockedNeighborhoodIds"
+              defaultSelections={neighborhoodSelections.blocked}
             />
           </div>
         </div>

@@ -259,8 +259,6 @@ describe("schema: user_filters + user_filter_attributes", () => {
       "rooms_max",
       "sqm_min",
       "sqm_max",
-      "allowed_neighborhoods",
-      "blocked_neighborhoods",
       "wishes",
       "dealbreakers",
       "strict_unknowns",
@@ -272,6 +270,9 @@ describe("schema: user_filters + user_filter_attributes", () => {
     ]) {
       expect(names).toContain(f);
     }
+    // Replaced by user_filter_neighborhoods join table.
+    expect(names).not.toContain("allowed_neighborhoods");
+    expect(names).not.toContain("blocked_neighborhoods");
     // user_id FK cascades from user.id
     const userFk = cfg.foreignKeys.find((f) =>
       f.reference().columns.some((c) => c.name === "user_id"),
@@ -326,6 +327,58 @@ describe("schema: geocode_cache", () => {
   test("address_key is the primary key", () => {
     const cols = getTableColumns(schema.geocodeCache);
     expect(cols.addressKey.primary).toBe(true);
+  });
+});
+
+describe("schema: neighborhoods (gov.il)", () => {
+  test("neighborhood_filter_kind enum exposes allowed + blocked", () => {
+    expect(schema.neighborhoodFilterKindEnum.enumValues).toEqual(["allowed", "blocked"]);
+  });
+
+  test("neighborhoods table has the expected columns and PK", () => {
+    expect(schema.neighborhoods).toBeDefined();
+    const cols = getTableColumns(schema.neighborhoods);
+    expect(cols.id.primary).toBe(true);
+    const names = columnNames(cols);
+    for (const f of [
+      "id",
+      "city_code",
+      "city_name_he",
+      "name_he",
+      "name_en",
+      "center_lat",
+      "center_lon",
+      "aliases",
+      "google_place_id",
+      "source",
+      "updated_at",
+    ]) {
+      expect(names).toContain(f);
+    }
+  });
+
+  test("user_filter_neighborhoods composite PK on (user_id, neighborhood_id, kind)", () => {
+    const cfg = getTableConfig(schema.userFilterNeighborhoods);
+    expect(cfg.primaryKeys).toHaveLength(1);
+    const pk = cfg.primaryKeys[0]!.columns.map((c) => c.name).sort();
+    expect(pk).toEqual(["kind", "neighborhood_id", "user_id"]);
+  });
+
+  test("user_filter_neighborhoods FKs cascade", () => {
+    const cfg = getTableConfig(schema.userFilterNeighborhoods);
+    expect(cfg.foreignKeys.length).toBeGreaterThanOrEqual(2);
+    for (const fk of cfg.foreignKeys) {
+      expect(fk.onDelete).toBe("cascade");
+    }
+  });
+
+  test("apartments and listing_extractions carry a nullable neighborhood_id FK", () => {
+    const apt = getTableColumns(schema.apartments);
+    expect(columnNames(apt)).toContain("neighborhood_id");
+    expect(apt.neighborhoodId.notNull).toBe(false);
+    const ext = getTableColumns(schema.listingExtractions);
+    expect(columnNames(ext)).toContain("neighborhood_id");
+    expect(ext.neighborhoodId.notNull).toBe(false);
   });
 });
 

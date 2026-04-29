@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
   APARTMENT_ATTRIBUTE_KEYS,
   type ApartmentAttributeKey,
@@ -6,13 +6,20 @@ import {
   type Filters,
 } from "@apartment-finder/shared";
 import { getDb } from "@/db";
-import { userFilterAttributes, userFilterTexts, userFilters } from "@/db/schema";
+import {
+  neighborhoods,
+  userFilterAttributes,
+  userFilterNeighborhoods,
+  userFilterTexts,
+  userFilters,
+} from "@/db/schema";
 import { embedText } from "@/ingestion/embed";
 import { createLogger, errorMessage } from "@/lib/log";
 
 const log = createLogger("filters:store");
 
 export type FilterTextKind = "wish" | "dealbreaker";
+export type NeighborhoodFilterKind = "allowed" | "blocked";
 
 export type StoredFilters = Filters & {
   onboardedAt: Date | null;
@@ -25,6 +32,19 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     .select({ key: userFilterAttributes.key, requirement: userFilterAttributes.requirement })
     .from(userFilterAttributes)
     .where(eq(userFilterAttributes.userId, userId));
+  const neighborhoodRows = await db
+    .select({
+      neighborhoodId: userFilterNeighborhoods.neighborhoodId,
+      kind: userFilterNeighborhoods.kind,
+    })
+    .from(userFilterNeighborhoods)
+    .where(eq(userFilterNeighborhoods.userId, userId));
+  const allowedNeighborhoodIds = neighborhoodRows
+    .filter((n) => n.kind === "allowed")
+    .map((n) => n.neighborhoodId);
+  const blockedNeighborhoodIds = neighborhoodRows
+    .filter((n) => n.kind === "blocked")
+    .map((n) => n.neighborhoodId);
 
   if (!row) {
     return {
@@ -34,8 +54,8 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       roomsMax: null,
       sqmMin: null,
       sqmMax: null,
-      allowedNeighborhoods: [],
-      blockedNeighborhoods: [],
+      allowedNeighborhoodIds,
+      blockedNeighborhoodIds,
       wishes: [],
       dealbreakers: [],
       attributes: [],
@@ -53,8 +73,8 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     roomsMax: row.roomsMax,
     sqmMin: row.sqmMin,
     sqmMax: row.sqmMax,
-    allowedNeighborhoods: row.allowedNeighborhoods ?? [],
-    blockedNeighborhoods: row.blockedNeighborhoods ?? [],
+    allowedNeighborhoodIds,
+    blockedNeighborhoodIds,
     wishes: row.wishes ?? [],
     dealbreakers: row.dealbreakers ?? [],
     attributes: attrs,
@@ -73,8 +93,6 @@ type ScalarPatch = Partial<{
   roomsMax: number | null;
   sqmMin: number | null;
   sqmMax: number | null;
-  allowedNeighborhoods: string[];
-  blockedNeighborhoods: string[];
   wishes: string[];
   dealbreakers: string[];
   strictUnknowns: boolean;
@@ -206,14 +224,96 @@ export async function markOnboarded(userId: string): Promise<void> {
   await upsertFilters(userId, { onboardedAt: new Date(), isActive: true });
 }
 
+/** Replace the user's neighborhood selections of a given kind with the given gov.il IDs. */
+export async function replaceNeighborhoods(
+  userId: string,
+  kind: NeighborhoodFilterKind,
+  neighborhoodIds: string[],
+): Promise<void> {
+  const db = getDb();
+  const cleaned = Array.from(new Set(neighborhoodIds.filter((id) => id.trim().length > 0)));
+  await db
+    .delete(userFilterNeighborhoods)
+    .where(and(eq(userFilterNeighborhoods.userId, userId), eq(userFilterNeighborhoods.kind, kind)));
+  if (cleaned.length === 0) return;
+  await db
+    .insert(userFilterNeighborhoods)
+    .values(cleaned.map((neighborhoodId) => ({ userId, neighborhoodId, kind })))
+    .onConflictDoNothing();
+}
+
+/** Add a single neighborhood selection. Used by the chat agent. */
+export async function addNeighborhoodFilter(
+  userId: string,
+  kind: NeighborhoodFilterKind,
+  neighborhoodId: string,
+): Promise<void> {
+  const db = getDb();
+  await db
+    .insert(userFilterNeighborhoods)
+    .values({ userId, neighborhoodId, kind })
+    .onConflictDoNothing();
+}
+
+/** Remove a single neighborhood selection. Used by the chat agent. */
+export async function removeNeighborhoodFilter(
+  userId: string,
+  kind: NeighborhoodFilterKind,
+  neighborhoodId: string,
+): Promise<void> {
+  const db = getDb();
+  await db
+    .delete(userFilterNeighborhoods)
+    .where(
+      and(
+        eq(userFilterNeighborhoods.userId, userId),
+        eq(userFilterNeighborhoods.kind, kind),
+        eq(userFilterNeighborhoods.neighborhoodId, neighborhoodId),
+      ),
+    );
+}
+
+/** Validates that every given ID exists in `neighborhoods`. Returns the subset that does. */
+export async function filterExistingNeighborhoodIds(candidateIds: string[]): Promise<Set<string>> {
+  if (candidateIds.length === 0) return new Set();
+  const db = getDb();
+  const rows = await db
+    .select({ id: neighborhoods.id })
+    .from(neighborhoods)
+    .where(inArray(neighborhoods.id, candidateIds));
+  return new Set(rows.map((r) => r.id));
+}
+
+/** Hydrates a list of neighborhood IDs into `{id, nameHe, cityNameHe}` for UI display.
+ *  IDs missing from the table are silently dropped. Order is preserved. */
+export async function loadNeighborhoodLabels(
+  ids: string[],
+): Promise<Array<{ id: string; nameHe: string; cityNameHe: string }>> {
+  if (ids.length === 0) return [];
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: neighborhoods.id,
+      nameHe: neighborhoods.nameHe,
+      cityNameHe: neighborhoods.cityNameHe,
+    })
+    .from(neighborhoods)
+    .where(inArray(neighborhoods.id, ids));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return ids.flatMap((id) => {
+    const row = byId.get(id);
+    return row ? [row] : [];
+  });
+}
+
 /** Counts active filters; mirrors the shared helper but uses the stored shape. */
 export function countActive(f: StoredFilters): number {
   let count = 0;
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
-  if (f.allowedNeighborhoods.length > 0) count++;
-  if (f.blockedNeighborhoods.length > 0) count++;
+  if (f.allowedNeighborhoodIds.length > 0) count++;
+  if (f.blockedNeighborhoodIds.length > 0) count++;
   for (const a of f.attributes) {
     if (a.requirement !== "dont_care") count++;
   }

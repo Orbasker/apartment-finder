@@ -66,6 +66,11 @@ export const attributeSourceEnum = pgEnum("attribute_source", ["ai", "user", "ma
 
 export const filterTextKindEnum = pgEnum("filter_text_kind", ["wish", "dealbreaker"]);
 
+export const neighborhoodFilterKindEnum = pgEnum("neighborhood_filter_kind", [
+  "allowed",
+  "blocked",
+]);
+
 // ---------------------------------------------------------------------------
 // listings: one row per source observation.
 // ---------------------------------------------------------------------------
@@ -120,6 +125,9 @@ export const listingExtractions = pgTable(
     street: text("street"),
     houseNumber: text("house_number"),
     neighborhood: text("neighborhood"),
+    neighborhoodId: text("neighborhood_id").references(() => neighborhoods.id, {
+      onDelete: "set null",
+    }),
     city: text("city"),
     // Geocoded - populated after Google Geocoding step.
     placeId: text("place_id"),
@@ -151,6 +159,7 @@ export const listingExtractions = pgTable(
     ),
     placeIdIdx: index("listing_extractions_place_id_idx").on(t.placeId),
     geoIdx: index("listing_extractions_geo_idx").on(t.lat, t.lon),
+    neighborhoodIdIdx: index("listing_extractions_neighborhood_id_idx").on(t.neighborhoodId),
   }),
 );
 
@@ -190,6 +199,9 @@ export const apartments = pgTable(
     street: text("street"),
     houseNumber: text("house_number"),
     neighborhood: text("neighborhood"),
+    neighborhoodId: text("neighborhood_id").references(() => neighborhoods.id, {
+      onDelete: "set null",
+    }),
     city: text("city"),
     rooms: real("rooms"),
     sqm: integer("sqm"),
@@ -202,6 +214,7 @@ export const apartments = pgTable(
   (t) => ({
     placeIdIdx: index("apartments_place_id_idx").on(t.placeId),
     geoIdx: index("apartments_geo_idx").on(t.lat, t.lon),
+    neighborhoodIdIdx: index("apartments_neighborhood_id_idx").on(t.neighborhoodId),
   }),
 );
 
@@ -244,14 +257,6 @@ export const userFilters = pgTable("user_filters", {
   roomsMax: real("rooms_max"),
   sqmMin: integer("sqm_min"),
   sqmMax: integer("sqm_max"),
-  allowedNeighborhoods: text("allowed_neighborhoods")
-    .array()
-    .notNull()
-    .default(sql`'{}'::text[]`),
-  blockedNeighborhoods: text("blocked_neighborhoods")
-    .array()
-    .notNull()
-    .default(sql`'{}'::text[]`),
   wishes: text("wishes")
     .array()
     .notNull()
@@ -280,6 +285,54 @@ export const userFilterAttributes = pgTable(
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.key] }),
     reqIdx: index("user_filter_attributes_req_idx").on(t.key, t.requirement),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// neighborhoods: canonical reference seeded from data.gov.il (CKAN). Listings
+// and user filters reference rows here by the gov.il neighborhood code so
+// matching is exact and language-independent.
+// ---------------------------------------------------------------------------
+
+export const neighborhoods = pgTable(
+  "neighborhoods",
+  {
+    id: text("id").primaryKey(),
+    cityCode: text("city_code").notNull(),
+    cityNameHe: text("city_name_he").notNull(),
+    nameHe: text("name_he").notNull(),
+    nameEn: text("name_en"),
+    centerLat: doublePrecision("center_lat"),
+    centerLon: doublePrecision("center_lon"),
+    aliases: jsonb("aliases")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    googlePlaceId: text("google_place_id"),
+    source: text("source").default("gov.il").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    cityCodeIdx: index("neighborhoods_city_code_idx").on(t.cityCode),
+    googlePlaceIdIdx: index("neighborhoods_google_place_id_idx").on(t.googlePlaceId),
+  }),
+);
+
+export const userFilterNeighborhoods = pgTable(
+  "user_filter_neighborhoods",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    neighborhoodId: text("neighborhood_id")
+      .notNull()
+      .references(() => neighborhoods.id, { onDelete: "cascade" }),
+    kind: neighborhoodFilterKindEnum("kind").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.neighborhoodId, t.kind] }),
+    userKindIdx: index("user_filter_neighborhoods_user_kind_idx").on(t.userId, t.kind),
   }),
 );
 
@@ -459,5 +512,9 @@ export type SentAlert = typeof sentAlerts.$inferSelect;
 export type NewSentAlert = typeof sentAlerts.$inferInsert;
 export type GeocodeCache = typeof geocodeCache.$inferSelect;
 export type NewGeocodeCache = typeof geocodeCache.$inferInsert;
+export type Neighborhood = typeof neighborhoods.$inferSelect;
+export type NewNeighborhood = typeof neighborhoods.$inferInsert;
+export type UserFilterNeighborhood = typeof userFilterNeighborhoods.$inferSelect;
+export type NewUserFilterNeighborhood = typeof userFilterNeighborhoods.$inferInsert;
 export type AiUsageRow = typeof aiUsage.$inferSelect;
 export type NewAiUsageRow = typeof aiUsage.$inferInsert;

@@ -34,6 +34,13 @@ const EnvSchema = z.object({
 
   YAD2_PROXY_URL: z.string().url().optional(),
   YAD2_PROXY_SECRET: z.string().optional(),
+
+  // gov.il (data.gov.il) CKAN API for the neighborhoods seed/refresh job.
+  NEIGHBORHOODS_CKAN_BASE: z.string().url().default("https://data.gov.il"),
+  /** CKAN resource_id (UUID) of the dataset table the seed job pulls. Required at seed time. */
+  NEIGHBORHOODS_CKAN_RESOURCE_ID: z.string().uuid().optional(),
+  /** Page size for CKAN datastore_search. Default 1000. */
+  NEIGHBORHOODS_CKAN_PAGE_SIZE: z.coerce.number().int().positive().default(1000),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

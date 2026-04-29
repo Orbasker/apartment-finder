@@ -71,8 +71,10 @@ export const FiltersSchema = z.object({
   roomsMax: z.number().min(0).nullable(),
   sqmMin: z.number().int().positive().nullable(),
   sqmMax: z.number().int().positive().nullable(),
-  allowedNeighborhoods: z.array(z.string()).default([]),
-  blockedNeighborhoods: z.array(z.string()).default([]),
+  // gov.il neighborhood codes (see `neighborhoods` table). Free-text neighborhoods
+  // are no longer accepted; the chat agent and dashboard pick canonical IDs via typeahead.
+  allowedNeighborhoodIds: z.array(z.string()).default([]),
+  blockedNeighborhoodIds: z.array(z.string()).default([]),
   wishes: z.array(z.string()).default([]),
   dealbreakers: z.array(z.string()).default([]),
   attributes: z.array(FilterAttributeSchema).default([]),
@@ -93,8 +95,8 @@ export function countActiveFilters(f: Filters): number {
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
-  if (f.allowedNeighborhoods.length > 0) count++;
-  if (f.blockedNeighborhoods.length > 0) count++;
+  if (f.allowedNeighborhoodIds.length > 0) count++;
+  if (f.blockedNeighborhoodIds.length > 0) count++;
   for (const a of f.attributes) {
     if (a.requirement !== "dont_care") count++;
   }
@@ -109,8 +111,8 @@ export const defaultFilters: Filters = {
   roomsMax: null,
   sqmMin: null,
   sqmMax: null,
-  allowedNeighborhoods: [],
-  blockedNeighborhoods: [],
+  allowedNeighborhoodIds: [],
+  blockedNeighborhoodIds: [],
   wishes: [],
   dealbreakers: [],
   attributes: [],

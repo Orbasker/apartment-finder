@@ -32,5 +32,16 @@
       "errorFallback": "קוד שגוי",
       "changeOrResend": "לשנות כתובת או לשלוח שוב"
     }
+  },
+  "Neighborhoods": {
+    "sectionTitle": "שכונות",
+    "sectionDescription": "בחר/י שכונות מהמאגר הרשמי. השאר/י ריק כדי לא להגביל.",
+    "allowedTitle": "שכונות מותרות",
+    "blockedTitle": "שכונות חסומות",
+    "searchPlaceholder": "חפש/י שכונה",
+    "typeToSearch": "התחל/י להקליד כדי לחפש",
+    "loading": "טוען…",
+    "noResults": "לא נמצאו תוצאות",
+    "removeChip": "הסר/י"
   }
 }

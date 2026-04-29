@@ -7,12 +7,16 @@ import {
   countActiveFilters,
 } from "@apartment-finder/shared";
 import {
+  addNeighborhoodFilter,
   addText,
+  filterExistingNeighborhoodIds,
   loadFilters,
   markOnboarded,
+  removeNeighborhoodFilter,
   setAttribute as setAttr,
   upsertFilters,
 } from "@/filters/store";
+import { searchNeighborhoodsByName } from "@/lib/neighborhoodResolver";
 
 const optInt = z.number().int().nullable();
 const optNum = z.number().nullable();
@@ -55,26 +59,55 @@ export function buildOnboardingTools(userId: string) {
       },
     }),
 
-    addAllowedNeighborhood: tool({
+    searchNeighborhoods: tool({
       description:
-        "Add a Tel Aviv neighborhood the user wants alerts for (Hebrew, exact spelling).",
-      inputSchema: z.object({ name: z.string().min(1) }),
-      execute: async ({ name }) => {
-        const f = await loadFilters(userId);
-        const next = Array.from(new Set([...f.allowedNeighborhoods, name.trim()]));
-        await upsertFilters(userId, { allowedNeighborhoods: next });
-        return { ok: true, allowedNeighborhoods: next };
+        "Search the canonical gov.il neighborhood list (Hebrew). Pass the user's free-text input. Returns up to 5 candidate matches with their canonical id, Hebrew name, and city. ALWAYS call this BEFORE addNeighborhoodFilter so the user picks a canonical match instead of free text. If exactly one obvious candidate comes back, you may proceed; otherwise present them and ask which one.",
+      inputSchema: z.object({
+        query: z.string().min(1),
+        cityNameHe: z
+          .string()
+          .nullable()
+          .describe("Hebrew city name to scope the search, or null for nationwide"),
+      }),
+      execute: async ({ query, cityNameHe }) => {
+        const candidates = await searchNeighborhoodsByName(query, {
+          cityNameHe: cityNameHe ?? undefined,
+          limit: 5,
+        });
+        return { ok: true, candidates };
       },
     }),
 
-    addBlockedNeighborhood: tool({
-      description: "Add a neighborhood the user wants to exclude (e.g. far from work).",
-      inputSchema: z.object({ name: z.string().min(1) }),
-      execute: async ({ name }) => {
-        const f = await loadFilters(userId);
-        const next = Array.from(new Set([...f.blockedNeighborhoods, name.trim()]));
-        await upsertFilters(userId, { blockedNeighborhoods: next });
-        return { ok: true, blockedNeighborhoods: next };
+    addNeighborhoodFilter: tool({
+      description:
+        "Save a canonical neighborhood (by gov.il id from searchNeighborhoods) as either 'allowed' (user wants alerts there) or 'blocked' (excluded). Only call this with an id returned by searchNeighborhoods.",
+      inputSchema: z.object({
+        id: z.string().min(1),
+        kind: z.enum(["allowed", "blocked"]),
+      }),
+      execute: async ({ id, kind }) => {
+        const valid = await filterExistingNeighborhoodIds([id]);
+        if (!valid.has(id)) {
+          return {
+            ok: false,
+            reason: "unknown_neighborhood_id",
+            message: "Neighborhood id not found. Call searchNeighborhoods first.",
+          };
+        }
+        await addNeighborhoodFilter(userId, kind, id);
+        return { ok: true, id, kind };
+      },
+    }),
+
+    removeNeighborhoodFilter: tool({
+      description: "Remove a previously-saved neighborhood selection.",
+      inputSchema: z.object({
+        id: z.string().min(1),
+        kind: z.enum(["allowed", "blocked"]),
+      }),
+      execute: async ({ id, kind }) => {
+        await removeNeighborhoodFilter(userId, kind, id);
+        return { ok: true, id, kind };
       },
     }),
 

@@ -4,7 +4,9 @@ import {
   apartments,
   listingAttributes,
   listingExtractions,
+  neighborhoods,
   userFilterAttributes,
+  userFilterNeighborhoods,
   userFilterTexts,
   userFilters,
 } from "@/db/schema";
@@ -34,6 +36,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
     .select({
       id: apartments.id,
       neighborhood: apartments.neighborhood,
+      neighborhoodId: apartments.neighborhoodId,
       rooms: apartments.rooms,
       sqm: apartments.sqm,
       priceNisLatest: apartments.priceNisLatest,
@@ -50,6 +53,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
   const rooms = apt.rooms;
   const sqm = apt.sqm;
   const neighborhood = apt.neighborhood;
+  const neighborhoodId = apt.neighborhoodId;
 
   // SQL prefilter on user_filters.
   const candidates = await db
@@ -76,7 +80,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
               or(isNull(userFilters.sqmMax), gte(userFilters.sqmMax, sqm)),
               or(isNull(userFilters.sqmMin), lte(userFilters.sqmMin, sqm)),
             ),
-        neighborhoodPredicate(neighborhood),
+        neighborhoodPredicate(neighborhoodId, neighborhood),
       ),
     );
 
@@ -137,17 +141,76 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
   return matched;
 }
 
-function neighborhoodPredicate(neighborhood: string | null) {
-  if (!neighborhood) {
-    // No neighborhood on apartment: only allow users with no allowed-list.
-    return sql`coalesce(array_length(${userFilters.allowedNeighborhoods}, 1), 0) = 0`;
-  }
+/**
+ * Neighborhood predicate against `user_filter_neighborhoods`.
+ *
+ * - Allowed: pass if the user has NO allowed selections, OR if the apartment's
+ *   `neighborhoodId` matches one, OR (fallback for unresolved listings) if the
+ *   apartment's free-text `neighborhood` equals the canonical `name_he` of one
+ *   of the user's allowed selections.
+ * - Blocked: fail if the apartment's `neighborhoodId` matches a blocked
+ *   selection, OR if the free-text `neighborhood` equals the canonical name_he
+ *   of one. Free-text fallback only kicks in when `neighborhoodId` is null on
+ *   the apartment (i.e. resolver couldn't map it).
+ */
+function neighborhoodPredicate(
+  apartmentNeighborhoodId: string | null,
+  apartmentNeighborhood: string | null,
+) {
+  const noAllowedSelections = sql`NOT EXISTS (
+    SELECT 1 FROM ${userFilterNeighborhoods}
+    WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
+      AND ${userFilterNeighborhoods.kind} = 'allowed'
+  )`;
+
+  const allowedById =
+    apartmentNeighborhoodId != null
+      ? sql`EXISTS (
+          SELECT 1 FROM ${userFilterNeighborhoods}
+          WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
+            AND ${userFilterNeighborhoods.kind} = 'allowed'
+            AND ${userFilterNeighborhoods.neighborhoodId} = ${apartmentNeighborhoodId}
+        )`
+      : sql`false`;
+
+  const allowedByText =
+    apartmentNeighborhoodId == null && apartmentNeighborhood != null
+      ? sql`EXISTS (
+          SELECT 1 FROM ${userFilterNeighborhoods}
+          INNER JOIN ${neighborhoods}
+            ON ${neighborhoods.id} = ${userFilterNeighborhoods.neighborhoodId}
+          WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
+            AND ${userFilterNeighborhoods.kind} = 'allowed'
+            AND ${neighborhoods.nameHe} = ${apartmentNeighborhood}
+        )`
+      : sql`false`;
+
+  const blockedById =
+    apartmentNeighborhoodId != null
+      ? sql`EXISTS (
+          SELECT 1 FROM ${userFilterNeighborhoods}
+          WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
+            AND ${userFilterNeighborhoods.kind} = 'blocked'
+            AND ${userFilterNeighborhoods.neighborhoodId} = ${apartmentNeighborhoodId}
+        )`
+      : sql`false`;
+
+  const blockedByText =
+    apartmentNeighborhoodId == null && apartmentNeighborhood != null
+      ? sql`EXISTS (
+          SELECT 1 FROM ${userFilterNeighborhoods}
+          INNER JOIN ${neighborhoods}
+            ON ${neighborhoods.id} = ${userFilterNeighborhoods.neighborhoodId}
+          WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
+            AND ${userFilterNeighborhoods.kind} = 'blocked'
+            AND ${neighborhoods.nameHe} = ${apartmentNeighborhood}
+        )`
+      : sql`false`;
+
   return and(
-    or(
-      sql`coalesce(array_length(${userFilters.allowedNeighborhoods}, 1), 0) = 0`,
-      sql`${neighborhood} = ANY(${userFilters.allowedNeighborhoods})`,
-    ),
-    sql`NOT (${neighborhood} = ANY(${userFilters.blockedNeighborhoods}))`,
+    or(noAllowedSelections, allowedById, allowedByText),
+    sql`NOT (${blockedById})`,
+    sql`NOT (${blockedByText})`,
   );
 }
 

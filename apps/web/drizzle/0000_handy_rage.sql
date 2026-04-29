@@ -1,10 +1,12 @@
 CREATE EXTENSION IF NOT EXISTS vector;--> statement-breakpoint
+CREATE EXTENSION IF NOT EXISTS pg_trgm;--> statement-breakpoint
 CREATE TYPE "public"."apartment_attribute_key" AS ENUM('elevator', 'parking', 'balcony', 'air_conditioning', 'furnished', 'renovated', 'pet_friendly', 'safe_room', 'storage', 'accessible', 'bars', 'ground_floor', 'roof_access', 'shared_apartment', 'garden', 'pool', 'solar_water_heater');--> statement-breakpoint
 CREATE TYPE "public"."attribute_requirement" AS ENUM('required_true', 'required_false', 'preferred_true', 'dont_care');--> statement-breakpoint
 CREATE TYPE "public"."attribute_source" AS ENUM('ai', 'user', 'manual');--> statement-breakpoint
 CREATE TYPE "public"."filter_text_kind" AS ENUM('wish', 'dealbreaker');--> statement-breakpoint
 CREATE TYPE "public"."listing_source" AS ENUM('yad2', 'facebook');--> statement-breakpoint
 CREATE TYPE "public"."listing_status" AS ENUM('pending', 'extracted', 'geocoded', 'embedded', 'unified', 'failed');--> statement-breakpoint
+CREATE TYPE "public"."neighborhood_filter_kind" AS ENUM('allowed', 'blocked');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -54,6 +56,7 @@ CREATE TABLE "apartments" (
 	"street" text,
 	"house_number" text,
 	"neighborhood" text,
+	"neighborhood_id" text,
 	"city" text,
 	"rooms" real,
 	"sqm" integer,
@@ -105,6 +108,7 @@ CREATE TABLE "listing_extractions" (
 	"street" text,
 	"house_number" text,
 	"neighborhood" text,
+	"neighborhood_id" text,
 	"city" text,
 	"place_id" text,
 	"lat" double precision,
@@ -141,6 +145,20 @@ CREATE TABLE "listings" (
 	"status" "listing_status" DEFAULT 'pending' NOT NULL,
 	"failure_reason" text,
 	"retries" smallint DEFAULT 0 NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "neighborhoods" (
+	"id" text PRIMARY KEY NOT NULL,
+	"city_code" text NOT NULL,
+	"city_name_he" text NOT NULL,
+	"name_he" text NOT NULL,
+	"name_en" text,
+	"center_lat" double precision,
+	"center_lon" double precision,
+	"aliases" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"google_place_id" text,
+	"source" text DEFAULT 'gov.il' NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "sent_alerts" (
@@ -186,6 +204,14 @@ CREATE TABLE "user_filter_attributes" (
 	CONSTRAINT "user_filter_attributes_user_id_key_pk" PRIMARY KEY("user_id","key")
 );
 --> statement-breakpoint
+CREATE TABLE "user_filter_neighborhoods" (
+	"user_id" uuid NOT NULL,
+	"neighborhood_id" text NOT NULL,
+	"kind" "neighborhood_filter_kind" NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_filter_neighborhoods_user_id_neighborhood_id_kind_pk" PRIMARY KEY("user_id","neighborhood_id","kind")
+);
+--> statement-breakpoint
 CREATE TABLE "user_filter_texts" (
 	"id" bigserial PRIMARY KEY NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -203,8 +229,6 @@ CREATE TABLE "user_filters" (
 	"rooms_max" real,
 	"sqm_min" integer,
 	"sqm_max" integer,
-	"allowed_neighborhoods" text[] DEFAULT '{}'::text[] NOT NULL,
-	"blocked_neighborhoods" text[] DEFAULT '{}'::text[] NOT NULL,
 	"wishes" text[] DEFAULT '{}'::text[] NOT NULL,
 	"dealbreakers" text[] DEFAULT '{}'::text[] NOT NULL,
 	"strict_unknowns" boolean DEFAULT true NOT NULL,
@@ -227,12 +251,16 @@ CREATE TABLE "verification" (
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "apartment_listings" ADD CONSTRAINT "apartment_listings_apartment_id_apartments_id_fk" FOREIGN KEY ("apartment_id") REFERENCES "public"."apartments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "apartment_listings" ADD CONSTRAINT "apartment_listings_listing_id_listings_id_fk" FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "apartments" ADD CONSTRAINT "apartments_neighborhood_id_neighborhoods_id_fk" FOREIGN KEY ("neighborhood_id") REFERENCES "public"."neighborhoods"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "listing_attributes" ADD CONSTRAINT "listing_attributes_listing_id_listings_id_fk" FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "listing_extractions" ADD CONSTRAINT "listing_extractions_listing_id_listings_id_fk" FOREIGN KEY ("listing_id") REFERENCES "public"."listings"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "listing_extractions" ADD CONSTRAINT "listing_extractions_neighborhood_id_neighborhoods_id_fk" FOREIGN KEY ("neighborhood_id") REFERENCES "public"."neighborhoods"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sent_alerts" ADD CONSTRAINT "sent_alerts_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sent_alerts" ADD CONSTRAINT "sent_alerts_apartment_id_apartments_id_fk" FOREIGN KEY ("apartment_id") REFERENCES "public"."apartments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filter_attributes" ADD CONSTRAINT "user_filter_attributes_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_filter_neighborhoods" ADD CONSTRAINT "user_filter_neighborhoods_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_filter_neighborhoods" ADD CONSTRAINT "user_filter_neighborhoods_neighborhood_id_neighborhoods_id_fk" FOREIGN KEY ("neighborhood_id") REFERENCES "public"."neighborhoods"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filter_texts" ADD CONSTRAINT "user_filter_texts_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filters" ADD CONSTRAINT "user_filters_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "ai_usage_created_at_idx" ON "ai_usage" USING btree ("created_at");--> statement-breakpoint
@@ -240,15 +268,21 @@ CREATE INDEX "ai_usage_feature_idx" ON "ai_usage" USING btree ("feature");--> st
 CREATE UNIQUE INDEX "apartment_listings_listing_unique" ON "apartment_listings" USING btree ("listing_id");--> statement-breakpoint
 CREATE INDEX "apartments_place_id_idx" ON "apartments" USING btree ("place_id");--> statement-breakpoint
 CREATE INDEX "apartments_geo_idx" ON "apartments" USING btree ("lat","lon");--> statement-breakpoint
+CREATE INDEX "apartments_neighborhood_id_idx" ON "apartments" USING btree ("neighborhood_id");--> statement-breakpoint
 CREATE INDEX "listing_attributes_key_value_idx" ON "listing_attributes" USING btree ("key","value");--> statement-breakpoint
 CREATE UNIQUE INDEX "listing_extractions_unique" ON "listing_extractions" USING btree ("listing_id","schema_version");--> statement-breakpoint
 CREATE INDEX "listing_extractions_place_id_idx" ON "listing_extractions" USING btree ("place_id");--> statement-breakpoint
 CREATE INDEX "listing_extractions_geo_idx" ON "listing_extractions" USING btree ("lat","lon");--> statement-breakpoint
+CREATE INDEX "listing_extractions_neighborhood_id_idx" ON "listing_extractions" USING btree ("neighborhood_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "listings_source_unique" ON "listings" USING btree ("source","source_id");--> statement-breakpoint
 CREATE INDEX "listings_status_idx" ON "listings" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "listings_posted_at_idx" ON "listings" USING btree ("posted_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "neighborhoods_city_code_idx" ON "neighborhoods" USING btree ("city_code");--> statement-breakpoint
+CREATE INDEX "neighborhoods_google_place_id_idx" ON "neighborhoods" USING btree ("google_place_id");--> statement-breakpoint
 CREATE INDEX "sent_alerts_sent_at_idx" ON "sent_alerts" USING btree ("sent_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "user_filter_attributes_req_idx" ON "user_filter_attributes" USING btree ("key","requirement");--> statement-breakpoint
+CREATE INDEX "user_filter_neighborhoods_user_kind_idx" ON "user_filter_neighborhoods" USING btree ("user_id","kind");--> statement-breakpoint
+CREATE INDEX "user_filter_texts_user_kind_idx" ON "user_filter_texts" USING btree ("user_id","kind");--> statement-breakpoint
 CREATE INDEX "listing_extractions_embedding_hnsw" ON "listing_extractions" USING hnsw ("embedding" vector_cosine_ops);--> statement-breakpoint
 CREATE INDEX "user_filter_texts_embedding_hnsw" ON "user_filter_texts" USING hnsw ("embedding" vector_cosine_ops);--> statement-breakpoint
-CREATE INDEX "user_filter_texts_user_kind_idx" ON "user_filter_texts" USING btree ("user_id","kind");
+CREATE INDEX "neighborhoods_name_he_trgm_idx" ON "neighborhoods" USING gin ("name_he" gin_trgm_ops);

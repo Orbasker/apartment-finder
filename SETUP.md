@@ -153,8 +153,8 @@ Right now the bot uses the defaults in `packages/shared/src/preferences.ts`:
 ```
 budget.maxNis: 8000
 rooms: { min: 2, max: 4 }
-allowedNeighborhoods: []       ← empty = accepts any TA neighborhood
-blockedNeighborhoods: []
+allowedNeighborhoodIds: []     ← empty = accepts any neighborhood (gov.il IDs)
+blockedNeighborhoodIds: []
 maxAgeHours: 24
 ```
 

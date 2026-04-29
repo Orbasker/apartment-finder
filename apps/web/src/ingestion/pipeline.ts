@@ -7,6 +7,7 @@ import { composeEmbeddingText, embedText } from "@/ingestion/embed";
 import { findOrCreateApartment } from "@/ingestion/unify";
 import { findMatchingUsers } from "@/ingestion/match";
 import { sendInstantAlert } from "@/ingestion/notify";
+import { resolveNeighborhood } from "@/lib/neighborhoodResolver";
 import { createLogger, errorMessage } from "@/lib/log";
 
 const log = createLogger("ingestion:pipeline");
@@ -77,7 +78,25 @@ export async function processListing(listingId: number): Promise<ProcessOutcome>
     const embedding = embeddingText.length > 0 ? await embedText(embeddingText) : null;
     await markStatus(listingId, "embedded");
 
-    // 4) persist extraction
+    // 4a) resolve canonical gov.il neighborhood id (best-effort).
+    const neighborhoodFreeText = extracted.neighborhood ?? geo.neighborhood ?? null;
+    const neighborhoodCity = extracted.city ?? geo.city ?? null;
+    const resolvedNeighborhood = await resolveNeighborhood({
+      googlePlaceId: geo.placeId,
+      cityNameHe: neighborhoodCity,
+      rawText: neighborhoodFreeText,
+      lat: geo.lat,
+      lon: geo.lon,
+    });
+    if (!resolvedNeighborhood && neighborhoodFreeText) {
+      log.info("neighborhood not resolved", {
+        listingId,
+        rawText: neighborhoodFreeText,
+        city: neighborhoodCity,
+      });
+    }
+
+    // 4b) persist extraction
     const [extractionRow] = await db
       .insert(listingExtractions)
       .values({
@@ -92,6 +111,7 @@ export async function processListing(listingId: number): Promise<ProcessOutcome>
         street: extracted.street ?? geo.street,
         houseNumber: extracted.houseNumber ?? geo.houseNumber,
         neighborhood: extracted.neighborhood ?? geo.neighborhood,
+        neighborhoodId: resolvedNeighborhood?.id ?? null,
         city: extracted.city ?? geo.city,
         placeId: geo.placeId,
         lat: geo.lat,
@@ -141,6 +161,7 @@ export async function processListing(listingId: number): Promise<ProcessOutcome>
       street: extracted.street ?? geo.street,
       houseNumber: extracted.houseNumber ?? geo.houseNumber,
       neighborhood: extracted.neighborhood ?? geo.neighborhood,
+      neighborhoodId: resolvedNeighborhood?.id ?? null,
       city: extracted.city ?? geo.city,
       floor: extracted.floor,
       priceNis: extracted.priceNis,
