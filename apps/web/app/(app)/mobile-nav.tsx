@@ -7,7 +7,6 @@ import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { links } from "./nav-links";
 import { signOutAction } from "./profile-actions";
 
@@ -115,23 +114,20 @@ export function MobileNav({ email }: { email: string | null }) {
               <bdi>{display}</bdi>
             </p>
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <ThemeToggle />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() =>
-                start(async () => {
-                  await signOutAction();
-                })
-              }
-              className="flex-1 text-destructive"
-            >
-              {pending && <Spinner className="h-4 w-4" />}
-              {pending ? "מתנתק/ת…" : "התנתקות"}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                await signOutAction();
+              })
+            }
+            className="w-full text-destructive"
+          >
+            {pending && <Spinner className="h-4 w-4" />}
+            {pending ? "מתנתק/ת…" : "התנתקות"}
+          </Button>
         </div>
       </div>
     </>

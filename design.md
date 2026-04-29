@@ -75,8 +75,8 @@ Custom relative-unit sizes registered via `@theme` so they're usable as `text-2x
 
 ## Spacing & layout
 
-- **Container.** App pages: `max-w-3xl`. Landing page: `max-w-5xl`. Login card: `max-w-md`. Dashboard content: `max-w-2xl`.
-- **Page padding.** `px-4 py-4 sm:px-6 sm:py-6` - never less on mobile.
+- **Container.** Landing page: `max-w-5xl`. Login card: `max-w-md`. Onboarding shell: `max-w-3xl`. Authenticated admin shell is **full-bleed** (no shell-level max-width); each page picks its own inner cap (see "Per-page width policy" below).
+- **Page padding.** Mobile: `px-4 py-4 sm:px-6 sm:py-6`. Admin shell adds `md:px-8 md:py-8` on main once the fixed sidebar is in play. Never less on mobile.
 - **Section rhythm.** Major landing sections separated by `mt-16 sm:mt-24`.
 - **Stack gap.** `gap-2` (tight), `gap-3` (default), `gap-4` to `gap-6` (loose).
 - **Card padding.** `p-4` (compact) / `p-5` (default, from `Card`) / `p-6 sm:p-10` (hero-card).
@@ -153,9 +153,46 @@ The page is composed top-down:
 5. **Chat preview** - replicates the real onboarding UI exactly, with three bullet-cards explaining the value to its right.
 6. **Final CTA** - flat `bg-card` panel with rounded corners, single H2, two buttons; copy switches with auth state.
 
-### Authenticated app (`/dashboard`, `/filters`, `/onboarding`)
+### Authenticated app
 
-Wrapped in `(app)/layout.tsx`: a `max-w-3xl` container with a header (mobile hamburger or desktop nav). Content uses `Card` blocks with internal section headers. The brand wordmark and "בית" link both point to `/dashboard`.
+Two distinct shells live under `app/(app)/`:
+
+**1. Onboarding shell (`/onboarding`)** - minimal, used only for the first-run chat wizard. The parent `(app)/layout.tsx` is brand-only, no nav, no sidebar - the chat owns the screen so users don't see destinations they can't yet use. Logged-out users are redirected to `/login`; the chat completes by hard-redirecting to `/matches`.
+
+**2. Admin shell (`(app)/(onboarded)/layout.tsx`)** - wraps every post-onboarding route (`/matches`, `/filters`, `/settings`). It enforces both auth and the onboarding gate: any logged-in user without `onboardedAt` is redirected to `/onboarding`. So adding a new authenticated route is a matter of dropping a folder under `(onboarded)/` - the gate is automatic. `/dashboard` and `/notifications` are kept as redirects to `/matches` and `/settings#notifications` so old bookmarks still resolve.
+
+#### Information architecture
+
+The nav has exactly three items: **דירות** (`/matches`, the home), **תנאים** (`/filters`, the search criteria editor), **הגדרות** (`/settings`). There is no separate /dashboard or /notifications page - matches IS the home, and notifications/theme/account all live as sections inside settings. This keeps the surface area tight: one place for outputs (matches), one place for inputs (filters), one place for account-level configuration (settings).
+
+The admin shell is a full-bleed two-pane layout, not a centered max-width column:
+
+- **Mobile (< md)**: top bar with hamburger (`MobileNav` drawer) + brand wordmark. Main content below at full width with `px-4 py-4` page padding. The drawer is the only nav. Theme toggle is NOT in the shell - it lives in `/settings`.
+- **Desktop (≥ md)**: a fixed right-side sidebar pinned to the viewport edge (`md:fixed md:inset-y-0 md:start-0 md:w-64`, `border-e` for the divider). Main content is offset with `md:ms-64` so it never sits under the sidebar, and gets `md:px-8 md:py-8` page padding. The sidebar holds the brand at top, vertical `SidebarNav` (links rendered one per row, full-width clickable, `aria-current="page"` for the active route), and pins the user menu to the bottom via `mt-auto`. RTL-correct because `start` resolves to the right side under `dir="rtl"`. Theme toggle does NOT live in the sidebar - it lives in `/settings`.
+
+The shell is intentionally "fixed" and not "sticky": with sticky-in-grid the cell can grow with content and scrolling math gets fiddly, while a fixed sidebar plus a margin offset on main is the standard admin pattern and survives any page height. The sidebar uses `md:overflow-y-auto` so its own contents scroll if the nav ever exceeds viewport height.
+
+#### Per-page width policy
+
+The shell is full-bleed, and **content is NOT centered with `mx-auto`** - it pins to the start side (right in RTL) so reading begins where the eye lands first. Wide pages (matches, settings) fill the available width so cards have room to breathe; narrow pages (filters form) cap at `max-w-2xl` for readability but still anchor to the start side, never centered.
+
+| Route                         | Inner width                    | Why                                                                      |
+| ----------------------------- | ------------------------------ | ------------------------------------------------------------------------ |
+| `/matches`, `/matches/[id]`   | `w-full` (no cap)              | Inbox feed needs every pixel; detail page has map + extracted fields.     |
+| `/settings`                   | `w-full` (no cap)              | Multi-card grid + embedded notifications form scale with viewport.        |
+| `/filters`                    | `w-full max-w-2xl` (RTL-start) | Form reads better narrow but still hugs the right edge, never centered.  |
+
+Pre-onboarding `/onboarding` lives in the parent `(app)` shell, which keeps a centered `max-w-3xl` column - the wizard is a single conversation and the only place where `mx-auto` is fine because there is no surrounding chrome to anchor against.
+
+#### Responsive page layouts
+
+Pages are mobile-first single-column stacks that promote to multi-column grids on desktop. The stack gap is `gap-4 sm:gap-6`. The most common patterns:
+
+- **Hero-then-grid** (e.g. matches dashboard pattern): full-width header, then `md:grid md:grid-cols-[2fr_1fr]` for a wide main column (actions, recent matches) and a narrower aside (status). The aside uses `<aside>` semantics, not just a sidebar visual.
+- **Symmetric card grid** (`/settings`): `lg:grid-cols-2` (NOT `md:grid-cols-2`) for compact paired cards (account + theme). At md the sidebar already eats 16rem of the viewport, so splitting cards into two columns there crushes them; cards stay full-width until lg+. Full-width sections below for embedded forms (notifications) and one-off actions (restart onboarding).
+- **Single-column form** (`/filters`): no breakpoint switch; the form stays linear at `max-w-2xl` regardless of viewport. Sections inside a form may use `sm:grid-cols-2` for tightly paired inputs (e.g. min/max price).
+
+Don't introduce three-column layouts in the main pane - the fixed sidebar already counts as one column visually, so a 3-col grid inside main reads as four total and crowds quickly.
 
 ### Login (`/login`)
 
@@ -182,11 +219,22 @@ apps/web/
 │   │   ├── brand-icons.tsx          # Custom brand SVG marks
 │   │   ├── ai-extractor.tsx         # Animated extractor demo
 │   │   └── chat-preview.tsx         # Scripted onboarding preview
-│   ├── (app)/                       # Authenticated app shell
-│   │   ├── layout.tsx               # Header + nav
-│   │   ├── dashboard/page.tsx       # Dashboard (was at /, now /dashboard)
-│   │   ├── onboarding/chat-ui.tsx   # Real AI onboarding chat
-│   │   └── filters/form.tsx         # Filter editor
+│   ├── (app)/                       # Authenticated routes
+│   │   ├── layout.tsx               # Minimal brand-only shell (used by /onboarding)
+│   │   ├── nav-links.tsx            # `links`, `HeaderBrandLink`, `SidebarNav`
+│   │   ├── mobile-nav.tsx           # Hamburger drawer (mobile)
+│   │   ├── user-menu.tsx            # Avatar + dropdown
+│   │   ├── onboarding/              # First-run chat wizard (no nav)
+│   │   │   ├── page.tsx             # Centered shell + skip-to-manual button
+│   │   │   ├── chat-ui.tsx          # Real AI onboarding chat
+│   │   │   └── skip.action.ts       # markOnboarded then redirect to /filters
+│   │   └── (onboarded)/             # Admin shell - gates onboardedAt
+│   │       ├── layout.tsx           # Fixed sidebar (md+) + mobile top bar
+│   │       ├── matches/page.tsx     # Home: inbox feed (placeholder for now)
+│   │       ├── filters/             # Search criteria editor (תנאים)
+│   │       ├── settings/            # Account, theme, notifications, restart
+│   │       ├── notifications/       # Form lives here, page.tsx redirects to /settings#notifications
+│   │       └── dashboard/page.tsx   # Redirect to /matches (legacy bookmarks)
 │   └── login/                       # Email OTP + Google OAuth
 └── src/
     ├── components/ui/               # Button, Card, Input, Spinner, ThemeToggle, …

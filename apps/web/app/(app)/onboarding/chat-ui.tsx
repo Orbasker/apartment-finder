@@ -3,10 +3,11 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import Link from "next/link";
 import { pickCityAction } from "./city-pick.action";
 import { pickNeighborhoodAction } from "./neighborhood-pick.action";
 
@@ -23,6 +24,7 @@ const FIRST_PROMPT =
   "שלום! בכמה שאלות נכין לך התראות מדויקות לדירות. אפשר להוסיף כמה ערים שונות, וכל עיר עם השכונות שלה. נתחיל - באיזו עיר ראשונה את/ה מחפש/ת דירה?";
 
 export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean }) {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
   const [pickedCityIds, setPickedCityIds] = useState<Set<string>>(new Set());
@@ -181,13 +183,17 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
         {completed && (
           <div
             role="status"
-            className="rounded-md border border-success/30 bg-success/10 p-3 text-sm"
+            className="flex flex-col gap-2 rounded-md border border-success/30 bg-success/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
           >
-            🎉 סיימנו! ההתראות פעילות. אפשר לערוך בכל רגע ב־
-            <Link href="/filters" className="underline">
-              /filters
-            </Link>
-            .
+            <span>🎉 סיימנו! ההתראות פעילות.</span>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => router.replace("/matches")}
+              className="shrink-0"
+            >
+              המשך לדשבורד
+            </Button>
           </div>
         )}
       </div>

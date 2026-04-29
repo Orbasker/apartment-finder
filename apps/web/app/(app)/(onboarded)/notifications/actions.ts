@@ -35,7 +35,7 @@ export async function saveNotificationsAction(formData: FormData): Promise<SaveR
   }
 
   await upsertDestinations(user.id, { emailEnabled: email, telegramEnabled: telegram });
-  revalidatePath("/notifications");
+  revalidatePath("/settings");
   return { ok: true };
 }
 
@@ -76,6 +76,6 @@ export async function disconnectTelegramAction(): Promise<SaveResult> {
   // Also invalidate any unconsumed link tokens this user has minted.
   await db.delete(telegramLinkTokens).where(eq(telegramLinkTokens.userId, user.id));
 
-  revalidatePath("/notifications");
+  revalidatePath("/settings");
   return { ok: true };
 }

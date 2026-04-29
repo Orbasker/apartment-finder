@@ -6,17 +6,17 @@ import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 
 export const links = [
-  { href: "/dashboard", label: "בית" },
-  { href: "/filters", label: "סינונים" },
-  { href: "/onboarding", label: "צ׳אט" },
+  { href: "/matches", label: "דירות" },
+  { href: "/filters", label: "תנאים" },
+  { href: "/settings", label: "הגדרות" },
 ] as const;
 
 export function HeaderBrandLink() {
   return (
     <Link
-      href="/dashboard"
+      href="/matches"
       prefetch
-      className="inline-flex items-center gap-2 text-lg font-semibold"
+      className="inline-flex items-center gap-2 text-lg font-semibold tracking-tight"
     >
       <LinkPendingIndicator />
       Apartment Finder
@@ -24,22 +24,23 @@ export function HeaderBrandLink() {
   );
 }
 
-export function PrimaryNav() {
+export function SidebarNav() {
   const pathname = usePathname();
   return (
-    <nav className="flex items-center gap-3 whitespace-nowrap text-sm sm:gap-4">
+    <nav aria-label="ניווט ראשי" className="flex flex-col gap-1 text-sm">
       {links.map((l) => {
-        const isActive = pathname.startsWith(l.href);
+        const isActive = pathname === l.href || pathname.startsWith(`${l.href}/`);
         return (
           <Link
             key={l.href}
             href={l.href}
             prefetch
+            aria-current={isActive ? "page" : undefined}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors",
+              "inline-flex items-center gap-2 rounded-md px-3 py-2 transition-colors",
               isActive
                 ? "bg-muted font-medium text-foreground"
-                : "text-muted-foreground hover:text-foreground",
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
             <LinkPendingIndicator />
