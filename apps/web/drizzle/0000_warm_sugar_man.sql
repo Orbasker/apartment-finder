@@ -1,3 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS vector;--> statement-breakpoint
 CREATE TYPE "public"."apartment_attribute_key" AS ENUM('elevator', 'parking', 'balcony', 'air_conditioning', 'furnished', 'renovated', 'pet_friendly', 'safe_room', 'storage', 'accessible', 'bars', 'ground_floor', 'roof_access', 'shared_apartment', 'garden', 'pool', 'solar_water_heater');--> statement-breakpoint
 CREATE TYPE "public"."attribute_requirement" AS ENUM('required_true', 'required_false', 'preferred_true', 'dont_care');--> statement-breakpoint
 CREATE TYPE "public"."attribute_source" AS ENUM('ai', 'user', 'manual');--> statement-breakpoint
