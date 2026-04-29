@@ -177,7 +177,7 @@ export async function processListing(listingId: number): Promise<ProcessOutcome>
         apartmentId: unify.apartmentId,
         matchedAttributes: m.matchedAttributes,
       });
-      if (outcome.sent) alertsSent++;
+      alertsSent += outcome.channels.filter((c) => c.status === "sent").length;
     }
 
     return {

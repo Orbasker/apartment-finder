@@ -41,6 +41,10 @@ const EnvSchema = z.object({
   NEIGHBORHOODS_CKAN_RESOURCE_ID: z.string().uuid().optional(),
   /** Page size for CKAN datastore_search. Default 1000. */
   NEIGHBORHOODS_CKAN_PAGE_SIZE: z.coerce.number().int().positive().default(1000),
+
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
+  NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

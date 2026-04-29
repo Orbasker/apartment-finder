@@ -8,9 +8,8 @@ import { createLogger } from "@/lib/log";
 // Resolution order (first match wins):
 //   1. googlePlaceId  →  exact match on neighborhoods.google_place_id
 //   2. exact name_he  (case + whitespace normalized) within the city if known
-//   3. alias hit      (canonical row's `aliases` jsonb array contains the text)
-//   4. fuzzy          (pg_trgm similarity > FUZZY_THRESHOLD on name_he)
-//   5. geo            (nearest center within GEO_RADIUS_KM, scoped to city)
+//   3. fuzzy          (pg_trgm similarity > FUZZY_THRESHOLD on name_he)
+//   4. geo            (nearest center within GEO_RADIUS_KM, scoped to city)
 // ---------------------------------------------------------------------------
 
 const log = createLogger("neighborhoodResolver");
@@ -27,7 +26,7 @@ export type ResolverInput = {
   lon?: number | null;
 };
 
-export type ResolverConfidence = "placeId" | "exact" | "alias" | "fuzzy" | "geo";
+export type ResolverConfidence = "placeId" | "exact" | "fuzzy" | "geo";
 
 export type ResolverResult = {
   id: string;
@@ -92,26 +91,7 @@ export async function resolveNeighborhood(input: ResolverInput): Promise<Resolve
     if (hit) return { ...hit, confidence: "exact" };
   }
 
-  // 3. alias hit (jsonb @> '[<text>]').
-  if (norm) {
-    const aliasJson = JSON.stringify([norm]);
-    const aliasWhere = cityFilter
-      ? and(cityFilter, sql`${neighborhoods.aliases} @> ${aliasJson}::jsonb`)
-      : sql`${neighborhoods.aliases} @> ${aliasJson}::jsonb`;
-    const [hit] = await db
-      .select({
-        id: neighborhoods.id,
-        nameHe: neighborhoods.nameHe,
-        cityNameHe: neighborhoods.cityNameHe,
-        cityCode: neighborhoods.cityCode,
-      })
-      .from(neighborhoods)
-      .where(aliasWhere)
-      .limit(1);
-    if (hit) return { ...hit, confidence: "alias" };
-  }
-
-  // 4. fuzzy via pg_trgm similarity.
+  // 3. fuzzy via pg_trgm similarity.
   if (norm && norm.length >= 2) {
     const fuzzyWhere = cityFilter
       ? and(cityFilter, sql`similarity(${neighborhoods.nameHe}, ${norm}) > ${FUZZY_THRESHOLD}`)
@@ -140,7 +120,7 @@ export async function resolveNeighborhood(input: ResolverInput): Promise<Resolve
     }
   }
 
-  // 5. geo fallback (Haversine in km, scoped to city if available).
+  // 4. geo fallback (Haversine in km, scoped to city if available).
   if (input.lat != null && input.lon != null) {
     const geoWhere = cityFilter
       ? and(

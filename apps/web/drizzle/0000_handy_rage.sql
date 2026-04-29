@@ -155,7 +155,6 @@ CREATE TABLE "neighborhoods" (
 	"name_en" text,
 	"center_lat" double precision,
 	"center_lon" double precision,
-	"aliases" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"google_place_id" text,
 	"source" text DEFAULT 'gov.il' NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL

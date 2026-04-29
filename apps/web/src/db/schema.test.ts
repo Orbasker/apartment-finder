@@ -28,8 +28,11 @@ describe("schema: legacy tables removed", () => {
     expect(s.pendingPatches).toBeUndefined();
     expect(s.monitoredGroups).toBeUndefined();
     expect(s.userGroupSubscriptions).toBeUndefined();
+    // Telegram came back in APA-7, but as a different shape: a single
+    // `telegram_link_tokens` table for the deep-link flow plus
+    // `user_notification_destinations` for the per-user channel toggles.
+    // The pre-PR1 `telegramLinks` table is still gone.
     expect(s.telegramLinks).toBeUndefined();
-    expect(s.telegramLinkTokens).toBeUndefined();
   });
 });
 
@@ -307,11 +310,11 @@ describe("schema: user_filter_texts (embedded wishes/dealbreakers)", () => {
 });
 
 describe("schema: sent_alerts", () => {
-  test("composite PK on (user_id, apartment_id)", () => {
+  test("composite PK on (user_id, apartment_id, destination) for per-channel dedup", () => {
     const cfg = getTableConfig(schema.sentAlerts);
     expect(cfg.primaryKeys).toHaveLength(1);
     const pk = cfg.primaryKeys[0]!.columns.map((c) => c.name).sort();
-    expect(pk).toEqual(["apartment_id", "user_id"]);
+    expect(pk).toEqual(["apartment_id", "destination", "user_id"]);
   });
 
   test("both FKs cascade", () => {
@@ -320,6 +323,52 @@ describe("schema: sent_alerts", () => {
     for (const fk of cfg.foreignKeys) {
       expect(fk.onDelete).toBe("cascade");
     }
+  });
+
+  test("destination column exists with default 'email'", () => {
+    const cols = getTableColumns(schema.sentAlerts);
+    expect(cols.destination).toBeDefined();
+    expect(cols.destination.notNull).toBe(true);
+    expect((cols.destination as unknown as { default: unknown }).default).toBe("email");
+  });
+});
+
+describe("schema: user_notification_destinations", () => {
+  test("table exists with expected columns + 1:1 user PK", () => {
+    expect(schema.userNotificationDestinations).toBeDefined();
+    const cols = getTableColumns(schema.userNotificationDestinations);
+    expect(cols.userId.primary).toBe(true);
+    const names = columnNames(cols);
+    for (const f of [
+      "user_id",
+      "email_enabled",
+      "telegram_enabled",
+      "telegram_chat_id",
+      "telegram_linked_at",
+      "updated_at",
+    ]) {
+      expect(names).toContain(f);
+    }
+  });
+
+  test("email default true, telegram default false", () => {
+    const cols = getTableColumns(schema.userNotificationDestinations);
+    expect((cols.emailEnabled as unknown as { default: unknown }).default).toBe(true);
+    expect((cols.telegramEnabled as unknown as { default: unknown }).default).toBe(false);
+  });
+});
+
+describe("schema: telegram_link_tokens", () => {
+  test("token PK + userId FK cascades", () => {
+    expect(schema.telegramLinkTokens).toBeDefined();
+    const cols = getTableColumns(schema.telegramLinkTokens);
+    expect(cols.token.primary).toBe(true);
+    const cfg = getTableConfig(schema.telegramLinkTokens);
+    const userFk = cfg.foreignKeys.find((f) =>
+      f.reference().columns.some((c) => c.name === "user_id"),
+    );
+    expect(userFk).toBeDefined();
+    expect(userFk!.onDelete).toBe("cascade");
   });
 });
 
@@ -348,7 +397,6 @@ describe("schema: neighborhoods (gov.il)", () => {
       "name_en",
       "center_lat",
       "center_lon",
-      "aliases",
       "google_place_id",
       "source",
       "updated_at",
@@ -409,9 +457,11 @@ describe("schema: type exports compile", () => {
     const _ufa: schema.UserFilterAttribute | null = null;
     const _uft: schema.UserFilterText | null = null;
     const _sa: schema.SentAlert | null = null;
+    const _und: schema.UserNotificationDestinations | null = null;
+    const _tlt: schema.TelegramLinkToken | null = null;
     const _gc: schema.GeocodeCache | null = null;
-    expect([_l, _nl, _le, _la, _a, _al, _uf, _ufa, _uft, _sa, _gc].every((v) => v === null)).toBe(
-      true,
-    );
+    expect(
+      [_l, _nl, _le, _la, _a, _al, _uf, _ufa, _uft, _sa, _und, _tlt, _gc].every((v) => v === null),
+    ).toBe(true);
   });
 });

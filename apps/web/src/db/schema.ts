@@ -71,6 +71,11 @@ export const neighborhoodFilterKindEnum = pgEnum("neighborhood_filter_kind", [
   "blocked",
 ]);
 
+export const notificationDestinationEnum = pgEnum("notification_destination", [
+  "email",
+  "telegram",
+]);
+
 // ---------------------------------------------------------------------------
 // listings: one row per source observation.
 // ---------------------------------------------------------------------------
@@ -304,10 +309,6 @@ export const neighborhoods = pgTable(
     nameEn: text("name_en"),
     centerLat: doublePrecision("center_lat"),
     centerLon: doublePrecision("center_lon"),
-    aliases: jsonb("aliases")
-      .$type<string[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
     googlePlaceId: text("google_place_id"),
     source: text("source").default("gov.il").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -357,7 +358,9 @@ export const userFilterTexts = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// sent_alerts: outbox dedup. One alert per (user, apartment).
+// sent_alerts: outbox dedup. One alert per (user, apartment, destination) so
+// the same listing can fan out to email and Telegram independently and we
+// don't double-send if the same channel reruns.
 // ---------------------------------------------------------------------------
 
 export const sentAlerts = pgTable(
@@ -369,12 +372,61 @@ export const sentAlerts = pgTable(
     apartmentId: integer("apartment_id")
       .notNull()
       .references(() => apartments.id, { onDelete: "cascade" }),
+    destination: notificationDestinationEnum("destination").default("email").notNull(),
     sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
-    resendMessageId: text("resend_message_id"),
+    providerMessageId: text("provider_message_id"),
   },
   (t) => ({
-    pk: primaryKey({ columns: [t.userId, t.apartmentId] }),
+    pk: primaryKey({ columns: [t.userId, t.apartmentId, t.destination] }),
     sentAtIdx: index("sent_alerts_sent_at_idx").on(t.sentAt.desc()),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// user_notification_destinations: per-user toggles for each delivery channel,
+// plus the Telegram chat binding once the user has linked the bot. 1:1 with
+// `user`. CHECK constraint mirrored in the application layer keeps at least
+// one channel enabled.
+// ---------------------------------------------------------------------------
+
+export const userNotificationDestinations = pgTable(
+  "user_notification_destinations",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    emailEnabled: boolean("email_enabled").default(true).notNull(),
+    telegramEnabled: boolean("telegram_enabled").default(false).notNull(),
+    telegramChatId: text("telegram_chat_id"),
+    telegramLinkedAt: timestamp("telegram_linked_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    telegramChatUnique: uniqueIndex("user_notification_destinations_telegram_chat_unique")
+      .on(t.telegramChatId)
+      .where(sql`${t.telegramChatId} IS NOT NULL`),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// telegram_link_tokens: short-lived tokens minted when a user starts the
+// "connect Telegram" deep-link flow. The bot looks the token up on /start and
+// binds the chat ID to the user. 15-minute TTL, single-use.
+// ---------------------------------------------------------------------------
+
+export const telegramLinkTokens = pgTable(
+  "telegram_link_tokens",
+  {
+    token: text("token").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    userExpiresIdx: index("telegram_link_tokens_user_expires_idx").on(t.userId, t.expiresAt),
   }),
 );
 
@@ -510,6 +562,10 @@ export type UserFilterText = typeof userFilterTexts.$inferSelect;
 export type NewUserFilterText = typeof userFilterTexts.$inferInsert;
 export type SentAlert = typeof sentAlerts.$inferSelect;
 export type NewSentAlert = typeof sentAlerts.$inferInsert;
+export type UserNotificationDestinations = typeof userNotificationDestinations.$inferSelect;
+export type NewUserNotificationDestinations = typeof userNotificationDestinations.$inferInsert;
+export type TelegramLinkToken = typeof telegramLinkTokens.$inferSelect;
+export type NewTelegramLinkToken = typeof telegramLinkTokens.$inferInsert;
 export type GeocodeCache = typeof geocodeCache.$inferSelect;
 export type NewGeocodeCache = typeof geocodeCache.$inferInsert;
 export type Neighborhood = typeof neighborhoods.$inferSelect;

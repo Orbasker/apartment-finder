@@ -75,8 +75,13 @@ if (!force) {
 const sql = postgres(url, { prepare: false, max: 1, onnotice: () => {} });
 
 try {
-  console.log("→ dropping public schema");
+  console.log("→ dropping public + drizzle schemas");
+  // Also drop the `drizzle` schema, which holds drizzle's `__drizzle_migrations`
+  // bookkeeping table. Without this, a partial reset would convince the migrator
+  // that earlier migrations had already run and it would skip them, leaving the
+  // public schema empty when later migrations tried to ALTER non-existent tables.
   await sql.unsafe(`
+    DROP SCHEMA IF EXISTS drizzle CASCADE;
     DROP SCHEMA public CASCADE;
     CREATE SCHEMA public;
     GRANT ALL ON SCHEMA public TO public;
