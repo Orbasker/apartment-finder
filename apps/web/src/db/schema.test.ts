@@ -262,8 +262,6 @@ describe("schema: user_filters + user_filter_attributes", () => {
       "rooms_max",
       "sqm_min",
       "sqm_max",
-      "allowed_neighborhoods",
-      "blocked_neighborhoods",
       "wishes",
       "dealbreakers",
       "strict_unknowns",
@@ -275,6 +273,9 @@ describe("schema: user_filters + user_filter_attributes", () => {
     ]) {
       expect(names).toContain(f);
     }
+    // Replaced by user_filter_neighborhoods join table.
+    expect(names).not.toContain("allowed_neighborhoods");
+    expect(names).not.toContain("blocked_neighborhoods");
     // user_id FK cascades from user.id
     const userFk = cfg.foreignKeys.find((f) =>
       f.reference().columns.some((c) => c.name === "user_id"),
@@ -375,6 +376,51 @@ describe("schema: geocode_cache", () => {
   test("address_key is the primary key", () => {
     const cols = getTableColumns(schema.geocodeCache);
     expect(cols.addressKey.primary).toBe(true);
+  });
+});
+
+describe("schema: user_filter_cities", () => {
+  test("composite PK on (user_id, place_id)", () => {
+    const cfg = getTableConfig(schema.userFilterCities);
+    expect(cfg.primaryKeys).toHaveLength(1);
+    const pk = cfg.primaryKeys[0]!.columns.map((c) => c.name).sort();
+    expect(pk).toEqual(["place_id", "user_id"]);
+  });
+
+  test("FK to user cascades", () => {
+    const cfg = getTableConfig(schema.userFilterCities);
+    for (const fk of cfg.foreignKeys) {
+      expect(fk.onDelete).toBe("cascade");
+    }
+  });
+});
+
+describe("schema: user_filter_neighborhoods (Google Places)", () => {
+  test("neighborhood_filter_kind enum exposes allowed + blocked", () => {
+    expect(schema.neighborhoodFilterKindEnum.enumValues).toEqual(["allowed", "blocked"]);
+  });
+
+  test("user_filter_neighborhoods carries cached Google place_id + display name + city", () => {
+    const cols = getTableColumns(schema.userFilterNeighborhoods);
+    const names = columnNames(cols);
+    for (const f of ["user_id", "place_id", "name_he", "city_name_he", "kind", "created_at"]) {
+      expect(names).toContain(f);
+    }
+  });
+
+  test("user_filter_neighborhoods composite PK on (user_id, place_id, kind)", () => {
+    const cfg = getTableConfig(schema.userFilterNeighborhoods);
+    expect(cfg.primaryKeys).toHaveLength(1);
+    const pk = cfg.primaryKeys[0]!.columns.map((c) => c.name).sort();
+    expect(pk).toEqual(["kind", "place_id", "user_id"]);
+  });
+
+  test("user_filter_neighborhoods FK to user cascades", () => {
+    const cfg = getTableConfig(schema.userFilterNeighborhoods);
+    expect(cfg.foreignKeys.length).toBeGreaterThanOrEqual(1);
+    for (const fk of cfg.foreignKeys) {
+      expect(fk.onDelete).toBe("cascade");
+    }
   });
 });
 

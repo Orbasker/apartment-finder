@@ -64,6 +64,26 @@ export const FilterAttributeSchema = z.object({
 });
 export type FilterAttribute = z.infer<typeof FilterAttributeSchema>;
 
+// City the user is searching in (Google Places `place_id` + Hebrew display name).
+// Scopes the neighborhood pickers and is matched against `apartments.city`.
+export const CitySelectionSchema = z.object({
+  placeId: z.string().min(1),
+  nameHe: z.string().min(1),
+});
+export type CitySelection = z.infer<typeof CitySelectionSchema>;
+
+// Each neighborhood selection caches Google Places' place_id + display name +
+// the city's place_id + city name (denormalized). The cityPlaceId is the FK
+// link to user_filter_cities; the cityNameHe is kept on the row for fast
+// match-time text comparison without a join.
+export const NeighborhoodSelectionSchema = z.object({
+  placeId: z.string().min(1),
+  nameHe: z.string().min(1),
+  cityPlaceId: z.string().min(1),
+  cityNameHe: z.string().min(1),
+});
+export type NeighborhoodSelection = z.infer<typeof NeighborhoodSelectionSchema>;
+
 export const FiltersSchema = z.object({
   priceMinNis: z.number().int().nonnegative().nullable(),
   priceMaxNis: z.number().int().positive().nullable(),
@@ -71,8 +91,9 @@ export const FiltersSchema = z.object({
   roomsMax: z.number().min(0).nullable(),
   sqmMin: z.number().int().positive().nullable(),
   sqmMax: z.number().int().positive().nullable(),
-  allowedNeighborhoods: z.array(z.string()).default([]),
-  blockedNeighborhoods: z.array(z.string()).default([]),
+  cities: z.array(CitySelectionSchema).default([]),
+  allowedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
+  blockedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
   wishes: z.array(z.string()).default([]),
   dealbreakers: z.array(z.string()).default([]),
   attributes: z.array(FilterAttributeSchema).default([]),
@@ -93,6 +114,7 @@ export function countActiveFilters(f: Filters): number {
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
+  if (f.cities.length > 0) count++;
   if (f.allowedNeighborhoods.length > 0) count++;
   if (f.blockedNeighborhoods.length > 0) count++;
   for (const a of f.attributes) {
@@ -109,6 +131,7 @@ export const defaultFilters: Filters = {
   roomsMax: null,
   sqmMin: null,
   sqmMax: null,
+  cities: [],
   allowedNeighborhoods: [],
   blockedNeighborhoods: [],
   wishes: [],

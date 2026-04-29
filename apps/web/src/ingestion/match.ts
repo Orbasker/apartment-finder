@@ -5,6 +5,8 @@ import {
   listingAttributes,
   listingExtractions,
   userFilterAttributes,
+  userFilterCities,
+  userFilterNeighborhoods,
   userFilterTexts,
   userFilters,
 } from "@/db/schema";
@@ -34,6 +36,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
     .select({
       id: apartments.id,
       neighborhood: apartments.neighborhood,
+      city: apartments.city,
       rooms: apartments.rooms,
       sqm: apartments.sqm,
       priceNisLatest: apartments.priceNisLatest,
@@ -50,6 +53,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
   const rooms = apt.rooms;
   const sqm = apt.sqm;
   const neighborhood = apt.neighborhood;
+  const city = apt.city;
 
   // SQL prefilter on user_filters.
   const candidates = await db
@@ -76,7 +80,8 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
               or(isNull(userFilters.sqmMax), gte(userFilters.sqmMax, sqm)),
               or(isNull(userFilters.sqmMin), lte(userFilters.sqmMin, sqm)),
             ),
-        neighborhoodPredicate(neighborhood),
+        cityPredicate(city),
+        neighborhoodPredicate(neighborhood, city),
       ),
     );
 
@@ -137,18 +142,60 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
   return matched;
 }
 
-function neighborhoodPredicate(neighborhood: string | null) {
-  if (!neighborhood) {
-    // No neighborhood on apartment: only allow users with no allowed-list.
-    return sql`coalesce(array_length(${userFilters.allowedNeighborhoods}, 1), 0) = 0`;
-  }
-  return and(
-    or(
-      sql`coalesce(array_length(${userFilters.allowedNeighborhoods}, 1), 0) = 0`,
-      sql`${neighborhood} = ANY(${userFilters.allowedNeighborhoods})`,
-    ),
-    sql`NOT (${neighborhood} = ANY(${userFilters.blockedNeighborhoods}))`,
-  );
+/**
+ * City predicate against `user_filter_cities`.
+ *
+ * Empty allowlist → pass everything. Non-empty → apartment.city must match
+ * one of the user's selected city names (case/whitespace-normalized).
+ */
+function cityPredicate(apartmentCity: string | null) {
+  const noCitySelections = sql`NOT EXISTS (
+    SELECT 1 FROM ${userFilterCities}
+    WHERE ${userFilterCities.userId} = ${userFilters.userId}
+  )`;
+  const cityMatches =
+    apartmentCity != null
+      ? sql`EXISTS (
+          SELECT 1 FROM ${userFilterCities}
+          WHERE ${userFilterCities.userId} = ${userFilters.userId}
+            AND lower(trim(${userFilterCities.nameHe})) = lower(trim(${apartmentCity}))
+        )`
+      : sql`false`;
+  return or(noCitySelections, cityMatches);
+}
+
+/**
+ * Neighborhood predicate against `user_filter_neighborhoods`.
+ *
+ * Both sides come from Google's geocoder, so we match on a normalized
+ * (lower(trim) of name_he, city_name_he) pair:
+ *
+ * - Allowed: pass if the user has NO allowed selections, OR the apartment's
+ *   (neighborhood, city) matches one of the user's allowed pairs.
+ * - Blocked: fail if the apartment's (neighborhood, city) matches a blocked pair.
+ */
+function neighborhoodPredicate(apartmentNeighborhood: string | null, apartmentCity: string | null) {
+  const noAllowedSelections = sql`NOT EXISTS (
+    SELECT 1 FROM ${userFilterNeighborhoods}
+    WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
+      AND ${userFilterNeighborhoods.kind} = 'allowed'
+  )`;
+
+  const matchPair = (kind: "allowed" | "blocked") =>
+    apartmentNeighborhood != null
+      ? sql`EXISTS (
+          SELECT 1 FROM ${userFilterNeighborhoods}
+          WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
+            AND ${userFilterNeighborhoods.kind} = ${kind}
+            AND lower(trim(${userFilterNeighborhoods.nameHe})) = lower(trim(${apartmentNeighborhood}))
+            AND (
+              ${apartmentCity} IS NULL
+              OR lower(trim(${userFilterNeighborhoods.cityNameHe})) = lower(trim(${apartmentCity}))
+            )
+        )`
+      : sql`false`;
+
+  return and(or(noAllowedSelections, matchPair("allowed")), sql`NOT (${matchPair("blocked")})`);
 }
 
 export function checkAttributeRequirements(

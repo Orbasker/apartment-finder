@@ -10,9 +10,15 @@ import {
   addText,
   loadFilters,
   markOnboarded,
+  removeNeighborhoodFilter,
   setAttribute as setAttr,
   upsertFilters,
 } from "@/filters/store";
+import {
+  autocompleteCities,
+  autocompleteNeighborhoods,
+  listNeighborhoodsInCity,
+} from "@/lib/googlePlaces";
 import { activeChannels, loadDestinations, upsertDestinations } from "@/notifications/destinations";
 import { mintLinkToken } from "@/notifications/telegram-tokens";
 import { env } from "@/lib/env";
@@ -58,26 +64,62 @@ export function buildOnboardingTools(userId: string) {
       },
     }),
 
-    addAllowedNeighborhood: tool({
+    searchCity: tool({
       description:
-        "Add a Tel Aviv neighborhood the user wants alerts for (Hebrew, exact spelling).",
-      inputSchema: z.object({ name: z.string().min(1) }),
-      execute: async ({ name }) => {
-        const f = await loadFilters(userId);
-        const next = Array.from(new Set([...f.allowedNeighborhoods, name.trim()]));
-        await upsertFilters(userId, { allowedNeighborhoods: next });
-        return { ok: true, allowedNeighborhoods: next };
+        "Find the user's city via Google Places. The chat UI renders the result as clickable chips; clicking one captures the city for the next step. ALWAYS call this BEFORE searching neighborhoods — neighborhoods need a city for context.",
+      inputSchema: z.object({
+        query: z.string().min(1).describe("User's typed city name in Hebrew, e.g. 'תל אביב'."),
+      }),
+      execute: async ({ query }) => {
+        const candidates = await autocompleteCities(query);
+        return { ok: true, candidates };
       },
     }),
 
-    addBlockedNeighborhood: tool({
-      description: "Add a neighborhood the user wants to exclude (e.g. far from work).",
-      inputSchema: z.object({ name: z.string().min(1) }),
-      execute: async ({ name }) => {
-        const f = await loadFilters(userId);
-        const next = Array.from(new Set([...f.blockedNeighborhoods, name.trim()]));
-        await upsertFilters(userId, { blockedNeighborhoods: next });
-        return { ok: true, blockedNeighborhoods: next };
+    searchNeighborhoods: tool({
+      description:
+        "Find neighborhoods inside a specific city via Google Places. The chat UI renders the result as clickable chips — clicking a chip saves the neighborhood (and its parent city) for the current user, so DO NOT call any save tool for chips. Pass an empty `query` plus `cityNameHe` + `cityPlaceId` to browse the city's neighborhoods; pass a non-empty `query` for typeahead. Always specify `kind`. Both `cityPlaceId` and `cityNameHe` MUST come from a prior searchCity result for the same city.",
+      inputSchema: z.object({
+        query: z
+          .string()
+          .describe("User's typed neighborhood name in Hebrew, or empty string to browse."),
+        cityPlaceId: z
+          .string()
+          .min(1)
+          .describe("Google place_id of the parent city (from a prior searchCity result)."),
+        cityNameHe: z.string().min(1).describe("Hebrew city name of the parent city."),
+        kind: z
+          .enum(["allowed", "blocked"])
+          .describe("Whether a chip click adds the choice to the allowed or blocked list."),
+      }),
+      execute: async ({ query, cityPlaceId, cityNameHe, kind }) => {
+        const trimmed = query.trim();
+        const raw =
+          trimmed === ""
+            ? await listNeighborhoodsInCity(cityNameHe)
+            : await autocompleteNeighborhoods(trimmed, cityNameHe);
+        // Stamp the parent cityPlaceId/cityNameHe onto every candidate so the
+        // chip click has the FK link without a second lookup.
+        const candidates = raw.map((c) => ({
+          placeId: c.placeId,
+          nameHe: c.nameHe,
+          cityPlaceId,
+          cityNameHe,
+        }));
+        return { ok: true, kind, candidates };
+      },
+    }),
+
+    removeNeighborhoodFilter: tool({
+      description:
+        "Remove a previously-saved neighborhood selection by its Google place_id and kind.",
+      inputSchema: z.object({
+        placeId: z.string().min(1),
+        kind: z.enum(["allowed", "blocked"]),
+      }),
+      execute: async ({ placeId, kind }) => {
+        await removeNeighborhoodFilter(userId, kind, placeId);
+        return { ok: true, placeId, kind };
       },
     }),
 

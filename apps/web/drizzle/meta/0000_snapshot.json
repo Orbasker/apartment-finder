@@ -1,5 +1,5 @@
 {
-  "id": "b660595b-5f3e-40fc-9836-6fb5d320969e",
+  "id": "5f86a03c-647d-4336-9a7c-7a2c84abcea4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1111,6 +1111,14 @@
           "primaryKey": false,
           "notNull": true
         },
+        "destination": {
+          "name": "destination",
+          "type": "notification_destination",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'email'"
+        },
         "sent_at": {
           "name": "sent_at",
           "type": "timestamp with time zone",
@@ -1118,8 +1126,8 @@
           "notNull": true,
           "default": "now()"
         },
-        "resend_message_id": {
-          "name": "resend_message_id",
+        "provider_message_id": {
+          "name": "provider_message_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -1171,11 +1179,12 @@
         }
       },
       "compositePrimaryKeys": {
-        "sent_alerts_user_id_apartment_id_pk": {
-          "name": "sent_alerts_user_id_apartment_id_pk",
+        "sent_alerts_user_id_apartment_id_destination_pk": {
+          "name": "sent_alerts_user_id_apartment_id_destination_pk",
           "columns": [
             "user_id",
-            "apartment_id"
+            "apartment_id",
+            "destination"
           ]
         }
       },
@@ -1272,6 +1281,86 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.telegram_link_tokens": {
+      "name": "telegram_link_tokens",
+      "schema": "",
+      "columns": {
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "telegram_link_tokens_user_expires_idx": {
+          "name": "telegram_link_tokens_user_expires_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "telegram_link_tokens_user_id_user_id_fk": {
+          "name": "telegram_link_tokens_user_id_user_id_fk",
+          "tableFrom": "telegram_link_tokens",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1446,6 +1535,183 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.user_filter_cities": {
+      "name": "user_filter_cities",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "place_id": {
+          "name": "place_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_he": {
+          "name": "name_he",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_filter_cities_user_id_user_id_fk": {
+          "name": "user_filter_cities_user_id_user_id_fk",
+          "tableFrom": "user_filter_cities",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_filter_cities_user_id_place_id_pk": {
+          "name": "user_filter_cities_user_id_place_id_pk",
+          "columns": [
+            "user_id",
+            "place_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_filter_neighborhoods": {
+      "name": "user_filter_neighborhoods",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "city_place_id": {
+          "name": "city_place_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "place_id": {
+          "name": "place_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_he": {
+          "name": "name_he",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "city_name_he": {
+          "name": "city_name_he",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "neighborhood_filter_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_filter_neighborhoods_user_kind_idx": {
+          "name": "user_filter_neighborhoods_user_kind_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_filter_neighborhoods_user_id_user_id_fk": {
+          "name": "user_filter_neighborhoods_user_id_user_id_fk",
+          "tableFrom": "user_filter_neighborhoods",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_filter_neighborhoods_city_fk": {
+          "name": "user_filter_neighborhoods_city_fk",
+          "tableFrom": "user_filter_neighborhoods",
+          "tableTo": "user_filter_cities",
+          "columnsFrom": [
+            "user_id",
+            "city_place_id"
+          ],
+          "columnsTo": [
+            "user_id",
+            "place_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_filter_neighborhoods_user_id_place_id_kind_pk": {
+          "name": "user_filter_neighborhoods_user_id_place_id_kind_pk",
+          "columns": [
+            "user_id",
+            "place_id",
+            "kind"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.user_filter_texts": {
       "name": "user_filter_texts",
       "schema": "",
@@ -1579,20 +1845,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "allowed_neighborhoods": {
-          "name": "allowed_neighborhoods",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "blocked_neighborhoods": {
-          "name": "blocked_neighborhoods",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
         "wishes": {
           "name": "wishes",
           "type": "text[]",
@@ -1654,6 +1906,89 @@
         "user_filters_user_id_user_id_fk": {
           "name": "user_filters_user_id_user_id_fk",
           "tableFrom": "user_filters",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_notification_destinations": {
+      "name": "user_notification_destinations",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email_enabled": {
+          "name": "email_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "telegram_enabled": {
+          "name": "telegram_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "telegram_chat_id": {
+          "name": "telegram_chat_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "telegram_linked_at": {
+          "name": "telegram_linked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_notification_destinations_telegram_chat_unique": {
+          "name": "user_notification_destinations_telegram_chat_unique",
+          "columns": [
+            {
+              "expression": "telegram_chat_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"user_notification_destinations\".\"telegram_chat_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_notification_destinations_user_id_user_id_fk": {
+          "name": "user_notification_destinations_user_id_user_id_fk",
+          "tableFrom": "user_notification_destinations",
           "tableTo": "user",
           "columnsFrom": [
             "user_id"
@@ -1793,6 +2128,22 @@
         "embedded",
         "unified",
         "failed"
+      ]
+    },
+    "public.neighborhood_filter_kind": {
+      "name": "neighborhood_filter_kind",
+      "schema": "public",
+      "values": [
+        "allowed",
+        "blocked"
+      ]
+    },
+    "public.notification_destination": {
+      "name": "notification_destination",
+      "schema": "public",
+      "values": [
+        "email",
+        "telegram"
       ]
     }
   },

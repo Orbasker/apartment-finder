@@ -7,12 +7,14 @@ import {
   type ApartmentAttributeKey,
   type AttributeRequirement,
 } from "@apartment-finder/shared";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
+import { CityNeighborhoodsWizard } from "@/components/city-neighborhoods-wizard";
 import { saveFiltersAction } from "./actions";
 import type { StoredFilters } from "@/filters/store";
 
@@ -27,6 +29,7 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
   const attrMap = new Map<ApartmentAttributeKey, AttributeRequirement>(
     filters.attributes.map((a) => [a.key, a.requirement]),
   );
+  const tCities = useTranslations("Cities");
 
   return (
     <form action={saveFiltersAction} className="space-y-4 pb-24 sm:space-y-6">
@@ -73,28 +76,12 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
         </div>
       </Section>
 
-      <Section title="שכונות" description="שורה לכל שכונה. השאר/י ריק כדי לא להגביל.">
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="allowedNeighborhoods">שכונות מותרות</Label>
-            <Textarea
-              id="allowedNeighborhoods"
-              name="allowedNeighborhoods"
-              defaultValue={filters.allowedNeighborhoods.join("\n")}
-              rows={4}
-              placeholder="פלורנטין&#10;רוטשילד&#10;נווה צדק"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="blockedNeighborhoods">שכונות חסומות</Label>
-            <Textarea
-              id="blockedNeighborhoods"
-              name="blockedNeighborhoods"
-              defaultValue={filters.blockedNeighborhoods.join("\n")}
-              rows={3}
-            />
-          </div>
-        </div>
+      <Section title={tCities("sectionTitle")} description={tCities("sectionDescription")}>
+        <CityNeighborhoodsWizard
+          defaultCities={filters.cities}
+          defaultAllowed={filters.allowedNeighborhoods}
+          defaultBlocked={filters.blockedNeighborhoods}
+        />
       </Section>
 
       <Section title="מפרט מלא">

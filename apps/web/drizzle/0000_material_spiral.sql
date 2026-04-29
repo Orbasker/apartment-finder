@@ -5,6 +5,8 @@ CREATE TYPE "public"."attribute_source" AS ENUM('ai', 'user', 'manual');--> stat
 CREATE TYPE "public"."filter_text_kind" AS ENUM('wish', 'dealbreaker');--> statement-breakpoint
 CREATE TYPE "public"."listing_source" AS ENUM('yad2', 'facebook');--> statement-breakpoint
 CREATE TYPE "public"."listing_status" AS ENUM('pending', 'extracted', 'geocoded', 'embedded', 'unified', 'failed');--> statement-breakpoint
+CREATE TYPE "public"."neighborhood_filter_kind" AS ENUM('allowed', 'blocked');--> statement-breakpoint
+CREATE TYPE "public"."notification_destination" AS ENUM('email', 'telegram');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -146,9 +148,10 @@ CREATE TABLE "listings" (
 CREATE TABLE "sent_alerts" (
 	"user_id" uuid NOT NULL,
 	"apartment_id" integer NOT NULL,
+	"destination" "notification_destination" DEFAULT 'email' NOT NULL,
 	"sent_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"resend_message_id" text,
-	CONSTRAINT "sent_alerts_user_id_apartment_id_pk" PRIMARY KEY("user_id","apartment_id")
+	"provider_message_id" text,
+	CONSTRAINT "sent_alerts_user_id_apartment_id_destination_pk" PRIMARY KEY("user_id","apartment_id","destination")
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
@@ -162,6 +165,14 @@ CREATE TABLE "session" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "session_token_unique" UNIQUE("token")
+);
+--> statement-breakpoint
+CREATE TABLE "telegram_link_tokens" (
+	"token" text PRIMARY KEY NOT NULL,
+	"user_id" uuid NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"consumed_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "user" (
@@ -186,6 +197,25 @@ CREATE TABLE "user_filter_attributes" (
 	CONSTRAINT "user_filter_attributes_user_id_key_pk" PRIMARY KEY("user_id","key")
 );
 --> statement-breakpoint
+CREATE TABLE "user_filter_cities" (
+	"user_id" uuid NOT NULL,
+	"place_id" text NOT NULL,
+	"name_he" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_filter_cities_user_id_place_id_pk" PRIMARY KEY("user_id","place_id")
+);
+--> statement-breakpoint
+CREATE TABLE "user_filter_neighborhoods" (
+	"user_id" uuid NOT NULL,
+	"city_place_id" text NOT NULL,
+	"place_id" text NOT NULL,
+	"name_he" text NOT NULL,
+	"city_name_he" text NOT NULL,
+	"kind" "neighborhood_filter_kind" NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_filter_neighborhoods_user_id_place_id_kind_pk" PRIMARY KEY("user_id","place_id","kind")
+);
+--> statement-breakpoint
 CREATE TABLE "user_filter_texts" (
 	"id" bigserial PRIMARY KEY NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -203,8 +233,6 @@ CREATE TABLE "user_filters" (
 	"rooms_max" real,
 	"sqm_min" integer,
 	"sqm_max" integer,
-	"allowed_neighborhoods" text[] DEFAULT '{}'::text[] NOT NULL,
-	"blocked_neighborhoods" text[] DEFAULT '{}'::text[] NOT NULL,
 	"wishes" text[] DEFAULT '{}'::text[] NOT NULL,
 	"dealbreakers" text[] DEFAULT '{}'::text[] NOT NULL,
 	"strict_unknowns" boolean DEFAULT true NOT NULL,
@@ -212,6 +240,15 @@ CREATE TABLE "user_filters" (
 	"max_age_hours" integer DEFAULT 48 NOT NULL,
 	"is_active" boolean DEFAULT true NOT NULL,
 	"onboarded_at" timestamp with time zone,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "user_notification_destinations" (
+	"user_id" uuid PRIMARY KEY NOT NULL,
+	"email_enabled" boolean DEFAULT true NOT NULL,
+	"telegram_enabled" boolean DEFAULT false NOT NULL,
+	"telegram_chat_id" text,
+	"telegram_linked_at" timestamp with time zone,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -232,9 +269,14 @@ ALTER TABLE "listing_extractions" ADD CONSTRAINT "listing_extractions_listing_id
 ALTER TABLE "sent_alerts" ADD CONSTRAINT "sent_alerts_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sent_alerts" ADD CONSTRAINT "sent_alerts_apartment_id_apartments_id_fk" FOREIGN KEY ("apartment_id") REFERENCES "public"."apartments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "telegram_link_tokens" ADD CONSTRAINT "telegram_link_tokens_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filter_attributes" ADD CONSTRAINT "user_filter_attributes_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_filter_cities" ADD CONSTRAINT "user_filter_cities_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_filter_neighborhoods" ADD CONSTRAINT "user_filter_neighborhoods_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_filter_neighborhoods" ADD CONSTRAINT "user_filter_neighborhoods_city_fk" FOREIGN KEY ("user_id","city_place_id") REFERENCES "public"."user_filter_cities"("user_id","place_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filter_texts" ADD CONSTRAINT "user_filter_texts_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filters" ADD CONSTRAINT "user_filters_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_notification_destinations" ADD CONSTRAINT "user_notification_destinations_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "ai_usage_created_at_idx" ON "ai_usage" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "ai_usage_feature_idx" ON "ai_usage" USING btree ("feature");--> statement-breakpoint
 CREATE UNIQUE INDEX "apartment_listings_listing_unique" ON "apartment_listings" USING btree ("listing_id");--> statement-breakpoint
@@ -248,7 +290,8 @@ CREATE UNIQUE INDEX "listings_source_unique" ON "listings" USING btree ("source"
 CREATE INDEX "listings_status_idx" ON "listings" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "listings_posted_at_idx" ON "listings" USING btree ("posted_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "sent_alerts_sent_at_idx" ON "sent_alerts" USING btree ("sent_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "telegram_link_tokens_user_expires_idx" ON "telegram_link_tokens" USING btree ("user_id","expires_at");--> statement-breakpoint
 CREATE INDEX "user_filter_attributes_req_idx" ON "user_filter_attributes" USING btree ("key","requirement");--> statement-breakpoint
-CREATE INDEX "listing_extractions_embedding_hnsw" ON "listing_extractions" USING hnsw ("embedding" vector_cosine_ops);--> statement-breakpoint
-CREATE INDEX "user_filter_texts_embedding_hnsw" ON "user_filter_texts" USING hnsw ("embedding" vector_cosine_ops);--> statement-breakpoint
-CREATE INDEX "user_filter_texts_user_kind_idx" ON "user_filter_texts" USING btree ("user_id","kind");
+CREATE INDEX "user_filter_neighborhoods_user_kind_idx" ON "user_filter_neighborhoods" USING btree ("user_id","kind");--> statement-breakpoint
+CREATE INDEX "user_filter_texts_user_kind_idx" ON "user_filter_texts" USING btree ("user_id","kind");--> statement-breakpoint
+CREATE UNIQUE INDEX "user_notification_destinations_telegram_chat_unique" ON "user_notification_destinations" USING btree ("telegram_chat_id") WHERE "user_notification_destinations"."telegram_chat_id" IS NOT NULL;

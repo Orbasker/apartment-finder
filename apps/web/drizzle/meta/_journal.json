@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1777383312593,
-      "tag": "0000_shocking_tyrannus",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1777445535237,
-      "tag": "0001_apa7_notification_destinations",
+      "when": 1777470040983,
+      "tag": "0000_material_spiral",
       "breakpoints": true
     }
   ]

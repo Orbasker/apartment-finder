@@ -2,6 +2,7 @@ import {
   bigserial,
   boolean,
   doublePrecision,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -65,6 +66,11 @@ export const attributeRequirementEnum = pgEnum("attribute_requirement", [
 export const attributeSourceEnum = pgEnum("attribute_source", ["ai", "user", "manual"]);
 
 export const filterTextKindEnum = pgEnum("filter_text_kind", ["wish", "dealbreaker"]);
+
+export const neighborhoodFilterKindEnum = pgEnum("neighborhood_filter_kind", [
+  "allowed",
+  "blocked",
+]);
 
 export const notificationDestinationEnum = pgEnum("notification_destination", [
   "email",
@@ -249,14 +255,6 @@ export const userFilters = pgTable("user_filters", {
   roomsMax: real("rooms_max"),
   sqmMin: integer("sqm_min"),
   sqmMax: integer("sqm_max"),
-  allowedNeighborhoods: text("allowed_neighborhoods")
-    .array()
-    .notNull()
-    .default(sql`'{}'::text[]`),
-  blockedNeighborhoods: text("blocked_neighborhoods")
-    .array()
-    .notNull()
-    .default(sql`'{}'::text[]`),
   wishes: text("wishes")
     .array()
     .notNull()
@@ -285,6 +283,60 @@ export const userFilterAttributes = pgTable(
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.key] }),
     reqIdx: index("user_filter_attributes_req_idx").on(t.key, t.requirement),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// user_filter_cities: per-user city allowlist. Each row caches Google's
+// place_id + display name from the time the user picked it; an empty list
+// means "any city" (no filter), non-empty means "only these cities".
+// ---------------------------------------------------------------------------
+
+export const userFilterCities = pgTable(
+  "user_filter_cities",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    placeId: text("place_id").notNull(),
+    nameHe: text("name_he").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.placeId] }),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// user_filter_neighborhoods: per-user allowed/blocked neighborhood selections.
+// Each row caches Google's place_id + display name + city name from the time
+// the user picked it; matching against listings is text-based on (name_he,
+// city_name_he) since both sides come from Google's geocoder.
+// ---------------------------------------------------------------------------
+
+export const userFilterNeighborhoods = pgTable(
+  "user_filter_neighborhoods",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    cityPlaceId: text("city_place_id").notNull(),
+    placeId: text("place_id").notNull(),
+    nameHe: text("name_he").notNull(),
+    // Denormalized from user_filter_cities for cheap match-time string compare
+    // against apartments.city. Kept in sync via the form action / chat tools.
+    cityNameHe: text("city_name_he").notNull(),
+    kind: neighborhoodFilterKindEnum("kind").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.placeId, t.kind] }),
+    userKindIdx: index("user_filter_neighborhoods_user_kind_idx").on(t.userId, t.kind),
+    cityFk: foreignKey({
+      columns: [t.userId, t.cityPlaceId],
+      foreignColumns: [userFilterCities.userId, userFilterCities.placeId],
+      name: "user_filter_neighborhoods_city_fk",
+    }).onDelete("cascade"),
   }),
 );
 
@@ -519,5 +571,9 @@ export type TelegramLinkToken = typeof telegramLinkTokens.$inferSelect;
 export type NewTelegramLinkToken = typeof telegramLinkTokens.$inferInsert;
 export type GeocodeCache = typeof geocodeCache.$inferSelect;
 export type NewGeocodeCache = typeof geocodeCache.$inferInsert;
+export type UserFilterCity = typeof userFilterCities.$inferSelect;
+export type NewUserFilterCity = typeof userFilterCities.$inferInsert;
+export type UserFilterNeighborhood = typeof userFilterNeighborhoods.$inferSelect;
+export type NewUserFilterNeighborhood = typeof userFilterNeighborhoods.$inferInsert;
 export type AiUsageRow = typeof aiUsage.$inferSelect;
 export type NewAiUsageRow = typeof aiUsage.$inferInsert;

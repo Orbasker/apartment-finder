@@ -3,16 +3,25 @@ import {
   APARTMENT_ATTRIBUTE_KEYS,
   type ApartmentAttributeKey,
   type AttributeRequirement,
+  type CitySelection,
   type Filters,
+  type NeighborhoodSelection,
 } from "@apartment-finder/shared";
 import { getDb } from "@/db";
-import { userFilterAttributes, userFilterTexts, userFilters } from "@/db/schema";
+import {
+  userFilterAttributes,
+  userFilterCities,
+  userFilterNeighborhoods,
+  userFilterTexts,
+  userFilters,
+} from "@/db/schema";
 import { embedText } from "@/ingestion/embed";
 import { createLogger, errorMessage } from "@/lib/log";
 
 const log = createLogger("filters:store");
 
 export type FilterTextKind = "wish" | "dealbreaker";
+export type NeighborhoodFilterKind = "allowed" | "blocked";
 
 export type StoredFilters = Filters & {
   onboardedAt: Date | null;
@@ -25,6 +34,37 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     .select({ key: userFilterAttributes.key, requirement: userFilterAttributes.requirement })
     .from(userFilterAttributes)
     .where(eq(userFilterAttributes.userId, userId));
+  const neighborhoodRows = await db
+    .select({
+      placeId: userFilterNeighborhoods.placeId,
+      nameHe: userFilterNeighborhoods.nameHe,
+      cityPlaceId: userFilterNeighborhoods.cityPlaceId,
+      cityNameHe: userFilterNeighborhoods.cityNameHe,
+      kind: userFilterNeighborhoods.kind,
+    })
+    .from(userFilterNeighborhoods)
+    .where(eq(userFilterNeighborhoods.userId, userId));
+  const allowedNeighborhoods: NeighborhoodSelection[] = neighborhoodRows
+    .filter((n) => n.kind === "allowed")
+    .map(({ placeId, nameHe, cityPlaceId, cityNameHe }) => ({
+      placeId,
+      nameHe,
+      cityPlaceId,
+      cityNameHe,
+    }));
+  const blockedNeighborhoods: NeighborhoodSelection[] = neighborhoodRows
+    .filter((n) => n.kind === "blocked")
+    .map(({ placeId, nameHe, cityPlaceId, cityNameHe }) => ({
+      placeId,
+      nameHe,
+      cityPlaceId,
+      cityNameHe,
+    }));
+  const cityRows = await db
+    .select({ placeId: userFilterCities.placeId, nameHe: userFilterCities.nameHe })
+    .from(userFilterCities)
+    .where(eq(userFilterCities.userId, userId));
+  const cities: CitySelection[] = cityRows.map(({ placeId, nameHe }) => ({ placeId, nameHe }));
 
   if (!row) {
     return {
@@ -34,8 +74,9 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       roomsMax: null,
       sqmMin: null,
       sqmMax: null,
-      allowedNeighborhoods: [],
-      blockedNeighborhoods: [],
+      cities,
+      allowedNeighborhoods,
+      blockedNeighborhoods,
       wishes: [],
       dealbreakers: [],
       attributes: [],
@@ -53,8 +94,9 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     roomsMax: row.roomsMax,
     sqmMin: row.sqmMin,
     sqmMax: row.sqmMax,
-    allowedNeighborhoods: row.allowedNeighborhoods ?? [],
-    blockedNeighborhoods: row.blockedNeighborhoods ?? [],
+    cities,
+    allowedNeighborhoods,
+    blockedNeighborhoods,
     wishes: row.wishes ?? [],
     dealbreakers: row.dealbreakers ?? [],
     attributes: attrs,
@@ -73,8 +115,6 @@ type ScalarPatch = Partial<{
   roomsMax: number | null;
   sqmMin: number | null;
   sqmMax: number | null;
-  allowedNeighborhoods: string[];
-  blockedNeighborhoods: string[];
   wishes: string[];
   dealbreakers: string[];
   strictUnknowns: boolean;
@@ -206,12 +246,130 @@ export async function markOnboarded(userId: string): Promise<void> {
   await upsertFilters(userId, { onboardedAt: new Date(), isActive: true });
 }
 
+/** Replace the user's city allowlist with the given selections. */
+export async function replaceCities(userId: string, selections: CitySelection[]): Promise<void> {
+  const db = getDb();
+  const seen = new Map<string, CitySelection>();
+  for (const s of selections) {
+    if (s.placeId.trim() && s.nameHe.trim()) seen.set(s.placeId, s);
+  }
+  await db.delete(userFilterCities).where(eq(userFilterCities.userId, userId));
+  if (seen.size === 0) return;
+  await db
+    .insert(userFilterCities)
+    .values(
+      Array.from(seen.values()).map((s) => ({
+        userId,
+        placeId: s.placeId,
+        nameHe: s.nameHe,
+      })),
+    )
+    .onConflictDoNothing();
+}
+
+/** Add a single city to the user's allowlist. Used by the chat agent's chip click. */
+export async function addCity(userId: string, city: CitySelection): Promise<void> {
+  const db = getDb();
+  await db
+    .insert(userFilterCities)
+    .values({ userId, placeId: city.placeId, nameHe: city.nameHe })
+    .onConflictDoNothing();
+}
+
+/** Remove a single city from the user's allowlist. */
+export async function removeCity(userId: string, placeId: string): Promise<void> {
+  const db = getDb();
+  await db
+    .delete(userFilterCities)
+    .where(and(eq(userFilterCities.userId, userId), eq(userFilterCities.placeId, placeId)));
+}
+
+/** Replace the user's neighborhood selections of a given kind. The caller is
+ *  responsible for ensuring each selection's cityPlaceId already exists in
+ *  user_filter_cities (the FK will reject otherwise). */
+export async function replaceNeighborhoods(
+  userId: string,
+  kind: NeighborhoodFilterKind,
+  selections: NeighborhoodSelection[],
+): Promise<void> {
+  const db = getDb();
+  const seen = new Map<string, NeighborhoodSelection>();
+  for (const s of selections) {
+    if (s.placeId.trim() && s.nameHe.trim() && s.cityPlaceId.trim() && s.cityNameHe.trim()) {
+      seen.set(s.placeId, s);
+    }
+  }
+  await db
+    .delete(userFilterNeighborhoods)
+    .where(and(eq(userFilterNeighborhoods.userId, userId), eq(userFilterNeighborhoods.kind, kind)));
+  if (seen.size === 0) return;
+  await db
+    .insert(userFilterNeighborhoods)
+    .values(
+      Array.from(seen.values()).map((s) => ({
+        userId,
+        placeId: s.placeId,
+        nameHe: s.nameHe,
+        cityPlaceId: s.cityPlaceId,
+        cityNameHe: s.cityNameHe,
+        kind,
+      })),
+    )
+    .onConflictDoNothing();
+}
+
+/** Add a single neighborhood selection. Used by the chat agent's chip click.
+ *  Ensures the city exists in user_filter_cities first (FK requirement). */
+export async function addNeighborhoodFilter(
+  userId: string,
+  kind: NeighborhoodFilterKind,
+  selection: NeighborhoodSelection,
+): Promise<void> {
+  const db = getDb();
+  // Insert the parent city first (no-op if already present) so the composite
+  // FK on (user_id, city_place_id) is satisfied.
+  await db
+    .insert(userFilterCities)
+    .values({ userId, placeId: selection.cityPlaceId, nameHe: selection.cityNameHe })
+    .onConflictDoNothing();
+  await db
+    .insert(userFilterNeighborhoods)
+    .values({
+      userId,
+      placeId: selection.placeId,
+      nameHe: selection.nameHe,
+      cityPlaceId: selection.cityPlaceId,
+      cityNameHe: selection.cityNameHe,
+      kind,
+    })
+    .onConflictDoNothing();
+}
+
+/** Remove a single neighborhood selection. Used by the chat agent. */
+export async function removeNeighborhoodFilter(
+  userId: string,
+  kind: NeighborhoodFilterKind,
+  placeId: string,
+): Promise<void> {
+  const db = getDb();
+  await db
+    .delete(userFilterNeighborhoods)
+    .where(
+      and(
+        eq(userFilterNeighborhoods.userId, userId),
+        eq(userFilterNeighborhoods.kind, kind),
+        eq(userFilterNeighborhoods.placeId, placeId),
+      ),
+    );
+}
+
 /** Counts active filters; mirrors the shared helper but uses the stored shape. */
 export function countActive(f: StoredFilters): number {
   let count = 0;
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
+  if (f.cities.length > 0) count++;
   if (f.allowedNeighborhoods.length > 0) count++;
   if (f.blockedNeighborhoods.length > 0) count++;
   for (const a of f.attributes) {
