@@ -80,8 +80,8 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-muted-foreground">
-            רוצה להגדיר את התנאים מחדש בעזרת השיחה? נאפס את סטטוס האונבורדינג ונחזיר אותך
-            לצ׳אט. התנאים הנוכחיים יישמרו ואפשר לערוך אותם משם.
+            רוצה להגדיר את התנאים מחדש בעזרת השיחה? נאפס את סטטוס האונבורדינג ונחזיר אותך לצ׳אט.
+            התנאים הנוכחיים יישמרו ואפשר לערוך אותם משם.
           </p>
           <form action={restartOnboardingAction}>
             <Button type="submit" variant="outline" size="sm">

@@ -34,10 +34,7 @@ export default async function OnboardedLayout({ children }: { children: ReactNod
         </div>
       </aside>
 
-      <main
-        id="main-content"
-        className="px-4 py-4 sm:px-6 sm:py-6 md:ms-64 md:px-8 md:py-8"
-      >
+      <main id="main-content" className="px-4 py-4 sm:px-6 sm:py-6 md:ms-64 md:px-8 md:py-8">
         {children}
       </main>
     </div>

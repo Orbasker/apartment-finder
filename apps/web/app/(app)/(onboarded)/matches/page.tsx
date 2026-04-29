@@ -21,8 +21,7 @@ export default function MatchesPage() {
           <CardTitle className="text-base">בקרוב</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          דירות שיתאימו ייכנסו לכאן ויוצגו ב־Inbox מסודר. בינתיים, ההתראות נשלחות
-          לפי היעדים שהגדרת.
+          דירות שיתאימו ייכנסו לכאן ויוצגו ב־Inbox מסודר. בינתיים, ההתראות נשלחות לפי היעדים שהגדרת.
         </CardContent>
       </Card>
     </main>

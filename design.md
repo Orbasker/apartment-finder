@@ -176,11 +176,11 @@ The shell is intentionally "fixed" and not "sticky": with sticky-in-grid the cel
 
 The shell is full-bleed, and **content is NOT centered with `mx-auto`** - it pins to the start side (right in RTL) so reading begins where the eye lands first. Wide pages (matches, settings) fill the available width so cards have room to breathe; narrow pages (filters form) cap at `max-w-2xl` for readability but still anchor to the start side, never centered.
 
-| Route                         | Inner width                    | Why                                                                      |
-| ----------------------------- | ------------------------------ | ------------------------------------------------------------------------ |
-| `/matches`, `/matches/[id]`   | `w-full` (no cap)              | Inbox feed needs every pixel; detail page has map + extracted fields.     |
-| `/settings`                   | `w-full` (no cap)              | Multi-card grid + embedded notifications form scale with viewport.        |
-| `/filters`                    | `w-full max-w-2xl` (RTL-start) | Form reads better narrow but still hugs the right edge, never centered.  |
+| Route                       | Inner width                    | Why                                                                     |
+| --------------------------- | ------------------------------ | ----------------------------------------------------------------------- |
+| `/matches`, `/matches/[id]` | `w-full` (no cap)              | Inbox feed needs every pixel; detail page has map + extracted fields.   |
+| `/settings`                 | `w-full` (no cap)              | Multi-card grid + embedded notifications form scale with viewport.      |
+| `/filters`                  | `w-full max-w-2xl` (RTL-start) | Form reads better narrow but still hugs the right edge, never centered. |
 
 Pre-onboarding `/onboarding` lives in the parent `(app)` shell, which keeps a centered `max-w-3xl` column - the wizard is a single conversation and the only place where `mx-auto` is fine because there is no surrounding chrome to anchor against.
 
