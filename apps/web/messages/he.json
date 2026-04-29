@@ -1,0 +1,36 @@
+{
+  "Layout": {
+    "metadata": {
+      "description": "מציאת דירה בתל אביב - התראות מיידיות לפי הסינונים שלך."
+    },
+    "skipToContent": "דלג לתוכן"
+  },
+  "Login": {
+    "metadata": {
+      "title": "כניסה - Apartment Finder",
+      "description": "כניסה לחיפוש דירה בתל אביב."
+    },
+    "subtitle": "התראות מיידיות על דירות חדשות בתל אביב, לפי הסינונים שלך.",
+    "cardTitle": "כניסה",
+    "google": {
+      "continueWith": "המשך עם Google",
+      "redirecting": "מעביר ל־Google…",
+      "errorFallback": "התחברות עם Google נכשלה"
+    },
+    "divider": "או",
+    "email": {
+      "label": "דוא״ל",
+      "submit": "שלח קוד אימות",
+      "submitting": "שולח קוד…",
+      "errorFallback": "שליחת הקוד נכשלה"
+    },
+    "otp": {
+      "sent": "שלחנו קוד בן 6 ספרות ל־<addr>{email}</addr>.",
+      "label": "קוד אימות",
+      "submit": "אישור",
+      "submitting": "מאמת…",
+      "errorFallback": "קוד שגוי",
+      "changeOrResend": "לשנות כתובת או לשלוח שוב"
+    }
+  }
+}

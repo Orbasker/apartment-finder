@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,7 @@ export function LoginForm({
   initialError?: string | null;
   googleEnabled?: boolean;
 } = {}) {
+  const t = useTranslations("Login");
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -59,7 +61,7 @@ export function LoginForm({
         email,
         type: "sign-in",
       });
-      if (error) throw new Error(error.message ?? "שליחת הקוד נכשלה");
+      if (error) throw new Error(error.message ?? t("email.errorFallback"));
       setStep("otp");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -74,7 +76,7 @@ export function LoginForm({
     setError(null);
     try {
       const { error } = await authClient.signIn.emailOtp({ email, otp });
-      if (error) throw new Error(error.message ?? "קוד שגוי");
+      if (error) throw new Error(error.message ?? t("otp.errorFallback"));
       window.location.href = "/dashboard";
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -90,7 +92,7 @@ export function LoginForm({
         provider: "google",
         callbackURL: "/dashboard",
       });
-      if (error) throw new Error(error.message ?? "התחברות עם Google נכשלה");
+      if (error) throw new Error(error.message ?? t("google.errorFallback"));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setPendingAction(null);
@@ -107,7 +109,7 @@ export function LoginForm({
           className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm"
         >
           <Spinner className="h-8 w-8 text-primary" />
-          <p className="text-sm text-muted-foreground">מעביר ל־Google…</p>
+          <p className="text-sm text-muted-foreground">{t("google.redirecting")}</p>
         </div>
       )}
       <div className="space-y-4">
@@ -125,14 +127,14 @@ export function LoginForm({
               ) : (
                 <GoogleIcon className="h-4 w-4" />
               )}
-              המשך עם Google
+              {t("google.continueWith")}
             </Button>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-background px-2 text-muted-foreground">או</span>
+                <span className="bg-background px-2 text-muted-foreground">{t("divider")}</span>
               </div>
             </div>
           </>
@@ -141,7 +143,7 @@ export function LoginForm({
         {step === "email" && (
           <form onSubmit={sendOtp} className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="email">דוא״ל</Label>
+              <Label htmlFor="email">{t("email.label")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -157,7 +159,7 @@ export function LoginForm({
             </div>
             <Button type="submit" disabled={busy || !email} className="h-11 w-full text-base">
               {pendingAction === "send" && <Spinner className="h-4 w-4" />}
-              {pendingAction === "send" ? "שולח קוד…" : "שלח קוד אימות"}
+              {pendingAction === "send" ? t("email.submitting") : t("email.submit")}
             </Button>
           </form>
         )}
@@ -166,15 +168,18 @@ export function LoginForm({
           <form onSubmit={verifyOtp} className="space-y-3">
             <div className="space-y-1">
               <p className="text-sm">
-                שלחנו קוד בן 6 ספרות ל־
-                <strong className="text-foreground">
-                  <bdi>{email}</bdi>
-                </strong>
-                .
+                {t.rich("otp.sent", {
+                  email,
+                  addr: (chunks) => (
+                    <strong className="text-foreground">
+                      <bdi>{chunks}</bdi>
+                    </strong>
+                  ),
+                })}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="otp">קוד אימות</Label>
+              <Label htmlFor="otp">{t("otp.label")}</Label>
               <Input
                 ref={otpRef}
                 id="otp"
@@ -197,7 +202,7 @@ export function LoginForm({
               className="h-11 w-full text-base"
             >
               {pendingAction === "verify" && <Spinner className="h-4 w-4" />}
-              {pendingAction === "verify" ? "מאמת…" : "אישור"}
+              {pendingAction === "verify" ? t("otp.submitting") : t("otp.submit")}
             </Button>
             <button
               type="button"
@@ -209,7 +214,7 @@ export function LoginForm({
               }}
               disabled={busy}
             >
-              לשנות כתובת או לשלוח שוב
+              {t("otp.changeOrResend")}
             </button>
           </form>
         )}
