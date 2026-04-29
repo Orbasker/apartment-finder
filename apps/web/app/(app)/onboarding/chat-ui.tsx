@@ -281,12 +281,7 @@ function TelegramConnect({ url }: { url: string }) {
       rel="noopener noreferrer"
       className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#229ED9] px-4 text-sm font-medium text-white shadow-sm transition hover:opacity-90"
     >
-      <svg
-        viewBox="0 0 24 24"
-        className="h-4 w-4"
-        aria-hidden="true"
-        fill="currentColor"
-      >
+      <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="currentColor">
         <path d="M22 3 2.5 10.5l5.7 1.9 2.2 7.1 3.7-3.4 5.4 4 2.5-17.1ZM9.4 13.7l8.5-5.4-6.7 6.4-.3 3.6-1.5-4.6Z" />
       </svg>
       התחבר ל־Telegram
