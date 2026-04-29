@@ -1,5 +1,5 @@
 {
-  "id": "0e51834e-65c3-4875-a512-9f4314135b87",
+  "id": "b9c52042-3407-4fe2-8949-76654c673e53",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1286,6 +1286,14 @@
           "primaryKey": false,
           "notNull": true
         },
+        "destination": {
+          "name": "destination",
+          "type": "notification_destination",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'email'"
+        },
         "sent_at": {
           "name": "sent_at",
           "type": "timestamp with time zone",
@@ -1293,8 +1301,8 @@
           "notNull": true,
           "default": "now()"
         },
-        "resend_message_id": {
-          "name": "resend_message_id",
+        "provider_message_id": {
+          "name": "provider_message_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -1346,11 +1354,12 @@
         }
       },
       "compositePrimaryKeys": {
-        "sent_alerts_user_id_apartment_id_pk": {
-          "name": "sent_alerts_user_id_apartment_id_pk",
+        "sent_alerts_user_id_apartment_id_destination_pk": {
+          "name": "sent_alerts_user_id_apartment_id_destination_pk",
           "columns": [
             "user_id",
-            "apartment_id"
+            "apartment_id",
+            "destination"
           ]
         }
       },
@@ -1447,6 +1456,86 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.telegram_link_tokens": {
+      "name": "telegram_link_tokens",
+      "schema": "",
+      "columns": {
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "telegram_link_tokens_user_expires_idx": {
+          "name": "telegram_link_tokens_user_expires_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "telegram_link_tokens_user_id_user_id_fk": {
+          "name": "telegram_link_tokens_user_id_user_id_fk",
+          "tableFrom": "telegram_link_tokens",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1929,6 +2018,89 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.user_notification_destinations": {
+      "name": "user_notification_destinations",
+      "schema": "",
+      "columns": {
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email_enabled": {
+          "name": "email_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "telegram_enabled": {
+          "name": "telegram_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "telegram_chat_id": {
+          "name": "telegram_chat_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "telegram_linked_at": {
+          "name": "telegram_linked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_notification_destinations_telegram_chat_unique": {
+          "name": "user_notification_destinations_telegram_chat_unique",
+          "columns": [
+            {
+              "expression": "telegram_chat_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"user_notification_destinations\".\"telegram_chat_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_notification_destinations_user_id_user_id_fk": {
+          "name": "user_notification_destinations_user_id_user_id_fk",
+          "tableFrom": "user_notification_destinations",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.verification": {
       "name": "verification",
       "schema": "",
@@ -2059,6 +2231,14 @@
       "values": [
         "allowed",
         "blocked"
+      ]
+    },
+    "public.notification_destination": {
+      "name": "notification_destination",
+      "schema": "public",
+      "values": [
+        "email",
+        "telegram"
       ]
     }
   },
