@@ -91,3 +91,33 @@ jobs:
           bun-version: 1.3.9
       - run: bun install --frozen-lockfile
       - run: bun run i18n:check
+
+  db-migrate-preview:
+    name: db migrate (preview)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: migrations
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+      - run: bun install --frozen-lockfile
+      - run: bun run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+
+  db-migrate-prod:
+    name: db migrate (prod)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: migrations
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+      - run: bun install --frozen-lockfile
+      - run: bun run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
