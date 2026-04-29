@@ -48,6 +48,7 @@ export async function sendInstantAlert(input: {
   userId: string;
   apartmentId: number;
   matchedAttributes: ApartmentAttributeKey[];
+  unverifiedAttributes: ApartmentAttributeKey[];
 }): Promise<NotifyOutcome> {
   const db = getDb();
 
@@ -115,6 +116,7 @@ export async function sendInstantAlert(input: {
           userId: input.userId,
           apartmentId: input.apartmentId,
           matchedAttributes: input.matchedAttributes,
+          unverifiedAttributes: input.unverifiedAttributes,
           apartment: apt,
         }),
       );
@@ -124,6 +126,7 @@ export async function sendInstantAlert(input: {
           userId: input.userId,
           apartmentId: input.apartmentId,
           matchedAttributes: input.matchedAttributes,
+          unverifiedAttributes: input.unverifiedAttributes,
           apartment: apt,
           chatId: destinations.telegramChatId!,
         }),
@@ -197,6 +200,7 @@ async function sendEmail(args: {
   userId: string;
   apartmentId: number;
   matchedAttributes: ApartmentAttributeKey[];
+  unverifiedAttributes: ApartmentAttributeKey[];
   apartment: ApartmentDetails;
 }): Promise<NotifyChannelOutcome> {
   const channel: NotifyChannel = "email";
@@ -238,6 +242,7 @@ async function sendEmail(args: {
     sourceUrl,
     filtersUrl,
     matchedAttributes: args.matchedAttributes,
+    unverifiedAttributes: args.unverifiedAttributes,
     pricePerSqm: apt.pricePerSqm,
     arnonaNis: apt.arnonaNis,
     vaadBayitNis: apt.vaadBayitNis,
@@ -288,6 +293,7 @@ async function sendTelegram(args: {
   userId: string;
   apartmentId: number;
   matchedAttributes: ApartmentAttributeKey[];
+  unverifiedAttributes: ApartmentAttributeKey[];
   apartment: ApartmentDetails;
   chatId: string;
 }): Promise<NotifyChannelOutcome> {
@@ -312,6 +318,7 @@ async function sendTelegram(args: {
     priceNis: apt.priceNisLatest,
     sourceUrl,
     matchedAttributes: args.matchedAttributes,
+    unverifiedAttributes: args.unverifiedAttributes,
     pricePerSqm: apt.pricePerSqm,
     arnonaNis: apt.arnonaNis,
     vaadBayitNis: apt.vaadBayitNis,

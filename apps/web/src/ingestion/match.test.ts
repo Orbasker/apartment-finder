@@ -33,7 +33,7 @@ describe("checkAttributeRequirements", () => {
     expect(r.pass).toBe(false);
   });
 
-  test("required_true passes on unknown when strictUnknowns=false", () => {
+  test("required_true passes on unknown when strictUnknowns=false (and tags as unverified)", () => {
     const r = checkAttributeRequirements(
       [{ key: "elevator", requirement: "required_true" }],
       known([]),
@@ -41,6 +41,45 @@ describe("checkAttributeRequirements", () => {
     );
     expect(r.pass).toBe(true);
     expect(r.matchedAttributes).toEqual([]);
+    expect(r.unverifiedAttributes).toEqual(["elevator"]);
+  });
+
+  test("required_false passes on unknown when strictUnknowns=false (and tags as unverified)", () => {
+    const r = checkAttributeRequirements(
+      [{ key: "shared_apartment", requirement: "required_false" }],
+      known([]),
+      false,
+    );
+    expect(r.pass).toBe(true);
+    expect(r.matchedAttributes).toEqual([]);
+    expect(r.unverifiedAttributes).toEqual(["shared_apartment"]);
+  });
+
+  test("required_false fails on unknown when strictUnknowns=true", () => {
+    const r = checkAttributeRequirements(
+      [{ key: "shared_apartment", requirement: "required_false" }],
+      known([]),
+      true,
+    );
+    expect(r.pass).toBe(false);
+  });
+
+  test("mixed: confirmed must-haves match while unknowns get tagged unverified", () => {
+    const r = checkAttributeRequirements(
+      [
+        { key: "elevator", requirement: "required_true" },
+        { key: "parking", requirement: "required_true" },
+        { key: "shared_apartment", requirement: "required_false" },
+      ],
+      known([
+        ["elevator", true],
+        ["shared_apartment", false],
+      ]),
+      false,
+    );
+    expect(r.pass).toBe(true);
+    expect(r.matchedAttributes.sort()).toEqual(["elevator", "shared_apartment"]);
+    expect(r.unverifiedAttributes).toEqual(["parking"]);
   });
 
   test("required_false fails when listing has value=true", () => {

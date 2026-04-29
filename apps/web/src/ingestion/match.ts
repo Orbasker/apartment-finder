@@ -22,6 +22,10 @@ export type MatchedUser = {
   userId: string;
   triggeredBy: "filter";
   matchedAttributes: ApartmentAttributeKey[];
+  // Must-have attributes the listing didn't confirm or refute. Populated only
+  // when the user opted in to "notify on unknowns"; surfaced in alerts so the
+  // user knows what they need to verify themselves.
+  unverifiedAttributes: ApartmentAttributeKey[];
 };
 
 /**
@@ -131,6 +135,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
       userId: c.userId,
       triggeredBy: "filter",
       matchedAttributes: attrPass.matchedAttributes,
+      unverifiedAttributes: attrPass.unverifiedAttributes,
     });
   }
 
@@ -206,20 +211,32 @@ export function checkAttributeRequirements(
   userAttrs: Array<{ key: ApartmentAttributeKey; requirement: AttributeRequirement }>,
   knownAttrs: Map<ApartmentAttributeKey, boolean>,
   strictUnknowns: boolean,
-): { pass: boolean; matchedAttributes: ApartmentAttributeKey[] } {
+): {
+  pass: boolean;
+  matchedAttributes: ApartmentAttributeKey[];
+  unverifiedAttributes: ApartmentAttributeKey[];
+} {
   const matched: ApartmentAttributeKey[] = [];
+  const unverified: ApartmentAttributeKey[] = [];
+  const fail = () => ({
+    pass: false,
+    matchedAttributes: [] as ApartmentAttributeKey[],
+    unverifiedAttributes: [] as ApartmentAttributeKey[],
+  });
   for (const ua of userAttrs) {
     const known = knownAttrs.get(ua.key);
     switch (ua.requirement) {
       case "required_true":
         if (known === true) matched.push(ua.key);
-        else if (known === false) return { pass: false, matchedAttributes: [] };
-        else if (strictUnknowns) return { pass: false, matchedAttributes: [] };
+        else if (known === false) return fail();
+        else if (strictUnknowns) return fail();
+        else unverified.push(ua.key);
         break;
       case "required_false":
         if (known === false) matched.push(ua.key);
-        else if (known === true) return { pass: false, matchedAttributes: [] };
-        else if (strictUnknowns) return { pass: false, matchedAttributes: [] };
+        else if (known === true) return fail();
+        else if (strictUnknowns) return fail();
+        else unverified.push(ua.key);
         break;
       case "preferred_true":
         if (known === true) matched.push(ua.key);
@@ -228,7 +245,7 @@ export function checkAttributeRequirements(
         break;
     }
   }
-  return { pass: true, matchedAttributes: matched };
+  return { pass: true, matchedAttributes: matched, unverifiedAttributes: unverified };
 }
 
 async function dealbreakerHits(userId: string, embedding: number[]): Promise<boolean> {
