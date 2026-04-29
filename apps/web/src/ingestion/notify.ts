@@ -66,8 +66,10 @@ export async function sendInstantAlert(input: {
     .limit(1);
   const cap = filter?.dailyAlertCap ?? 20;
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  // Count distinct apartments, not rows: with per-channel sent_alerts rows a
+  // dual-channel user would otherwise burn 2 cap units per match.
   const [today] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`count(distinct ${sentAlerts.apartmentId})::int` })
     .from(sentAlerts)
     .where(and(eq(sentAlerts.userId, input.userId), gte(sentAlerts.sentAt, since)));
   if ((today?.count ?? 0) >= cap) {

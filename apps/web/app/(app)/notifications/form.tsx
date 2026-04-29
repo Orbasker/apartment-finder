@@ -23,6 +23,7 @@ export function NotificationsForm(props: Props) {
   const [telegramOn, setTelegramOn] = useState(props.telegramEnabled);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [connectUrl, setConnectUrl] = useState<string | null>(null);
   const [pendingSave, startSave] = useTransition();
   const [pendingConnect, startConnect] = useTransition();
   const [pendingDisconnect, startDisconnect] = useTransition();
@@ -60,13 +61,17 @@ export function NotificationsForm(props: Props) {
 
   function handleConnect() {
     setError(null);
+    setConnectUrl(null);
     startConnect(async () => {
       const result = await connectTelegramAction();
       if (!result.ok) {
         setError("Telegram לא מוגדר במערכת כרגע.");
         return;
       }
-      window.open(result.url, "_blank", "noopener,noreferrer");
+      // Render the URL as an <a target="_blank"> so the actual navigation is a
+      // direct user click. window.open() after `await` loses the click's user
+      // activation and gets blocked by Safari/Firefox/Chrome popup blockers.
+      setConnectUrl(result.url);
     });
   }
 
@@ -124,6 +129,15 @@ export function NotificationsForm(props: Props) {
               {pendingDisconnect ? <Spinner className="h-4 w-4" /> : null}
               {pendingDisconnect ? "מנתק…" : "נתק את Telegram"}
             </Button>
+          ) : connectUrl ? (
+            <a
+              href={connectUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:opacity-90 sm:w-auto"
+            >
+              פתח את Telegram להשלמת החיבור
+            </a>
           ) : (
             <Button
               type="button"
@@ -132,7 +146,7 @@ export function NotificationsForm(props: Props) {
               className="h-11 w-full sm:w-auto"
             >
               {pendingConnect ? <Spinner className="h-4 w-4" /> : null}
-              {pendingConnect ? "פותח…" : "התחבר ל־Telegram"}
+              {pendingConnect ? "מכין קישור…" : "התחבר ל־Telegram"}
             </Button>
           )}
         </CardContent>
