@@ -135,7 +135,11 @@ export async function autocompleteNeighborhoods(
 }
 
 /** Browse mode: list neighborhoods within a city without typing. Powers chip
- *  display when the user says "I don't know names". Returns up to 20. */
+ *  display when the user says "I don't know names". Returns up to 20.
+ *
+ *  Places Text Search (New) doesn't accept `includedType: "neighborhood"`
+ *  (only a narrower POI list is supported), so we omit it and filter
+ *  client-side on the `types` array. */
 export async function listNeighborhoodsInCity(
   cityNameHe: string,
 ): Promise<NeighborhoodCandidate[]> {
@@ -146,20 +150,21 @@ export async function listNeighborhoodsInCity(
       places?: Array<{
         id?: string;
         displayName?: { text?: string };
+        types?: string[];
         addressComponents?: Array<{ longText?: string; types?: string[] }>;
       }>;
     }>(
       "/places:searchText",
       {
         textQuery: `שכונות ב${cityTrimmed}`,
-        includedType: "neighborhood",
         languageCode: "iw",
         regionCode: "IL",
         pageSize: 20,
       },
-      "places.id,places.displayName,places.addressComponents",
+      "places.id,places.displayName,places.types,places.addressComponents",
     );
     return (data.places ?? [])
+      .filter((p) => p.types?.includes("neighborhood"))
       .map((p) => {
         const cityFromComponents =
           p.addressComponents?.find((c) => c.types?.includes("locality"))?.longText ?? cityTrimmed;
