@@ -254,8 +254,6 @@ export const userFilters = pgTable("user_filters", {
   roomsMax: real("rooms_max"),
   sqmMin: integer("sqm_min"),
   sqmMax: integer("sqm_max"),
-  cityPlaceId: text("city_place_id"),
-  cityNameHe: text("city_name_he"),
   wishes: text("wishes")
     .array()
     .notNull()
@@ -284,6 +282,27 @@ export const userFilterAttributes = pgTable(
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.key] }),
     reqIdx: index("user_filter_attributes_req_idx").on(t.key, t.requirement),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// user_filter_cities: per-user city allowlist. Each row caches Google's
+// place_id + display name from the time the user picked it; an empty list
+// means "any city" (no filter), non-empty means "only these cities".
+// ---------------------------------------------------------------------------
+
+export const userFilterCities = pgTable(
+  "user_filter_cities",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    placeId: text("place_id").notNull(),
+    nameHe: text("name_he").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.placeId] }),
   }),
 );
 
@@ -543,6 +562,8 @@ export type TelegramLinkToken = typeof telegramLinkTokens.$inferSelect;
 export type NewTelegramLinkToken = typeof telegramLinkTokens.$inferInsert;
 export type GeocodeCache = typeof geocodeCache.$inferSelect;
 export type NewGeocodeCache = typeof geocodeCache.$inferInsert;
+export type UserFilterCity = typeof userFilterCities.$inferSelect;
+export type NewUserFilterCity = typeof userFilterCities.$inferInsert;
 export type UserFilterNeighborhood = typeof userFilterNeighborhoods.$inferSelect;
 export type NewUserFilterNeighborhood = typeof userFilterNeighborhoods.$inferInsert;
 export type AiUsageRow = typeof aiUsage.$inferSelect;

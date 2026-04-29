@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { X, Search } from "lucide-react";
 import { searchCitiesAction, type CityCandidate } from "../../app/(app)/filters/city-search.action";
@@ -17,19 +17,21 @@ import { Button } from "@/components/ui/button";
 import type { CitySelection } from "@apartment-finder/shared";
 
 type Props = {
-  /** Form field name. The selection is JSON-encoded into a single hidden input. */
+  /** Form field name. Hidden inputs render the JSON-encoded selection per pick. */
   name: string;
-  defaultSelection: CitySelection | null;
+  defaultSelections: CitySelection[];
 };
 
-export function CityPicker({ name, defaultSelection }: Props) {
+export function CityPicker({ name, defaultSelections }: Props) {
   const t = useTranslations("Cities");
-  const [selection, setSelection] = useState<CitySelection | null>(defaultSelection);
+  const [selections, setSelections] = useState<CitySelection[]>(defaultSelections);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CityCandidate[]>([]);
   const [isPending, startTransition] = useTransition();
   const triggerId = useId();
+
+  const selectedIds = useMemo(() => new Set(selections.map((s) => s.placeId)), [selections]);
 
   function onQueryChange(next: string) {
     setQuery(next);
@@ -43,32 +45,39 @@ export function CityPicker({ name, defaultSelection }: Props) {
     });
   }
 
-  function pick(candidate: CityCandidate) {
-    setSelection(candidate);
-    setOpen(false);
+  function add(candidate: CityCandidate) {
+    if (selectedIds.has(candidate.placeId)) return;
+    setSelections((prev) => [...prev, candidate]);
     setQuery("");
     setResults([]);
   }
 
-  function clear() {
-    setSelection(null);
+  function remove(placeId: string) {
+    setSelections((prev) => prev.filter((s) => s.placeId !== placeId));
   }
 
   return (
     <div className="space-y-2">
-      <input type="hidden" name={name} value={selection ? JSON.stringify(selection) : ""} />
-      {selection ? (
-        <div className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-sm">
-          <span className="font-medium">{selection.nameHe}</span>
-          <button
-            type="button"
-            onClick={clear}
-            className="-me-1 ms-1 rounded-full p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
-            aria-label={t("clear")}
-          >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </div>
+      {selections.length > 0 ? (
+        <ul className="flex flex-wrap gap-2">
+          {selections.map((s) => (
+            <li
+              key={s.placeId}
+              className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-sm"
+            >
+              <span className="font-medium">{s.nameHe}</span>
+              <button
+                type="button"
+                onClick={() => remove(s.placeId)}
+                className="-me-1 ms-1 rounded-full p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
+                aria-label={t("removeChip")}
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+              <input type="hidden" name={name} value={JSON.stringify(s)} />
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       <Popover open={open} onOpenChange={setOpen}>
@@ -82,7 +91,7 @@ export function CityPicker({ name, defaultSelection }: Props) {
               className="h-11 w-full justify-start text-base font-normal text-muted-foreground sm:h-9 sm:text-sm"
             >
               <Search className="me-2 h-4 w-4" aria-hidden="true" />
-              {selection ? t("changeCity") : t("searchPlaceholder")}
+              {t("searchPlaceholder")}
             </Button>
           }
         />
@@ -103,15 +112,21 @@ export function CityPicker({ name, defaultSelection }: Props) {
                 <CommandEmpty>{t("noResults")}</CommandEmpty>
               ) : (
                 <CommandGroup>
-                  {results.map((r) => (
-                    <CommandItem
-                      key={r.placeId}
-                      value={`${r.nameHe} ${r.placeId}`}
-                      onSelect={() => pick(r)}
-                    >
-                      <span className="flex-1 font-medium">{r.nameHe}</span>
-                    </CommandItem>
-                  ))}
+                  {results.map((r) => {
+                    const already = selectedIds.has(r.placeId);
+                    return (
+                      <CommandItem
+                        key={r.placeId}
+                        value={`${r.nameHe} ${r.placeId}`}
+                        onSelect={() => {
+                          if (!already) add(r);
+                        }}
+                        disabled={already}
+                      >
+                        <span className="flex-1 font-medium">{r.nameHe}</span>
+                      </CommandItem>
+                    );
+                  })}
                 </CommandGroup>
               )}
             </CommandList>

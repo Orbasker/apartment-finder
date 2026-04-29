@@ -10,6 +10,7 @@ import {
 import { getDb } from "@/db";
 import {
   userFilterAttributes,
+  userFilterCities,
   userFilterNeighborhoods,
   userFilterTexts,
   userFilters,
@@ -48,6 +49,11 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
   const blockedNeighborhoods: NeighborhoodSelection[] = neighborhoodRows
     .filter((n) => n.kind === "blocked")
     .map(({ placeId, nameHe, cityNameHe }) => ({ placeId, nameHe, cityNameHe }));
+  const cityRows = await db
+    .select({ placeId: userFilterCities.placeId, nameHe: userFilterCities.nameHe })
+    .from(userFilterCities)
+    .where(eq(userFilterCities.userId, userId));
+  const cities: CitySelection[] = cityRows.map(({ placeId, nameHe }) => ({ placeId, nameHe }));
 
   if (!row) {
     return {
@@ -57,7 +63,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       roomsMax: null,
       sqmMin: null,
       sqmMax: null,
-      city: null,
+      cities,
       allowedNeighborhoods,
       blockedNeighborhoods,
       wishes: [],
@@ -70,8 +76,6 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       onboardedAt: null,
     };
   }
-  const city: CitySelection | null =
-    row.cityPlaceId && row.cityNameHe ? { placeId: row.cityPlaceId, nameHe: row.cityNameHe } : null;
   return {
     priceMinNis: row.priceMinNis,
     priceMaxNis: row.priceMaxNis,
@@ -79,7 +83,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     roomsMax: row.roomsMax,
     sqmMin: row.sqmMin,
     sqmMax: row.sqmMax,
-    city,
+    cities,
     allowedNeighborhoods,
     blockedNeighborhoods,
     wishes: row.wishes ?? [],
@@ -100,8 +104,6 @@ type ScalarPatch = Partial<{
   roomsMax: number | null;
   sqmMin: number | null;
   sqmMax: number | null;
-  cityPlaceId: string | null;
-  cityNameHe: string | null;
   wishes: string[];
   dealbreakers: string[];
   strictUnknowns: boolean;
@@ -233,12 +235,42 @@ export async function markOnboarded(userId: string): Promise<void> {
   await upsertFilters(userId, { onboardedAt: new Date(), isActive: true });
 }
 
-/** Set or clear the user's primary search city. */
-export async function setCity(userId: string, city: CitySelection | null): Promise<void> {
-  await upsertFilters(userId, {
-    cityPlaceId: city?.placeId ?? null,
-    cityNameHe: city?.nameHe ?? null,
-  });
+/** Replace the user's city allowlist with the given selections. */
+export async function replaceCities(userId: string, selections: CitySelection[]): Promise<void> {
+  const db = getDb();
+  const seen = new Map<string, CitySelection>();
+  for (const s of selections) {
+    if (s.placeId.trim() && s.nameHe.trim()) seen.set(s.placeId, s);
+  }
+  await db.delete(userFilterCities).where(eq(userFilterCities.userId, userId));
+  if (seen.size === 0) return;
+  await db
+    .insert(userFilterCities)
+    .values(
+      Array.from(seen.values()).map((s) => ({
+        userId,
+        placeId: s.placeId,
+        nameHe: s.nameHe,
+      })),
+    )
+    .onConflictDoNothing();
+}
+
+/** Add a single city to the user's allowlist. Used by the chat agent's chip click. */
+export async function addCity(userId: string, city: CitySelection): Promise<void> {
+  const db = getDb();
+  await db
+    .insert(userFilterCities)
+    .values({ userId, placeId: city.placeId, nameHe: city.nameHe })
+    .onConflictDoNothing();
+}
+
+/** Remove a single city from the user's allowlist. */
+export async function removeCity(userId: string, placeId: string): Promise<void> {
+  const db = getDb();
+  await db
+    .delete(userFilterCities)
+    .where(and(eq(userFilterCities.userId, userId), eq(userFilterCities.placeId, placeId)));
 }
 
 /** Replace the user's neighborhood selections of a given kind. */
@@ -315,7 +347,7 @@ export function countActive(f: StoredFilters): number {
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
-  if (f.city != null) count++;
+  if (f.cities.length > 0) count++;
   if (f.allowedNeighborhoods.length > 0) count++;
   if (f.blockedNeighborhoods.length > 0) count++;
   for (const a of f.attributes) {

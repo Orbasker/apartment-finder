@@ -11,9 +11,9 @@ import { getCurrentUser } from "@/lib/auth-server";
 import {
   markOnboarded,
   replaceAttributes,
+  replaceCities,
   replaceNeighborhoods,
   replaceTexts,
-  setCity,
   upsertFilters,
 } from "@/filters/store";
 import type { CitySelection, NeighborhoodSelection } from "@apartment-finder/shared";
@@ -38,23 +38,25 @@ function parseList(raw: FormDataEntryValue | null): string[] {
     .filter(Boolean);
 }
 
-function parseCitySelection(formData: FormData, name: string): CitySelection | null {
-  const raw = formData.get(name);
-  if (typeof raw !== "string" || !raw.trim()) return null;
-  try {
-    const parsed = JSON.parse(raw) as Partial<CitySelection>;
-    if (
-      typeof parsed.placeId === "string" &&
-      typeof parsed.nameHe === "string" &&
-      parsed.placeId &&
-      parsed.nameHe
-    ) {
-      return { placeId: parsed.placeId, nameHe: parsed.nameHe };
+function parseCitySelections(formData: FormData, name: string): CitySelection[] {
+  const out: CitySelection[] = [];
+  for (const raw of formData.getAll(name)) {
+    if (typeof raw !== "string" || !raw.trim()) continue;
+    try {
+      const parsed = JSON.parse(raw) as Partial<CitySelection>;
+      if (
+        typeof parsed.placeId === "string" &&
+        typeof parsed.nameHe === "string" &&
+        parsed.placeId &&
+        parsed.nameHe
+      ) {
+        out.push({ placeId: parsed.placeId, nameHe: parsed.nameHe });
+      }
+    } catch {
+      // Skip malformed entries.
     }
-  } catch {
-    // Fall through to null.
   }
-  return null;
+  return out;
 }
 
 function parseNeighborhoodSelections(formData: FormData, name: string): NeighborhoodSelection[] {
@@ -101,7 +103,7 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
     maxAgeHours: parseOptionalInt(formData.get("maxAgeHours")) ?? 48,
   });
 
-  await setCity(user.id, parseCitySelection(formData, "city"));
+  await replaceCities(user.id, parseCitySelections(formData, "cities"));
 
   await replaceNeighborhoods(
     user.id,

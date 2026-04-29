@@ -79,7 +79,7 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
       </Section>
 
       <Section title={tCities("sectionTitle")} description={tCities("sectionDescription")}>
-        <CityPicker name="city" defaultSelection={filters.city} />
+        <CityPicker name="cities" defaultSelections={filters.cities} />
       </Section>
 
       <Section title={t("sectionTitle")} description={t("sectionDescription")}>

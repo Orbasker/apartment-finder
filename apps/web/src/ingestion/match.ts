@@ -5,6 +5,7 @@ import {
   listingAttributes,
   listingExtractions,
   userFilterAttributes,
+  userFilterCities,
   userFilterNeighborhoods,
   userFilterTexts,
   userFilters,
@@ -79,6 +80,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
               or(isNull(userFilters.sqmMax), gte(userFilters.sqmMax, sqm)),
               or(isNull(userFilters.sqmMin), lte(userFilters.sqmMin, sqm)),
             ),
+        cityPredicate(city),
         neighborhoodPredicate(neighborhood, city),
       ),
     );
@@ -138,6 +140,28 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
     matched: matched.length,
   });
   return matched;
+}
+
+/**
+ * City predicate against `user_filter_cities`.
+ *
+ * Empty allowlist → pass everything. Non-empty → apartment.city must match
+ * one of the user's selected city names (case/whitespace-normalized).
+ */
+function cityPredicate(apartmentCity: string | null) {
+  const noCitySelections = sql`NOT EXISTS (
+    SELECT 1 FROM ${userFilterCities}
+    WHERE ${userFilterCities.userId} = ${userFilters.userId}
+  )`;
+  const cityMatches =
+    apartmentCity != null
+      ? sql`EXISTS (
+          SELECT 1 FROM ${userFilterCities}
+          WHERE ${userFilterCities.userId} = ${userFilters.userId}
+            AND lower(trim(${userFilterCities.nameHe})) = lower(trim(${apartmentCity}))
+        )`
+      : sql`false`;
+  return or(noCitySelections, cityMatches);
 }
 
 /**

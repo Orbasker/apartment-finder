@@ -262,8 +262,6 @@ describe("schema: user_filters + user_filter_attributes", () => {
       "rooms_max",
       "sqm_min",
       "sqm_max",
-      "city_place_id",
-      "city_name_he",
       "wishes",
       "dealbreakers",
       "strict_unknowns",
@@ -378,6 +376,22 @@ describe("schema: geocode_cache", () => {
   test("address_key is the primary key", () => {
     const cols = getTableColumns(schema.geocodeCache);
     expect(cols.addressKey.primary).toBe(true);
+  });
+});
+
+describe("schema: user_filter_cities", () => {
+  test("composite PK on (user_id, place_id)", () => {
+    const cfg = getTableConfig(schema.userFilterCities);
+    expect(cfg.primaryKeys).toHaveLength(1);
+    const pk = cfg.primaryKeys[0]!.columns.map((c) => c.name).sort();
+    expect(pk).toEqual(["place_id", "user_id"]);
+  });
+
+  test("FK to user cascades", () => {
+    const cfg = getTableConfig(schema.userFilterCities);
+    for (const fk of cfg.foreignKeys) {
+      expect(fk.onDelete).toBe("cascade");
+    }
   });
 });
 

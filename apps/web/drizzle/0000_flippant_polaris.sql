@@ -197,6 +197,14 @@ CREATE TABLE "user_filter_attributes" (
 	CONSTRAINT "user_filter_attributes_user_id_key_pk" PRIMARY KEY("user_id","key")
 );
 --> statement-breakpoint
+CREATE TABLE "user_filter_cities" (
+	"user_id" uuid NOT NULL,
+	"place_id" text NOT NULL,
+	"name_he" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_filter_cities_user_id_place_id_pk" PRIMARY KEY("user_id","place_id")
+);
+--> statement-breakpoint
 CREATE TABLE "user_filter_neighborhoods" (
 	"user_id" uuid NOT NULL,
 	"place_id" text NOT NULL,
@@ -224,8 +232,6 @@ CREATE TABLE "user_filters" (
 	"rooms_max" real,
 	"sqm_min" integer,
 	"sqm_max" integer,
-	"city_place_id" text,
-	"city_name_he" text,
 	"wishes" text[] DEFAULT '{}'::text[] NOT NULL,
 	"dealbreakers" text[] DEFAULT '{}'::text[] NOT NULL,
 	"strict_unknowns" boolean DEFAULT true NOT NULL,
@@ -264,6 +270,7 @@ ALTER TABLE "sent_alerts" ADD CONSTRAINT "sent_alerts_apartment_id_apartments_id
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "telegram_link_tokens" ADD CONSTRAINT "telegram_link_tokens_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filter_attributes" ADD CONSTRAINT "user_filter_attributes_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_filter_cities" ADD CONSTRAINT "user_filter_cities_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filter_neighborhoods" ADD CONSTRAINT "user_filter_neighborhoods_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filter_texts" ADD CONSTRAINT "user_filter_texts_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_filters" ADD CONSTRAINT "user_filters_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

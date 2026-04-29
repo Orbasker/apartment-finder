@@ -88,7 +88,7 @@ export const FiltersSchema = z.object({
   roomsMax: z.number().min(0).nullable(),
   sqmMin: z.number().int().positive().nullable(),
   sqmMax: z.number().int().positive().nullable(),
-  city: CitySelectionSchema.nullable().default(null),
+  cities: z.array(CitySelectionSchema).default([]),
   allowedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
   blockedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
   wishes: z.array(z.string()).default([]),
@@ -111,7 +111,7 @@ export function countActiveFilters(f: Filters): number {
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
-  if (f.city != null) count++;
+  if (f.cities.length > 0) count++;
   if (f.allowedNeighborhoods.length > 0) count++;
   if (f.blockedNeighborhoods.length > 0) count++;
   for (const a of f.attributes) {
@@ -128,7 +128,7 @@ export const defaultFilters: Filters = {
   roomsMax: null,
   sqmMin: null,
   sqmMax: null,
-  city: null,
+  cities: [],
   allowedNeighborhoods: [],
   blockedNeighborhoods: [],
   wishes: [],
