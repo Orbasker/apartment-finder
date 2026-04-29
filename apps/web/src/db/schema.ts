@@ -130,9 +130,6 @@ export const listingExtractions = pgTable(
     street: text("street"),
     houseNumber: text("house_number"),
     neighborhood: text("neighborhood"),
-    neighborhoodId: text("neighborhood_id").references(() => neighborhoods.id, {
-      onDelete: "set null",
-    }),
     city: text("city"),
     // Geocoded - populated after Google Geocoding step.
     placeId: text("place_id"),
@@ -164,7 +161,6 @@ export const listingExtractions = pgTable(
     ),
     placeIdIdx: index("listing_extractions_place_id_idx").on(t.placeId),
     geoIdx: index("listing_extractions_geo_idx").on(t.lat, t.lon),
-    neighborhoodIdIdx: index("listing_extractions_neighborhood_id_idx").on(t.neighborhoodId),
   }),
 );
 
@@ -204,9 +200,6 @@ export const apartments = pgTable(
     street: text("street"),
     houseNumber: text("house_number"),
     neighborhood: text("neighborhood"),
-    neighborhoodId: text("neighborhood_id").references(() => neighborhoods.id, {
-      onDelete: "set null",
-    }),
     city: text("city"),
     rooms: real("rooms"),
     sqm: integer("sqm"),
@@ -219,7 +212,6 @@ export const apartments = pgTable(
   (t) => ({
     placeIdIdx: index("apartments_place_id_idx").on(t.placeId),
     geoIdx: index("apartments_geo_idx").on(t.lat, t.lon),
-    neighborhoodIdIdx: index("apartments_neighborhood_id_idx").on(t.neighborhoodId),
   }),
 );
 
@@ -294,30 +286,11 @@ export const userFilterAttributes = pgTable(
 );
 
 // ---------------------------------------------------------------------------
-// neighborhoods: canonical reference seeded from data.gov.il (CKAN). Listings
-// and user filters reference rows here by the gov.il neighborhood code so
-// matching is exact and language-independent.
+// user_filter_neighborhoods: per-user allowed/blocked neighborhood selections.
+// Each row caches Google's place_id + display name + city name from the time
+// the user picked it; matching against listings is text-based on (name_he,
+// city_name_he) since both sides come from Google's geocoder.
 // ---------------------------------------------------------------------------
-
-export const neighborhoods = pgTable(
-  "neighborhoods",
-  {
-    id: text("id").primaryKey(),
-    cityCode: text("city_code").notNull(),
-    cityNameHe: text("city_name_he").notNull(),
-    nameHe: text("name_he").notNull(),
-    nameEn: text("name_en"),
-    centerLat: doublePrecision("center_lat"),
-    centerLon: doublePrecision("center_lon"),
-    googlePlaceId: text("google_place_id"),
-    source: text("source").default("gov.il").notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => ({
-    cityCodeIdx: index("neighborhoods_city_code_idx").on(t.cityCode),
-    googlePlaceIdIdx: index("neighborhoods_google_place_id_idx").on(t.googlePlaceId),
-  }),
-);
 
 export const userFilterNeighborhoods = pgTable(
   "user_filter_neighborhoods",
@@ -325,14 +298,14 @@ export const userFilterNeighborhoods = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    neighborhoodId: text("neighborhood_id")
-      .notNull()
-      .references(() => neighborhoods.id, { onDelete: "cascade" }),
+    placeId: text("place_id").notNull(),
+    nameHe: text("name_he").notNull(),
+    cityNameHe: text("city_name_he").notNull(),
     kind: neighborhoodFilterKindEnum("kind").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
-    pk: primaryKey({ columns: [t.userId, t.neighborhoodId, t.kind] }),
+    pk: primaryKey({ columns: [t.userId, t.placeId, t.kind] }),
     userKindIdx: index("user_filter_neighborhoods_user_kind_idx").on(t.userId, t.kind),
   }),
 );
@@ -568,8 +541,6 @@ export type TelegramLinkToken = typeof telegramLinkTokens.$inferSelect;
 export type NewTelegramLinkToken = typeof telegramLinkTokens.$inferInsert;
 export type GeocodeCache = typeof geocodeCache.$inferSelect;
 export type NewGeocodeCache = typeof geocodeCache.$inferInsert;
-export type Neighborhood = typeof neighborhoods.$inferSelect;
-export type NewNeighborhood = typeof neighborhoods.$inferInsert;
 export type UserFilterNeighborhood = typeof userFilterNeighborhoods.$inferSelect;
 export type NewUserFilterNeighborhood = typeof userFilterNeighborhoods.$inferInsert;
 export type AiUsageRow = typeof aiUsage.$inferSelect;

@@ -17,11 +17,10 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-
-export type NeighborhoodSelection = NeighborhoodCandidate;
+import type { NeighborhoodSelection } from "@apartment-finder/shared";
 
 type Props = {
-  /** Form field name. Hidden inputs render as `<input name="{name}" value="{id}">` repeated. */
+  /** Form field name. Hidden inputs render the JSON-encoded selection per pick. */
   name: string;
   defaultSelections: NeighborhoodSelection[];
 };
@@ -35,7 +34,7 @@ export function NeighborhoodPicker({ name, defaultSelections }: Props) {
   const [isPending, startTransition] = useTransition();
   const triggerId = useId();
 
-  const selectedIds = useMemo(() => new Set(selections.map((s) => s.id)), [selections]);
+  const selectedIds = useMemo(() => new Set(selections.map((s) => s.placeId)), [selections]);
 
   function onQueryChange(next: string) {
     setQuery(next);
@@ -50,14 +49,14 @@ export function NeighborhoodPicker({ name, defaultSelections }: Props) {
   }
 
   function add(candidate: NeighborhoodCandidate) {
-    if (selectedIds.has(candidate.id)) return;
+    if (selectedIds.has(candidate.placeId)) return;
     setSelections((prev) => [...prev, candidate]);
     setQuery("");
     setResults([]);
   }
 
-  function remove(id: string) {
-    setSelections((prev) => prev.filter((s) => s.id !== id));
+  function remove(placeId: string) {
+    setSelections((prev) => prev.filter((s) => s.placeId !== placeId));
   }
 
   return (
@@ -66,20 +65,20 @@ export function NeighborhoodPicker({ name, defaultSelections }: Props) {
         <ul className="flex flex-wrap gap-2">
           {selections.map((s) => (
             <li
-              key={s.id}
+              key={s.placeId}
               className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-sm"
             >
               <span className="font-medium">{s.nameHe}</span>
               <span className="text-xs text-muted-foreground">· {s.cityNameHe}</span>
               <button
                 type="button"
-                onClick={() => remove(s.id)}
+                onClick={() => remove(s.placeId)}
                 className="-me-1 ms-1 rounded-full p-0.5 text-muted-foreground hover:bg-background hover:text-foreground"
                 aria-label={t("removeChip")}
               >
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
-              <input type="hidden" name={name} value={s.id} />
+              <input type="hidden" name={name} value={JSON.stringify(s)} />
             </li>
           ))}
         </ul>
@@ -118,11 +117,11 @@ export function NeighborhoodPicker({ name, defaultSelections }: Props) {
               ) : (
                 <CommandGroup>
                   {results.map((r) => {
-                    const already = selectedIds.has(r.id);
+                    const already = selectedIds.has(r.placeId);
                     return (
                       <CommandItem
-                        key={r.id}
-                        value={`${r.nameHe} ${r.cityNameHe} ${r.id}`}
+                        key={r.placeId}
+                        value={`${r.nameHe} ${r.cityNameHe} ${r.placeId}`}
                         onSelect={() => {
                           if (!already) add(r);
                         }}

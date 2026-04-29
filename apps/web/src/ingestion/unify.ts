@@ -19,8 +19,6 @@ export type UnifyInput = {
   street: string | null;
   houseNumber: string | null;
   neighborhood: string | null;
-  /** Canonical gov.il neighborhood id, when the resolver could resolve one. */
-  neighborhoodId: string | null;
   city: string | null;
   floor: number | null;
   priceNis: number | null;
@@ -166,7 +164,6 @@ async function createApartment(input: UnifyInput): Promise<number> {
       street: input.street,
       houseNumber: input.houseNumber,
       neighborhood: input.neighborhood,
-      neighborhoodId: input.neighborhoodId,
       city: input.city,
       rooms: input.rooms,
       sqm: input.sqm,
@@ -195,16 +192,12 @@ async function link(
       matchedBy,
     })
     .onConflictDoNothing();
-  // Update apartment lastSeenAt, bump latest price, and backfill neighborhoodId
-  // if the resolver produced one and the apartment doesn't already have one.
+  // Update apartment lastSeenAt and bump latest price.
   await db
     .update(apartments)
     .set({
       lastSeenAt: new Date(),
       ...(input.priceNis != null ? { priceNisLatest: input.priceNis } : {}),
-      ...(input.neighborhoodId != null
-        ? { neighborhoodId: sql`coalesce(${apartments.neighborhoodId}, ${input.neighborhoodId})` }
-        : {}),
     })
     .where(eq(apartments.id, apartmentId));
   return { apartmentId, matchedBy, confidence };

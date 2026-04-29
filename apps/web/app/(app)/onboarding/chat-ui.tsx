@@ -2,21 +2,53 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "next/link";
+import { pickNeighborhoodAction } from "./neighborhood-pick.action";
+
+type NeighborhoodCandidate = { placeId: string; nameHe: string; cityNameHe: string };
+type CityCandidate = { placeId: string; nameHe: string };
+type ChipKind = "allowed" | "blocked";
 
 const FIRST_PROMPT =
-  "שלום! בכמה שאלות נכין לך התראות מדויקות לדירות בתל אביב. נתחיל מהתקציב - מה הסכום המקסימלי שתסכים/י לשלם בחודש?";
+  "שלום! בכמה שאלות נכין לך התראות מדויקות לדירות. נתחיל - באיזו עיר את/ה מחפש/ת דירה?";
 
 export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean }) {
   const [input, setInput] = useState("");
+  const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat/onboarding" }),
   });
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const onPickNeighborhood = useCallback(
+    async (candidate: NeighborhoodCandidate, kind: ChipKind) => {
+      if (pickedIds.has(candidate.placeId)) return;
+      setPickedIds((prev) => new Set(prev).add(candidate.placeId));
+      const result = await pickNeighborhoodAction(candidate, kind);
+      if (!result.ok) {
+        setPickedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(candidate.placeId);
+          return next;
+        });
+        return;
+      }
+      const verb = kind === "allowed" ? "בחרתי" : "לחסום";
+      sendMessage({ text: `${verb} ${candidate.nameHe} (${candidate.cityNameHe})` });
+    },
+    [pickedIds, sendMessage],
+  );
+
+  const onPickCity = useCallback(
+    (city: CityCandidate) => {
+      sendMessage({ text: `העיר היא ${city.nameHe}` });
+    },
+    [sendMessage],
+  );
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -71,6 +103,27 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
                 const result = readToolResult(part);
                 const telegramConnectUrl =
                   typeof result?.telegramConnectUrl === "string" ? result.telegramConnectUrl : null;
+                if (toolName === "searchCity" && result) {
+                  const candidates = readCityCandidates(result);
+                  if (candidates.length > 0) {
+                    return <CityChips key={idx} candidates={candidates} onPick={onPickCity} />;
+                  }
+                }
+                if (toolName === "searchNeighborhoods" && result) {
+                  const candidates = readNeighborhoodCandidates(result);
+                  const kind: ChipKind = result.kind === "blocked" ? "blocked" : "allowed";
+                  if (candidates.length > 0) {
+                    return (
+                      <NeighborhoodChips
+                        key={idx}
+                        candidates={candidates}
+                        kind={kind}
+                        pickedIds={pickedIds}
+                        onPick={onPickNeighborhood}
+                      />
+                    );
+                  }
+                }
                 return (
                   <span
                     key={idx}
@@ -152,6 +205,101 @@ function readToolResult(part: unknown): Record<string, unknown> | null {
   const value = p.output ?? p.result;
   if (!value || typeof value !== "object") return null;
   return value as Record<string, unknown>;
+}
+
+function readNeighborhoodCandidates(result: Record<string, unknown>): NeighborhoodCandidate[] {
+  const raw = result.candidates;
+  if (!Array.isArray(raw)) return [];
+  const out: NeighborhoodCandidate[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const c = item as Record<string, unknown>;
+    if (
+      typeof c.placeId === "string" &&
+      typeof c.nameHe === "string" &&
+      typeof c.cityNameHe === "string"
+    ) {
+      out.push({ placeId: c.placeId, nameHe: c.nameHe, cityNameHe: c.cityNameHe });
+    }
+  }
+  return out;
+}
+
+function readCityCandidates(result: Record<string, unknown>): CityCandidate[] {
+  const raw = result.candidates;
+  if (!Array.isArray(raw)) return [];
+  const out: CityCandidate[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const c = item as Record<string, unknown>;
+    if (typeof c.placeId === "string" && typeof c.nameHe === "string") {
+      out.push({ placeId: c.placeId, nameHe: c.nameHe });
+    }
+  }
+  return out;
+}
+
+function NeighborhoodChips({
+  candidates,
+  kind,
+  pickedIds,
+  onPick,
+}: {
+  candidates: NeighborhoodCandidate[];
+  kind: ChipKind;
+  pickedIds: Set<string>;
+  onPick: (candidate: NeighborhoodCandidate, kind: ChipKind) => void;
+}) {
+  return (
+    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="שכונות לבחירה">
+      {candidates.map((c) => {
+        const picked = pickedIds.has(c.placeId);
+        return (
+          <li key={c.placeId}>
+            <button
+              type="button"
+              onClick={() => onPick(c, kind)}
+              disabled={picked}
+              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition disabled:cursor-default ${
+                picked
+                  ? "border-success bg-success/10 text-foreground"
+                  : "bg-background text-foreground hover:bg-accent"
+              }`}
+              aria-pressed={picked}
+            >
+              <span className="font-medium">{c.nameHe}</span>
+              <span className="text-muted-foreground">· {c.cityNameHe}</span>
+              <span aria-hidden="true">{picked ? "✓" : "+"}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function CityChips({
+  candidates,
+  onPick,
+}: {
+  candidates: CityCandidate[];
+  onPick: (city: CityCandidate) => void;
+}) {
+  return (
+    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="ערים לבחירה">
+      {candidates.map((c) => (
+        <li key={c.placeId}>
+          <button
+            type="button"
+            onClick={() => onPick(c)}
+            className="inline-flex items-center gap-1 rounded-full border bg-background px-3 py-1 text-xs text-foreground transition hover:bg-accent"
+          >
+            <span className="font-medium">{c.nameHe}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function Bubble({

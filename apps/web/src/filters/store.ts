@@ -1,13 +1,13 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   APARTMENT_ATTRIBUTE_KEYS,
   type ApartmentAttributeKey,
   type AttributeRequirement,
   type Filters,
+  type NeighborhoodSelection,
 } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import {
-  neighborhoods,
   userFilterAttributes,
   userFilterNeighborhoods,
   userFilterTexts,
@@ -34,17 +34,19 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     .where(eq(userFilterAttributes.userId, userId));
   const neighborhoodRows = await db
     .select({
-      neighborhoodId: userFilterNeighborhoods.neighborhoodId,
+      placeId: userFilterNeighborhoods.placeId,
+      nameHe: userFilterNeighborhoods.nameHe,
+      cityNameHe: userFilterNeighborhoods.cityNameHe,
       kind: userFilterNeighborhoods.kind,
     })
     .from(userFilterNeighborhoods)
     .where(eq(userFilterNeighborhoods.userId, userId));
-  const allowedNeighborhoodIds = neighborhoodRows
+  const allowedNeighborhoods: NeighborhoodSelection[] = neighborhoodRows
     .filter((n) => n.kind === "allowed")
-    .map((n) => n.neighborhoodId);
-  const blockedNeighborhoodIds = neighborhoodRows
+    .map(({ placeId, nameHe, cityNameHe }) => ({ placeId, nameHe, cityNameHe }));
+  const blockedNeighborhoods: NeighborhoodSelection[] = neighborhoodRows
     .filter((n) => n.kind === "blocked")
-    .map((n) => n.neighborhoodId);
+    .map(({ placeId, nameHe, cityNameHe }) => ({ placeId, nameHe, cityNameHe }));
 
   if (!row) {
     return {
@@ -54,8 +56,8 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       roomsMax: null,
       sqmMin: null,
       sqmMax: null,
-      allowedNeighborhoodIds,
-      blockedNeighborhoodIds,
+      allowedNeighborhoods,
+      blockedNeighborhoods,
       wishes: [],
       dealbreakers: [],
       attributes: [],
@@ -73,8 +75,8 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     roomsMax: row.roomsMax,
     sqmMin: row.sqmMin,
     sqmMax: row.sqmMax,
-    allowedNeighborhoodIds,
-    blockedNeighborhoodIds,
+    allowedNeighborhoods,
+    blockedNeighborhoods,
     wishes: row.wishes ?? [],
     dealbreakers: row.dealbreakers ?? [],
     attributes: attrs,
@@ -224,34 +226,53 @@ export async function markOnboarded(userId: string): Promise<void> {
   await upsertFilters(userId, { onboardedAt: new Date(), isActive: true });
 }
 
-/** Replace the user's neighborhood selections of a given kind with the given gov.il IDs. */
+/** Replace the user's neighborhood selections of a given kind. */
 export async function replaceNeighborhoods(
   userId: string,
   kind: NeighborhoodFilterKind,
-  neighborhoodIds: string[],
+  selections: NeighborhoodSelection[],
 ): Promise<void> {
   const db = getDb();
-  const cleaned = Array.from(new Set(neighborhoodIds.filter((id) => id.trim().length > 0)));
+  const seen = new Map<string, NeighborhoodSelection>();
+  for (const s of selections) {
+    if (s.placeId.trim() && s.nameHe.trim() && s.cityNameHe.trim()) {
+      seen.set(s.placeId, s);
+    }
+  }
   await db
     .delete(userFilterNeighborhoods)
     .where(and(eq(userFilterNeighborhoods.userId, userId), eq(userFilterNeighborhoods.kind, kind)));
-  if (cleaned.length === 0) return;
+  if (seen.size === 0) return;
   await db
     .insert(userFilterNeighborhoods)
-    .values(cleaned.map((neighborhoodId) => ({ userId, neighborhoodId, kind })))
+    .values(
+      Array.from(seen.values()).map((s) => ({
+        userId,
+        placeId: s.placeId,
+        nameHe: s.nameHe,
+        cityNameHe: s.cityNameHe,
+        kind,
+      })),
+    )
     .onConflictDoNothing();
 }
 
-/** Add a single neighborhood selection. Used by the chat agent. */
+/** Add a single neighborhood selection. Used by the chat agent's chip click. */
 export async function addNeighborhoodFilter(
   userId: string,
   kind: NeighborhoodFilterKind,
-  neighborhoodId: string,
+  selection: NeighborhoodSelection,
 ): Promise<void> {
   const db = getDb();
   await db
     .insert(userFilterNeighborhoods)
-    .values({ userId, neighborhoodId, kind })
+    .values({
+      userId,
+      placeId: selection.placeId,
+      nameHe: selection.nameHe,
+      cityNameHe: selection.cityNameHe,
+      kind,
+    })
     .onConflictDoNothing();
 }
 
@@ -259,7 +280,7 @@ export async function addNeighborhoodFilter(
 export async function removeNeighborhoodFilter(
   userId: string,
   kind: NeighborhoodFilterKind,
-  neighborhoodId: string,
+  placeId: string,
 ): Promise<void> {
   const db = getDb();
   await db
@@ -268,42 +289,9 @@ export async function removeNeighborhoodFilter(
       and(
         eq(userFilterNeighborhoods.userId, userId),
         eq(userFilterNeighborhoods.kind, kind),
-        eq(userFilterNeighborhoods.neighborhoodId, neighborhoodId),
+        eq(userFilterNeighborhoods.placeId, placeId),
       ),
     );
-}
-
-/** Validates that every given ID exists in `neighborhoods`. Returns the subset that does. */
-export async function filterExistingNeighborhoodIds(candidateIds: string[]): Promise<Set<string>> {
-  if (candidateIds.length === 0) return new Set();
-  const db = getDb();
-  const rows = await db
-    .select({ id: neighborhoods.id })
-    .from(neighborhoods)
-    .where(inArray(neighborhoods.id, candidateIds));
-  return new Set(rows.map((r) => r.id));
-}
-
-/** Hydrates a list of neighborhood IDs into `{id, nameHe, cityNameHe}` for UI display.
- *  IDs missing from the table are silently dropped. Order is preserved. */
-export async function loadNeighborhoodLabels(
-  ids: string[],
-): Promise<Array<{ id: string; nameHe: string; cityNameHe: string }>> {
-  if (ids.length === 0) return [];
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: neighborhoods.id,
-      nameHe: neighborhoods.nameHe,
-      cityNameHe: neighborhoods.cityNameHe,
-    })
-    .from(neighborhoods)
-    .where(inArray(neighborhoods.id, ids));
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  return ids.flatMap((id) => {
-    const row = byId.get(id);
-    return row ? [row] : [];
-  });
 }
 
 /** Counts active filters; mirrors the shared helper but uses the stored shape. */
@@ -312,8 +300,8 @@ export function countActive(f: StoredFilters): number {
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
-  if (f.allowedNeighborhoodIds.length > 0) count++;
-  if (f.blockedNeighborhoodIds.length > 0) count++;
+  if (f.allowedNeighborhoods.length > 0) count++;
+  if (f.blockedNeighborhoods.length > 0) count++;
   for (const a of f.attributes) {
     if (a.requirement !== "dont_care") count++;
   }

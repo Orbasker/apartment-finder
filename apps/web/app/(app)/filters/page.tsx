@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth-server";
-import { loadFilters, loadNeighborhoodLabels } from "@/filters/store";
+import { loadFilters } from "@/filters/store";
 import { FiltersForm } from "./form";
 
 export const dynamic = "force-dynamic";
@@ -13,10 +13,6 @@ export default async function FiltersPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const filters = await loadFilters(user.id);
-  const [allowed, blocked] = await Promise.all([
-    loadNeighborhoodLabels(filters.allowedNeighborhoodIds),
-    loadNeighborhoodLabels(filters.blockedNeighborhoodIds),
-  ]);
 
   return (
     <div className="mx-auto w-full max-w-2xl">
@@ -26,7 +22,7 @@ export default async function FiltersPage() {
           עריכת הסינונים שלך. שמירה תפעיל את ההתראות.
         </p>
       </header>
-      <FiltersForm filters={filters} neighborhoodSelections={{ allowed, blocked }} />
+      <FiltersForm filters={filters} />
     </div>
   );
 }

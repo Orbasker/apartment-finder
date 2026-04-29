@@ -64,6 +64,15 @@ export const FilterAttributeSchema = z.object({
 });
 export type FilterAttribute = z.infer<typeof FilterAttributeSchema>;
 
+// Each neighborhood selection caches Google Places' place_id + display name +
+// city name. Both the dashboard typeahead and the chat picker write this shape.
+export const NeighborhoodSelectionSchema = z.object({
+  placeId: z.string().min(1),
+  nameHe: z.string().min(1),
+  cityNameHe: z.string().min(1),
+});
+export type NeighborhoodSelection = z.infer<typeof NeighborhoodSelectionSchema>;
+
 export const FiltersSchema = z.object({
   priceMinNis: z.number().int().nonnegative().nullable(),
   priceMaxNis: z.number().int().positive().nullable(),
@@ -71,10 +80,8 @@ export const FiltersSchema = z.object({
   roomsMax: z.number().min(0).nullable(),
   sqmMin: z.number().int().positive().nullable(),
   sqmMax: z.number().int().positive().nullable(),
-  // gov.il neighborhood codes (see `neighborhoods` table). Free-text neighborhoods
-  // are no longer accepted; the chat agent and dashboard pick canonical IDs via typeahead.
-  allowedNeighborhoodIds: z.array(z.string()).default([]),
-  blockedNeighborhoodIds: z.array(z.string()).default([]),
+  allowedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
+  blockedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
   wishes: z.array(z.string()).default([]),
   dealbreakers: z.array(z.string()).default([]),
   attributes: z.array(FilterAttributeSchema).default([]),
@@ -95,8 +102,8 @@ export function countActiveFilters(f: Filters): number {
   if (f.priceMaxNis != null || f.priceMinNis != null) count++;
   if (f.roomsMin != null || f.roomsMax != null) count++;
   if (f.sqmMin != null || f.sqmMax != null) count++;
-  if (f.allowedNeighborhoodIds.length > 0) count++;
-  if (f.blockedNeighborhoodIds.length > 0) count++;
+  if (f.allowedNeighborhoods.length > 0) count++;
+  if (f.blockedNeighborhoods.length > 0) count++;
   for (const a of f.attributes) {
     if (a.requirement !== "dont_care") count++;
   }
@@ -111,8 +118,8 @@ export const defaultFilters: Filters = {
   roomsMax: null,
   sqmMin: null,
   sqmMax: null,
-  allowedNeighborhoodIds: [],
-  blockedNeighborhoodIds: [],
+  allowedNeighborhoods: [],
+  blockedNeighborhoods: [],
   wishes: [],
   dealbreakers: [],
   attributes: [],

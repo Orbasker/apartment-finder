@@ -9,13 +9,13 @@ import {
 } from "@apartment-finder/shared";
 import { getCurrentUser } from "@/lib/auth-server";
 import {
-  filterExistingNeighborhoodIds,
   markOnboarded,
   replaceAttributes,
   replaceNeighborhoods,
   replaceTexts,
   upsertFilters,
 } from "@/filters/store";
+import type { NeighborhoodSelection } from "@apartment-finder/shared";
 
 function parseOptionalInt(v: FormDataEntryValue | null): number | null {
   if (typeof v !== "string" || v.trim() === "") return null;
@@ -37,12 +37,31 @@ function parseList(raw: FormDataEntryValue | null): string[] {
     .filter(Boolean);
 }
 
-function parseIdList(formData: FormData, name: string): string[] {
-  return formData
-    .getAll(name)
-    .filter((v): v is string => typeof v === "string")
-    .map((s) => s.trim())
-    .filter(Boolean);
+function parseNeighborhoodSelections(formData: FormData, name: string): NeighborhoodSelection[] {
+  const out: NeighborhoodSelection[] = [];
+  for (const raw of formData.getAll(name)) {
+    if (typeof raw !== "string") continue;
+    try {
+      const parsed = JSON.parse(raw) as Partial<NeighborhoodSelection>;
+      if (
+        typeof parsed.placeId === "string" &&
+        typeof parsed.nameHe === "string" &&
+        typeof parsed.cityNameHe === "string" &&
+        parsed.placeId &&
+        parsed.nameHe &&
+        parsed.cityNameHe
+      ) {
+        out.push({
+          placeId: parsed.placeId,
+          nameHe: parsed.nameHe,
+          cityNameHe: parsed.cityNameHe,
+        });
+      }
+    } catch {
+      // Skip malformed entries.
+    }
+  }
+  return out;
 }
 
 export async function saveFiltersAction(formData: FormData): Promise<void> {
@@ -62,19 +81,15 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
     maxAgeHours: parseOptionalInt(formData.get("maxAgeHours")) ?? 48,
   });
 
-  const allowedIds = parseIdList(formData, "allowedNeighborhoodIds");
-  const blockedIds = parseIdList(formData, "blockedNeighborhoodIds");
-  const validAllowed = await filterExistingNeighborhoodIds(allowedIds);
-  const validBlocked = await filterExistingNeighborhoodIds(blockedIds);
   await replaceNeighborhoods(
     user.id,
     "allowed",
-    allowedIds.filter((id) => validAllowed.has(id)),
+    parseNeighborhoodSelections(formData, "allowedNeighborhoods"),
   );
   await replaceNeighborhoods(
     user.id,
     "blocked",
-    blockedIds.filter((id) => validBlocked.has(id)),
+    parseNeighborhoodSelections(formData, "blockedNeighborhoods"),
   );
 
   const attrs: Array<{ key: ApartmentAttributeKey; requirement: AttributeRequirement }> = [];

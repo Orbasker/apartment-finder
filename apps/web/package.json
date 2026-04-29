@@ -15,7 +15,6 @@
     "db:migrate": "drizzle-kit migrate",
     "db:reset": "bun scripts/db-reset.ts",
     "db:studio": "drizzle-kit studio",
-    "seed:neighborhoods": "bun scripts/seed-neighborhoods.ts",
     "email:dev": "email dev --dir src/emails"
   },
   "dependencies": {

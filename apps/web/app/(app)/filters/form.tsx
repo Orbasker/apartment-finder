@@ -14,14 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
-import { NeighborhoodPicker, type NeighborhoodSelection } from "@/components/neighborhood-picker";
+import { NeighborhoodPicker } from "@/components/neighborhood-picker";
 import { saveFiltersAction } from "./actions";
 import type { StoredFilters } from "@/filters/store";
-
-export type NeighborhoodSelections = {
-  allowed: NeighborhoodSelection[];
-  blocked: NeighborhoodSelection[];
-};
 
 const REQUIREMENT_LABELS: Record<AttributeRequirement, string> = {
   required_true: "חובה כן",
@@ -30,13 +25,7 @@ const REQUIREMENT_LABELS: Record<AttributeRequirement, string> = {
   dont_care: "לא משנה",
 };
 
-export function FiltersForm({
-  filters,
-  neighborhoodSelections,
-}: {
-  filters: StoredFilters;
-  neighborhoodSelections: NeighborhoodSelections;
-}) {
+export function FiltersForm({ filters }: { filters: StoredFilters }) {
   const attrMap = new Map<ApartmentAttributeKey, AttributeRequirement>(
     filters.attributes.map((a) => [a.key, a.requirement]),
   );
@@ -92,15 +81,15 @@ export function FiltersForm({
           <div className="space-y-2">
             <Label>{t("allowedTitle")}</Label>
             <NeighborhoodPicker
-              name="allowedNeighborhoodIds"
-              defaultSelections={neighborhoodSelections.allowed}
+              name="allowedNeighborhoods"
+              defaultSelections={filters.allowedNeighborhoods}
             />
           </div>
           <div className="space-y-2">
             <Label>{t("blockedTitle")}</Label>
             <NeighborhoodPicker
-              name="blockedNeighborhoodIds"
-              defaultSelections={neighborhoodSelections.blocked}
+              name="blockedNeighborhoods"
+              defaultSelections={filters.blockedNeighborhoods}
             />
           </div>
         </div>
