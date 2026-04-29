@@ -14,6 +14,9 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 
+  /** Email auto-promoted to `role = 'admin'` on first sign-in. */
+  ADMIN_EMAIL: z.string().email().optional(),
+
   AI_GATEWAY_API_KEY: z.string().optional(),
 
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),

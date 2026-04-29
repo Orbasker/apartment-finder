@@ -8,10 +8,19 @@ import {
   Section,
   Text,
 } from "@react-email/components";
+import { LOCALE_DIRECTIONS, type Locale } from "@/i18n/locales";
+
+export type SignInCodeStrings = {
+  preview: string;
+  heading: string;
+  instruction: string;
+  expiry: string;
+};
 
 export type SignInCodeProps = {
   otp: string;
-  expiresInMinutes: number;
+  locale: Locale;
+  strings: SignInCodeStrings;
 };
 
 const containerStyle = {
@@ -63,25 +72,23 @@ const codePill = {
   color: "#111827",
 };
 
-export function SignInCodeEmail({ otp, expiresInMinutes }: SignInCodeProps) {
+export function SignInCodeEmail({ otp, locale, strings }: SignInCodeProps) {
+  const dir = LOCALE_DIRECTIONS[locale];
   return (
-    <Html lang="he" dir="rtl">
+    <Html lang={locale} dir={dir}>
       <Head />
-      <Preview>{`קוד הכניסה שלך: ${otp}`}</Preview>
+      <Preview>{strings.preview}</Preview>
       <Body style={{ backgroundColor: "#f9fafb", margin: 0, padding: 0 }}>
         <Container style={containerStyle}>
           <Section style={cardStyle}>
             <Heading as="h1" style={heading}>
-              קוד הכניסה ל־Apartment Finder
+              {strings.heading}
             </Heading>
-            <Text style={paragraph}>הזן/י את הקוד הבא בעמוד הכניסה:</Text>
+            <Text style={paragraph}>{strings.instruction}</Text>
             <Text style={codePill}>
               <bdi>{otp}</bdi>
             </Text>
-            <Text style={muted}>
-              הקוד תקף ל־<bdi>{expiresInMinutes}</bdi> דקות. אם לא ביקשת קוד כניסה, אפשר להתעלם
-              מהמייל.
-            </Text>
+            <Text style={muted}>{strings.expiry}</Text>
           </Section>
         </Container>
       </Body>
