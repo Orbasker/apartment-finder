@@ -20,7 +20,7 @@ type CityCandidate = { placeId: string; nameHe: string };
 type ChipKind = "allowed" | "blocked";
 
 const FIRST_PROMPT =
-  "שלום! בכמה שאלות נכין לך התראות מדויקות לדירות. נתחיל - באיזו עיר את/ה מחפש/ת דירה?";
+  "שלום! בכמה שאלות נכין לך התראות מדויקות לדירות. אפשר להוסיף כמה ערים שונות, וכל עיר עם השכונות שלה. נתחיל - באיזו עיר ראשונה את/ה מחפש/ת דירה?";
 
 export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean }) {
   const [input, setInput] = useState("");
@@ -94,20 +94,18 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
         aria-label="שיחת אונבורדינג"
         className="flex-1 space-y-3 overflow-y-auto p-3 sm:p-4"
       >
-        {messages.length === 0 && (
-          <Bubble role="assistant">
-            <p>{FIRST_PROMPT}</p>
-            {alreadyOnboarded && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                כבר השלמת אונבורדינג בעבר - אפשר להמשיך מכאן ולעדכן, או לערוך ישירות ב־
-                <Link href="/filters" className="underline">
-                  /filters
-                </Link>
-                .
-              </p>
-            )}
-          </Bubble>
-        )}
+        <Bubble role="assistant">
+          <p>{FIRST_PROMPT}</p>
+          {alreadyOnboarded && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              כבר השלמת אונבורדינג בעבר - אפשר להמשיך מכאן ולעדכן, או לערוך ישירות ב־
+              <Link href="/filters" className="underline">
+                /filters
+              </Link>
+              .
+            </p>
+          )}
+        </Bubble>
         {messages.map((m) => (
           <Bubble key={m.id} role={m.role}>
             {m.parts.map((part, idx) => {
