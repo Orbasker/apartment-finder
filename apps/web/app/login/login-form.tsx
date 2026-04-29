@@ -77,7 +77,7 @@ export function LoginForm({
     try {
       const { error } = await authClient.signIn.emailOtp({ email, otp });
       if (error) throw new Error(error.message ?? t("otp.errorFallback"));
-      window.location.href = "/dashboard";
+      window.location.href = "/matches";
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setPendingAction(null);
@@ -90,7 +90,7 @@ export function LoginForm({
     try {
       const { error } = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/dashboard",
+        callbackURL: "/matches",
       });
       if (error) throw new Error(error.message ?? t("google.errorFallback"));
     } catch (err) {

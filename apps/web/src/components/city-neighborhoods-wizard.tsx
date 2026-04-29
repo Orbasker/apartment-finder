@@ -3,11 +3,14 @@
 import { useId, useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Plus, Search, X } from "lucide-react";
-import { searchCitiesAction, type CityCandidate } from "../../app/(app)/filters/city-search.action";
+import {
+  searchCitiesAction,
+  type CityCandidate,
+} from "../../app/(app)/(onboarded)/filters/city-search.action";
 import {
   searchNeighborhoodsAction,
   type NeighborhoodCandidate,
-} from "../../app/(app)/filters/neighborhood-search.action";
+} from "../../app/(app)/(onboarded)/filters/neighborhood-search.action";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import {
   Command,

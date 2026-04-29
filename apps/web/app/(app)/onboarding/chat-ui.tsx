@@ -3,12 +3,12 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import Link from "next/link";
-import { pickCityAction } from "./city-pick.action";
-import { pickNeighborhoodAction } from "./neighborhood-pick.action";
+import { pickNeighborhoodsAction } from "./neighborhood-pick.action";
 
 type NeighborhoodCandidate = {
   placeId: string;
@@ -16,58 +16,36 @@ type NeighborhoodCandidate = {
   cityPlaceId: string;
   cityNameHe: string;
 };
-type CityCandidate = { placeId: string; nameHe: string };
 type ChipKind = "allowed" | "blocked";
 
 const FIRST_PROMPT =
   "שלום! בכמה שאלות נכין לך התראות מדויקות לדירות. אפשר להוסיף כמה ערים שונות, וכל עיר עם השכונות שלה. נתחיל - באיזו עיר ראשונה את/ה מחפש/ת דירה?";
 
 export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean }) {
+  const router = useRouter();
   const [input, setInput] = useState("");
-  const [pickedIds, setPickedIds] = useState<Set<string>>(new Set());
-  const [pickedCityIds, setPickedCityIds] = useState<Set<string>>(new Set());
+  const [submittedNeighborhoodIds, setSubmittedNeighborhoodIds] = useState<Set<string>>(new Set());
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat/onboarding" }),
   });
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const onPickNeighborhood = useCallback(
-    async (candidate: NeighborhoodCandidate, kind: ChipKind) => {
-      if (pickedIds.has(candidate.placeId)) return;
-      setPickedIds((prev) => new Set(prev).add(candidate.placeId));
-      const result = await pickNeighborhoodAction(candidate, kind);
-      if (!result.ok) {
-        setPickedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(candidate.placeId);
-          return next;
-        });
-        return;
-      }
-      const verb = kind === "allowed" ? "בחרתי" : "לחסום";
-      sendMessage({ text: `${verb} ${candidate.nameHe} (${candidate.cityNameHe})` });
-    },
-    [pickedIds, sendMessage],
-  );
-
-  const onPickCity = useCallback(
-    async (city: CityCandidate) => {
-      if (pickedCityIds.has(city.placeId)) return;
-      setPickedCityIds((prev) => new Set(prev).add(city.placeId));
-      const result = await pickCityAction(city);
-      if (!result.ok) {
-        setPickedCityIds((prev) => {
-          const next = new Set(prev);
-          next.delete(city.placeId);
-          return next;
-        });
-        return;
-      }
-      sendMessage({
-        text: `נבחרה העיר ${city.nameHe} (place_id: ${city.placeId}). העבר/י לחיפוש שכונות בעיר זו.`,
+  const onSubmitNeighborhoods = useCallback(
+    async (selections: NeighborhoodCandidate[], kind: ChipKind) => {
+      if (selections.length === 0) return { ok: false as const };
+      const result = await pickNeighborhoodsAction(selections, kind);
+      if (!result.ok) return { ok: false as const };
+      setSubmittedNeighborhoodIds((prev) => {
+        const next = new Set(prev);
+        for (const s of selections) next.add(s.placeId);
+        return next;
       });
+      const verb = kind === "allowed" ? "בחרתי" : "לחסום";
+      const list = selections.map((s) => `${s.nameHe} (${s.cityNameHe})`).join(", ");
+      sendMessage({ text: `${verb} ${list}` });
+      return { ok: true as const };
     },
-    [pickedCityIds, sendMessage],
+    [sendMessage],
   );
 
   useEffect(() => {
@@ -119,19 +97,6 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
               if (part.type?.startsWith("tool-")) {
                 const toolName = part.type.slice("tool-".length);
                 const result = readToolResult(part);
-                if (toolName === "searchCity" && result) {
-                  const candidates = readCityCandidates(result);
-                  if (candidates.length > 0) {
-                    return (
-                      <CityChips
-                        key={idx}
-                        candidates={candidates}
-                        pickedIds={pickedCityIds}
-                        onPick={onPickCity}
-                      />
-                    );
-                  }
-                }
                 if (toolName === "searchNeighborhoods" && result) {
                   const candidates = readNeighborhoodCandidates(result);
                   const kind: ChipKind = result.kind === "blocked" ? "blocked" : "allowed";
@@ -141,8 +106,8 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
                         key={idx}
                         candidates={candidates}
                         kind={kind}
-                        pickedIds={pickedIds}
-                        onPick={onPickNeighborhood}
+                        submittedIds={submittedNeighborhoodIds}
+                        onSubmit={onSubmitNeighborhoods}
                       />
                     );
                   }
@@ -181,13 +146,17 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
         {completed && (
           <div
             role="status"
-            className="rounded-md border border-success/30 bg-success/10 p-3 text-sm"
+            className="flex flex-col gap-2 rounded-md border border-success/30 bg-success/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
           >
-            🎉 סיימנו! ההתראות פעילות. אפשר לערוך בכל רגע ב־
-            <Link href="/filters" className="underline">
-              /filters
-            </Link>
-            .
+            <span>🎉 סיימנו! ההתראות פעילות.</span>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => router.replace("/matches")}
+              className="shrink-0"
+            >
+              המשך לדשבורד
+            </Button>
           </div>
         )}
       </div>
@@ -251,56 +220,93 @@ function readNeighborhoodCandidates(result: Record<string, unknown>): Neighborho
   return out;
 }
 
-function readCityCandidates(result: Record<string, unknown>): CityCandidate[] {
-  const raw = result.candidates;
-  if (!Array.isArray(raw)) return [];
-  const out: CityCandidate[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object") continue;
-    const c = item as Record<string, unknown>;
-    if (typeof c.placeId === "string" && typeof c.nameHe === "string") {
-      out.push({ placeId: c.placeId, nameHe: c.nameHe });
-    }
-  }
-  return out;
-}
-
 function NeighborhoodChips({
   candidates,
   kind,
-  pickedIds,
-  onPick,
+  submittedIds,
+  onSubmit,
 }: {
   candidates: NeighborhoodCandidate[];
   kind: ChipKind;
-  pickedIds: Set<string>;
-  onPick: (candidate: NeighborhoodCandidate, kind: ChipKind) => void;
+  submittedIds: Set<string>;
+  onSubmit: (selections: NeighborhoodCandidate[], kind: ChipKind) => Promise<{ ok: boolean }>;
 }) {
+  const [pending, setPending] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+
+  function toggle(placeId: string) {
+    if (submittedIds.has(placeId) || busy) return;
+    setPending((prev) => {
+      const next = new Set(prev);
+      if (next.has(placeId)) next.delete(placeId);
+      else next.add(placeId);
+      return next;
+    });
+  }
+
+  async function handleSubmit() {
+    if (busy || pending.size === 0) return;
+    const picks = candidates.filter((c) => pending.has(c.placeId));
+    if (picks.length === 0) return;
+    setBusy(true);
+    const result = await onSubmit(picks, kind);
+    setBusy(false);
+    if (result.ok) setPending(new Set());
+  }
+
+  const submitLabel = kind === "allowed" ? "אשר/י שכונות" : "אשר/י חסימות";
+
   return (
-    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="שכונות לבחירה">
-      {candidates.map((c) => {
-        const picked = pickedIds.has(c.placeId);
-        return (
-          <li key={c.placeId}>
-            <button
-              type="button"
-              onClick={() => onPick(c, kind)}
-              disabled={picked}
-              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition disabled:cursor-default ${
-                picked
-                  ? "border-success bg-success/10 text-foreground"
-                  : "bg-background text-foreground hover:bg-accent"
-              }`}
-              aria-pressed={picked}
-            >
-              <span className="font-medium">{c.nameHe}</span>
-              <span className="text-muted-foreground">· {c.cityNameHe}</span>
-              <span aria-hidden="true">{picked ? "✓" : "+"}</span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="mt-2 flex flex-col gap-2">
+      <ul className="flex flex-wrap gap-1.5" aria-label="שכונות לבחירה">
+        {candidates.map((c) => {
+          const submitted = submittedIds.has(c.placeId);
+          const selected = pending.has(c.placeId);
+          const disabled = submitted || busy;
+          return (
+            <li key={c.placeId}>
+              <button
+                type="button"
+                onClick={() => toggle(c.placeId)}
+                disabled={disabled}
+                aria-pressed={selected || submitted}
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition disabled:cursor-default ${
+                  submitted
+                    ? "border-success bg-success/10 text-foreground"
+                    : selected
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "bg-background text-foreground hover:bg-accent"
+                }`}
+              >
+                <span className="font-medium">{c.nameHe}</span>
+                <span className="text-muted-foreground">· {c.cityNameHe}</span>
+                <span aria-hidden="true">{submitted ? "✓" : selected ? "✓" : "+"}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {pending.size > 0 && (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSubmit}
+            disabled={busy}
+            className="h-7 shrink-0 rounded-full px-3 text-xs"
+          >
+            {busy && <Spinner className="h-3 w-3" />}
+            {busy ? (
+              "שולח…"
+            ) : (
+              <>
+                {submitLabel} (<bdi>{pending.size}</bdi>)
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -317,42 +323,6 @@ function TelegramConnect({ url }: { url: string }) {
       </svg>
       התחבר ל־Telegram
     </a>
-  );
-}
-
-function CityChips({
-  candidates,
-  pickedIds,
-  onPick,
-}: {
-  candidates: CityCandidate[];
-  pickedIds: Set<string>;
-  onPick: (city: CityCandidate) => void;
-}) {
-  return (
-    <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="ערים לבחירה">
-      {candidates.map((c) => {
-        const picked = pickedIds.has(c.placeId);
-        return (
-          <li key={c.placeId}>
-            <button
-              type="button"
-              onClick={() => onPick(c)}
-              disabled={picked}
-              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition disabled:cursor-default ${
-                picked
-                  ? "border-success bg-success/10 text-foreground"
-                  : "bg-background text-foreground hover:bg-accent"
-              }`}
-              aria-pressed={picked}
-            >
-              <span className="font-medium">{c.nameHe}</span>
-              <span aria-hidden="true">{picked ? "✓" : "+"}</span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 

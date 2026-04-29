@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const user = await getCurrentUser();
   const authed = !!user;
-  const primaryHref = authed ? "/dashboard" : "/login";
-  const primaryLabel = authed ? "לדשבורד" : "התחל בחינם";
+  const primaryHref = authed ? "/matches" : "/login";
+  const primaryLabel = authed ? "לדירות" : "התחל בחינם";
   const secondaryChatHref = authed ? "/onboarding" : "/login";
 
   return (
@@ -28,8 +28,8 @@ export default async function HomePage() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           {authed ? (
-            <Link href="/dashboard">
-              <Button size="sm">לדשבורד</Button>
+            <Link href="/matches">
+              <Button size="sm">לדירות</Button>
             </Link>
           ) : (
             <>
