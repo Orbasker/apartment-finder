@@ -65,12 +65,6 @@
       "expiry": "This code expires in {minutes} minutes. If you didn't request it, you can ignore this email."
     }
   },
-  "Filters": {
-    "notifyOnUnknownMustHave": {
-      "label": "Notify me when I'm unsure about must-haves",
-      "description": "If enabled: get alerts even when it's unclear if an apartment meets your requirements. If disabled: skip listings you're unsure about."
-    }
-  },
   "FilterSettings": {
     "unknownsTitle": "When info is missing",
     "unknownsQuestion": "If a listing doesn't say whether it has, say, an elevator or parking that you marked as a must-have — what should we do?",
@@ -79,9 +73,5 @@
     "unknownsStrictLabel": "Skip it — only alert me when every must-have is confirmed",
     "unknownsStrictHelp": "You'll get fewer alerts, but each one will definitely meet all your hard requirements."
   },
-  "Onboarding": {
-    "unknownMustHaveQuestion": "When we can't tell whether a listing meets one of your must-haves, what would you prefer?",
-    "notifyOnUnknown": "Notify me anyway — I'd rather see it and decide myself",
-    "skipOnUnknown": "Skip it — only tell me when must-haves are confirmed"
-  }
+  "Onboarding": {}
 }

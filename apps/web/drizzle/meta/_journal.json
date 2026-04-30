@@ -15,6 +15,13 @@
       "when": 1777483948041,
       "tag": "0001_complex_infant_terrible",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777558630853,
+      "tag": "0002_fluffy_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }

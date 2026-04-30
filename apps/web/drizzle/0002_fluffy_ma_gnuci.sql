@@ -1,0 +1,1 @@
+ALTER TABLE "user_filters" ALTER COLUMN "strict_unknowns" SET DEFAULT false;
