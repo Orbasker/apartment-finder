@@ -86,5 +86,75 @@
     "unknownsStrictLabel": "להתעלם — לשלוח רק כשהמערכת בטוחה",
     "unknownsStrictHelp": "תקבלו פחות התראות, אבל כל אחת תעמוד בכל הדרישות שלכם בוודאות."
   },
-  "Onboarding": {}
+  "Onboarding": {},
+  "Listings": {
+    "title": "רשימת דירות",
+    "subtitle": "כל הדירות שהתאימו לסינונים שלך.",
+    "header": {
+      "view": {
+        "table": "טבלה",
+        "map": "מפה"
+      },
+      "sort": {
+        "label": "מיון",
+        "newest": "חדשות ביותר",
+        "oldest": "ישנות ביותר",
+        "priceAsc": "מחיר: מהנמוך לגבוה",
+        "priceDesc": "מחיר: מהגבוה לנמוך",
+        "roomsAsc": "חדרים: מעט→הרבה",
+        "roomsDesc": "חדרים: הרבה→מעט"
+      },
+      "chips": {
+        "label": "סינונים פעילים",
+        "priceMin": "מחיר מ־{value} ₪",
+        "priceMax": "מחיר עד {value} ₪",
+        "rooms": "{value} חדרים",
+        "removeAria": "הסר/י {label}"
+      },
+      "clearAll": "נקה הכול"
+    },
+    "empty": {
+      "title": "אין דירות עדיין",
+      "body": "כשתקבל/י התראות על דירות שמתאימות, הן יופיעו כאן.",
+      "filteredTitle": "אין תוצאות לסינון",
+      "filteredBody": "נסה/י להסיר חלק מהסינונים או לאפס את הכול."
+    },
+    "error": {
+      "title": "שגיאה בטעינת הדירות",
+      "body": "משהו השתבש בטעינת הרשימה. נסה/י לרענן את העמוד."
+    },
+    "table": {
+      "ariaLabel": "רשימת דירות",
+      "columns": {
+        "title": "כתובת",
+        "price": "מחיר",
+        "rooms": "חדרים / שטח",
+        "neighborhood": "שכונה",
+        "source": "מקור",
+        "postedAt": "פורסם"
+      },
+      "cell": {
+        "rooms": "{value} חדרים",
+        "sqm": "{value} מ\"ר",
+        "untitled": "כתובת לא ידועה"
+      }
+    },
+    "source": {
+      "yad2": "יד2",
+      "facebook": "פייסבוק"
+    },
+    "pagination": {
+      "ariaLabel": "ניווט בין עמודים",
+      "status": "עמוד {page} מתוך {pageCount} · {total} דירות",
+      "prev": "הקודם",
+      "next": "הבא"
+    },
+    "map": {
+      "details": "לפרטי הדירה",
+      "close": "סגירה",
+      "unknown": "לא ידוע",
+      "missingLocation": "<countTag>{count}</countTag> דירות בלי מיקום מדויק לא מוצגות במפה.",
+      "switchToTable": "מעבר לטבלה"
+    }
+  }
 }
