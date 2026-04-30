@@ -136,9 +136,12 @@
       "prev": "הקודם",
       "next": "הבא"
     },
-    "mapPlaceholder": {
-      "title": "תצוגת מפה",
-      "body": "תצוגת המפה תושק בקרוב."
+    "map": {
+      "details": "לפרטי הדירה",
+      "close": "סגירה",
+      "unknown": "לא ידוע",
+      "missingLocation": "<countTag>{count}</countTag> דירות בלי מיקום מדויק לא מוצגות במפה.",
+      "switchToTable": "מעבר לטבלה"
     }
   }
 }

@@ -25,3 +25,9 @@ export type MatchedListingsResult = {
   pageSize: number;
   pageCount: number;
 };
+
+export type MatchedListingsMapResult = {
+  rows: MatchedListing[];
+  total: number;
+  noLocationCount: number;
+};

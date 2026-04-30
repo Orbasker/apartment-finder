@@ -25,6 +25,9 @@ describe("parseListingsQuery", () => {
         rooms: "3.5",
         sort: "priceAsc",
         page: "3",
+        lat: "32.0853",
+        lng: "34.7818",
+        zoom: "13.4",
       }),
     ).toEqual({
       view: "map",
@@ -34,6 +37,9 @@ describe("parseListingsQuery", () => {
       sort: "priceAsc",
       page: 3,
       neighborhood: [],
+      lat: 32.0853,
+      lng: 34.7818,
+      zoom: 13.4,
     });
   });
 
@@ -45,6 +51,9 @@ describe("parseListingsQuery", () => {
     usp.set("rooms", "3.5");
     usp.set("sort", "priceAsc");
     usp.set("page", "3");
+    usp.set("lat", "32.0853");
+    usp.set("lng", "34.7818");
+    usp.set("zoom", "13.4");
 
     expect(parseListingsQuery(usp)).toEqual({
       view: "map",
@@ -54,6 +63,9 @@ describe("parseListingsQuery", () => {
       sort: "priceAsc",
       page: 3,
       neighborhood: [],
+      lat: 32.0853,
+      lng: 34.7818,
+      zoom: 13.4,
     });
   });
 
@@ -85,6 +97,9 @@ describe("parseListingsQuery", () => {
         rooms: "NaN",
         sort: "random",
         page: "0",
+        lat: "91",
+        lng: "-181",
+        zoom: "23",
       }),
     ).toEqual(DEFAULT_QUERY);
   });
@@ -112,6 +127,9 @@ describe("serializeListingsQuery", () => {
       rooms: 3,
       sort: "priceDesc",
       page: 2,
+      lat: 32.0853,
+      lng: 34.7818,
+      zoom: 13,
       neighborhood: ["ChIJ_a", "ChIJ_b"],
     }).toString();
 
@@ -121,6 +139,9 @@ describe("serializeListingsQuery", () => {
     expect(out).toContain("rooms=3");
     expect(out).toContain("sort=priceDesc");
     expect(out).toContain("page=2");
+    expect(out).toContain("lat=32.0853");
+    expect(out).toContain("lng=34.7818");
+    expect(out).toContain("zoom=13");
     expect(out).toContain("neighborhood=ChIJ_a");
     expect(out).toContain("neighborhood=ChIJ_b");
   });
@@ -138,6 +159,9 @@ describe("serializeListingsQuery", () => {
       rooms: 2.5,
       sort: "newest" as const,
       page: 4,
+      lat: 32.0853,
+      lng: 34.7818,
+      zoom: 14,
       neighborhood: ["ChIJ_x", "ChIJ_y"],
     };
 
