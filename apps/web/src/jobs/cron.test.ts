@@ -1,29 +1,119 @@
-import { describe, test, expect } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Integration test coverage: The retry cron functionality is tested manually
-// and via the application's monitoring/logging. A failed listing with retries < 3
-// will be picked up on the next cron run (both runYad2PollJob and runApifyPollJob).
-//
-// Manual test plan:
-// 1. Insert a listing with status='failed' and retries < 3
-// 2. Wait for the next scheduled cron run
-// 3. Verify via logs that the listing was processed (picked up from retry query)
-// 4. Check that status was updated after processing attempt
+const mockState = vi.hoisted(() => ({
+  useBullmqCollectors: "true",
+}));
 
-describe("cron: retry logic constants", () => {
-  test("retry limits are configured as constants", () => {
-    // MAX_RETRY_BATCH_SIZE = 50
-    // MAX_RETRIES_ALLOWED = 3
-    // These are configurable via constants in cron.ts
-    expect(true).toBe(true);
+vi.mock("@/lib/env", () => ({
+  env: vi.fn(() => ({
+    USE_BULLMQ_COLLECTORS: mockState.useBullmqCollectors,
+  })),
+}));
+
+vi.mock("@/lib/schedule", () => ({
+  describeLocalSchedule: vi.fn(() => "09:00 Sun"),
+  shouldRunYad2Poll: vi.fn(() => true),
+  shouldRunApifyPoll: vi.fn(() => true),
+}));
+
+vi.mock("@/lib/log", () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(),
+  })),
+  newId: vi.fn(() => "test-run-id-123"),
+  errorMessage: vi.fn((err: unknown) => String(err)),
+}));
+
+vi.mock("@/db", () => ({
+  getDb: vi.fn(),
+}));
+
+vi.mock("@apartment-finder/queue", () => ({
+  collectQueue: { add: vi.fn() },
+  ingestRawQueue: { add: vi.fn() },
+}));
+
+vi.mock("@/scrapers/yad2", () => ({
+  fetchYad2Listings: vi.fn(),
+  Yad2UpstreamUnavailableError: class extends Error {},
+}));
+
+vi.mock("@/ingestion/insert", () => ({
+  bulkInsertListings: vi.fn(),
+}));
+
+vi.mock("@/ingestion/pipeline", () => ({
+  processListing: vi.fn(),
+}));
+
+vi.mock("@/lib/contentHash", () => ({
+  contentHash: vi.fn(),
+}));
+
+import { getDb } from "@/db";
+import { collectQueue } from "@apartment-finder/queue";
+import { runApifyPollJob, runYad2PollJob } from "./cron";
+
+function makeMockDb() {
+  const mockInsert = {
+    values: vi.fn().mockResolvedValue(undefined),
+  };
+  return { insert: vi.fn().mockReturnValue(mockInsert) };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockState.useBullmqCollectors = "true";
+});
+
+describe("runYad2PollJob", () => {
+  it("inserts a collection run and enqueues a collect job when BullMQ collectors are enabled", async () => {
+    const mockDb = makeMockDb();
+    vi.mocked(getDb).mockReturnValue(mockDb as never);
+
+    const result = await runYad2PollJob({ enforceSchedule: false });
+
+    expect(result.status).toBe(200);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.queued).toBe(true);
+    expect(result.payload.runId).toBe("test-run-id-123");
+    expect(mockDb.insert).toHaveBeenCalledTimes(1);
+    expect(mockDb.insert().values).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "yad2", status: "queued" }),
+    );
+    expect(collectQueue.add).toHaveBeenCalledWith(
+      "collect",
+      expect.objectContaining({ source: "yad2", runId: "test-run-id-123" }),
+      expect.any(Object),
+    );
   });
+});
 
-  test("acceptance criteria: both cron jobs process failed listings", () => {
-    // ✓ runYad2PollJob processes fresh batch, then retries up to 50 failed rows
-    // ✓ runApifyPollJob processes retries up to 50 failed rows
-    // ✓ Both respect the MAX_RETRIES_ALLOWED limit (< 3)
-    // ✓ Logs include separate fresh/retry batch stats
-    // ✓ Process is idempotent (processListing reuses existing pipeline)
-    expect(true).toBe(true);
+describe("runApifyPollJob", () => {
+  it("inserts a collection run and enqueues a collect job for Facebook when BullMQ collectors are enabled", async () => {
+    const mockDb = makeMockDb();
+    vi.mocked(getDb).mockReturnValue(mockDb as never);
+
+    const result = await runApifyPollJob({
+      origin: "https://example.com",
+      enforceSchedule: false,
+    });
+
+    expect(result.status).toBe(200);
+    expect(result.payload.ok).toBe(true);
+    expect(result.payload.queued).toBe(true);
+    expect(mockDb.insert).toHaveBeenCalledTimes(1);
+    expect(mockDb.insert().values).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "facebook", status: "queued" }),
+    );
+    expect(collectQueue.add).toHaveBeenCalledWith(
+      "collect",
+      expect.objectContaining({ source: "facebook", runId: "test-run-id-123" }),
+      expect.any(Object),
+    );
   });
 });

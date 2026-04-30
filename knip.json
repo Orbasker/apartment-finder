@@ -16,6 +16,13 @@
     },
     "packages/shared": {
       "project": ["src/**/*.ts"]
+    },
+    "packages/queue": {
+      "project": ["src/**/*.ts"]
+    },
+    "apps/worker": {
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts", "src/**/*.tsx"]
     }
   }
 }

@@ -77,6 +77,37 @@ export const notificationDestinationEnum = pgEnum("notification_destination", [
   "telegram",
 ]);
 
+export const collectionRunStatusEnum = pgEnum("collection_run_status", [
+  "queued",
+  "collecting",
+  "collected",
+  "ingesting",
+  "completed",
+  "failed",
+]);
+
+export const collectionRuns = pgTable(
+  "collection_runs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    runId: text("run_id").notNull(),
+    source: listingSourceEnum("source").notNull(),
+    status: collectionRunStatusEnum("status").notNull().default("queued"),
+    enqueuedAt: timestamp("enqueued_at", { withTimezone: true }).notNull().defaultNow(),
+    collectedAt: timestamp("collected_at", { withTimezone: true }),
+    webhookReceivedAt: timestamp("webhook_received_at", { withTimezone: true }),
+    rawBlobUrl: text("raw_blob_url"),
+    receivedCount: integer("received_count").default(0).notNull(),
+    inserted: integer("inserted").default(0).notNull(),
+    skippedExisting: integer("skipped_existing").default(0).notNull(),
+    failed: integer("failed").default(0).notNull(),
+    error: text("error"),
+  },
+  (t) => ({
+    runIdUnique: uniqueIndex("collection_runs_run_id_unique").on(t.runId),
+    sourceIdx: index("collection_runs_source_idx").on(t.source, t.enqueuedAt),
+  }),
+);
 // ---------------------------------------------------------------------------
 // listings: one row per source observation.
 // ---------------------------------------------------------------------------
