@@ -8,6 +8,7 @@ import {
 } from "@apartment-finder/queue";
 import { getDb, schema } from "../db/index.js";
 import { bulkInsertListings, type CollectedListing } from "../ingestion/insert.js";
+import { env } from "../env.js";
 import { createLogger, errorMessage } from "../lib/log.js";
 
 const log = createLogger("worker:ingest-raw");
@@ -18,8 +19,10 @@ async function processIngestRaw(job: Job<IngestRawJob>): Promise<void> {
   log.info("ingest-raw started", { runId: data.runId, source: data.source });
 
   try {
-    // Download raw payload from Vercel Blob
-    const res = await fetch(data.blobUrl);
+    // Download raw payload from Vercel Blob (private — requires token)
+    const res = await fetch(data.blobUrl, {
+      headers: { Authorization: `Bearer ${env().BLOB_READ_WRITE_TOKEN}` },
+    });
     if (!res.ok) {
       throw new Error(`Failed to download blob: ${res.status}`);
     }

@@ -45,7 +45,7 @@ async function processCollect(job: Job<CollectJob>): Promise<void> {
       `collection-runs/${data.runId}.json`,
       bodyStr,
       {
-        access: "public",
+        access: "private",
         token: env().BLOB_READ_WRITE_TOKEN,
       },
     );
