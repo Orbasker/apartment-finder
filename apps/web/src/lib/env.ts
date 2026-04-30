@@ -13,6 +13,7 @@ const EnvSchema = z.object({
 
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
 
   AI_GATEWAY_API_KEY: z.string().optional(),
 
