@@ -45,6 +45,12 @@ export async function loadMatchedListings(
         return [asc(apartments.priceNisLatest), desc(sql`max_sent_at`)];
       case "priceDesc":
         return [desc(apartments.priceNisLatest), desc(sql`max_sent_at`)];
+      case "roomsAsc":
+        return [asc(apartments.rooms), desc(sql`max_sent_at`)];
+      case "roomsDesc":
+        return [desc(apartments.rooms), desc(sql`max_sent_at`)];
+      case "oldest":
+        return [asc(sql`max_sent_at`), asc(apartments.id)];
       case "newest":
       default:
         return [desc(sql`max_sent_at`), desc(apartments.id)];
@@ -78,6 +84,8 @@ export async function loadMatchedListings(
       sqm: apartments.sqm,
       floor: apartments.floor,
       sourceUrl: listingsTable.url,
+      source: listingsTable.source,
+      postedAt: listingsTable.postedAt,
     })
     .from(sentAlerts)
     .innerJoin(apartments, eq(apartments.id, sentAlerts.apartmentId))
@@ -95,14 +103,22 @@ export async function loadMatchedListings(
       apartments.sqm,
       apartments.floor,
       listingsTable.url,
+      listingsTable.source,
+      listingsTable.postedAt,
     )
     .orderBy(...orderBy)
     .limit(PAGE_SIZE)
     .offset(offset);
 
+  // Drizzle types timestamps as Date but the postgres-js driver returns
+  // them as strings for SQL aggregates (MAX) and sometimes for raw columns.
+  // Normalize to Date here so consumers can rely on Date instance methods.
+  const toDate = (v: Date | string | null): Date | null =>
+    v == null ? null : v instanceof Date ? v : new Date(v);
+
   const mapped: MatchedListing[] = rows.map((r) => ({
     id: r.id,
-    alertedAt: r.maxSentAt,
+    alertedAt: toDate(r.maxSentAt) as Date,
     lat: r.lat,
     lon: r.lon,
     formattedAddress: r.formattedAddress,
@@ -113,6 +129,8 @@ export async function loadMatchedListings(
     sqm: r.sqm,
     floor: r.floor,
     sourceUrl: r.sourceUrl,
+    source: r.source,
+    postedAt: toDate(r.postedAt),
   }));
 
   const pageCount = total === 0 ? 0 : Math.ceil(total / PAGE_SIZE);

@@ -1,3 +1,5 @@
+export type ListingSource = "yad2" | "facebook";
+
 /** Nullable everywhere — the AI extraction pipeline can leave gaps. */
 export type MatchedListing = {
   id: number;
@@ -12,6 +14,8 @@ export type MatchedListing = {
   sqm: number | null;
   floor: number | null;
   sourceUrl: string | null;
+  source: ListingSource | null;
+  postedAt: Date | null;
 };
 
 export type MatchedListingsResult = {
