@@ -138,4 +138,29 @@ describe("processCollect", () => {
     // status: collecting → failed (one update on entry, one in catch)
     expect(mockUpdate).toHaveBeenCalledTimes(2);
   });
+
+  test("non-ok webhook response: throws so BullMQ retries and marks run failed", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 503,
+      json: vi.fn().mockResolvedValue({}),
+    });
+
+    const { processCollect } = await import("./collect.js");
+
+    const job = {
+      data: {
+        runId: "run-webhook-fail",
+        source: "yad2",
+        enqueuedAt: Date.now(),
+      } satisfies CollectJob,
+    } as Job<CollectJob>;
+
+    await expect(processCollect(job)).rejects.toThrow(/webhook POST failed: 503/);
+    // blob upload still happened; webhook still posted; the throw came after
+    expect(mockPut).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // status: collecting → collected → failed
+    expect(mockUpdate).toHaveBeenCalledTimes(3);
+  });
 });

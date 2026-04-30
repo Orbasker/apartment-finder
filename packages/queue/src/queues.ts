@@ -1,5 +1,5 @@
 import { Queue } from "bullmq";
-import { getConnection } from "./connection";
+import { getConnection } from "./connection.js";
 
 // Lazy queue accessor. The Queue instance is created on first access, not at
 // module import time. This defers the REDIS_URL requirement to the first actual

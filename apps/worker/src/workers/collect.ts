@@ -75,10 +75,11 @@ export async function processCollect(job: Job<CollectJob>): Promise<void> {
       body: completionBody,
     });
     if (!res.ok) {
-      log.warn("webhook returned non-ok", {
-        status: res.status,
-        runId: data.runId,
-      });
+      // Throw so BullMQ retries the collect job. The catch block below will
+      // mark the run failed; if a later retry succeeds, the collect will
+      // re-upload the blob and re-POST, and the webhook handler's
+      // idempotency anchor (webhookReceivedAt IS NULL) prevents double-ingest.
+      throw new Error(`webhook POST failed: ${res.status}`);
     }
     log.info("collect completed", {
       runId: data.runId,

@@ -151,4 +151,19 @@ describe("POST /api/collectors/webhook", () => {
     expect(json.recorded).toBe("error");
     expect(ingestRawQueue.add).not.toHaveBeenCalled();
   });
+
+  it("enqueue failure: clears webhookReceivedAt so retries can re-enqueue, then rethrows", async () => {
+    vi.mocked(verifyRequest).mockReturnValue(true);
+    const mockDb = makeMockDb([{ id: 1 }]);
+    vi.mocked(getDb).mockReturnValue(mockDb as never);
+    vi.mocked(ingestRawQueue.add).mockRejectedValueOnce(new Error("redis down"));
+
+    const req = makeRequest(HAPPY_BODY, VALID_HEADERS);
+    await expect(POST(req)).rejects.toThrow(/redis down/);
+
+    // Two updates: one to set webhookReceivedAt + status=ingesting, one to roll
+    // it back to NULL + status=collected after the enqueue threw.
+    expect(mockDb.update).toHaveBeenCalledTimes(2);
+    expect(ingestRawQueue.add).toHaveBeenCalledTimes(1);
+  });
 });

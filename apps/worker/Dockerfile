@@ -2,7 +2,7 @@ FROM oven/bun:1 AS base
 WORKDIR /app
 
 # Copy workspace root files
-COPY package.json bun.lockb tsconfig.base.json turbo.json ./
+COPY package.json bun.lock tsconfig.base.json turbo.json ./
 COPY packages/queue/package.json packages/queue/
 COPY packages/shared/package.json packages/shared/
 COPY apps/worker/package.json apps/worker/

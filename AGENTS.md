@@ -347,7 +347,9 @@ All planned MVP PRs (#56 demolition → #62 schema → #63 ingestion → #64 onb
 
 ### Rollback
 
-- Set `USE_BULLMQ_COLLECTORS=false` (or delete the env var) in Vercel. Crons immediately fall back to the inline processing path.
+- Set `USE_BULLMQ_COLLECTORS=false` (or delete the env var) in Vercel.
+  - **Yad2 cron** falls back to the inline processing path (still wired up in `runYad2PollJob`).
+  - **Apify cron** does not have a working fallback after this PR (the inline path posted to `/api/webhooks/apify`, which was removed). With the flag off, `runApifyPollJob` returns 200 with a `skipped` payload so the Vercel cron does not generate persistent failures, but no Facebook collection runs are produced. Re-enable the flag (or restore a working Apify path) before relying on Facebook ingestion again.
 
 ### Follow-Up PR (once BullMQ is verified in prod)
 

@@ -131,4 +131,25 @@ describe("processIngestRaw", () => {
     expect(mockBulkInsertListings).not.toHaveBeenCalled();
     expect(ingestNormalizedQueue.add).not.toHaveBeenCalled();
   });
+
+  test("zero new inserts: marks run completed and does not enqueue any ingest-normalized jobs", async () => {
+    mockBulkInsertListings.mockResolvedValueOnce({ inserted: [], skippedExisting: 2 });
+    const { processIngestRaw } = await import("./ingest-raw.js");
+    const { ingestNormalizedQueue } = await import("@apartment-finder/queue");
+
+    const job = {
+      data: {
+        runId: "run-dupes",
+        source: "yad2",
+        blobUrl: "https://blob.vercel.app/collection-runs/run-dupes.json",
+      } satisfies IngestRawJob,
+    } as Job<IngestRawJob>;
+
+    await processIngestRaw(job);
+
+    expect(mockBulkInsertListings).toHaveBeenCalledTimes(1);
+    expect(ingestNormalizedQueue.add).not.toHaveBeenCalled();
+    // single update chain → status: completed
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+  });
 });

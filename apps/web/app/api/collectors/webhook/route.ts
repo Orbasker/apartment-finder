@@ -104,11 +104,32 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json({ ok: true, idempotent: true });
     }
 
-    await ingestRawQueue.add(
-      "ingest-raw",
-      { runId: data.runId, source: data.source, blobUrl: data.blobUrl },
-      { attempts: 5, backoff: { type: "exponential", delay: 10_000 } },
-    );
+    try {
+      await ingestRawQueue.add(
+        "ingest-raw",
+        { runId: data.runId, source: data.source, blobUrl: data.blobUrl },
+        { attempts: 5, backoff: { type: "exponential", delay: 10_000 } },
+      );
+    } catch (err) {
+      // Rollback the idempotency anchor so a retry can re-enqueue. Without
+      // this clear, the row is stuck in `ingesting` with no job in flight.
+      log.error("ingest-raw enqueue failed; clearing webhookReceivedAt for retry", {
+        runId: data.runId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      try {
+        await db
+          .update(collectionRuns)
+          .set({ webhookReceivedAt: null, status: "collected" })
+          .where(eq(collectionRuns.runId, data.runId));
+      } catch (rollbackErr) {
+        log.error("failed to clear webhookReceivedAt after enqueue failure", {
+          runId: data.runId,
+          rollbackErr: rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr),
+        });
+      }
+      throw err;
+    }
 
     log.info("ingest-raw enqueued", { runId: data.runId });
     return NextResponse.json({ ok: true, runId: data.runId, queued: true });

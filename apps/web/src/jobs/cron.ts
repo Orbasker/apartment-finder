@@ -160,14 +160,16 @@ export async function runApifyPollJob(options: {
   }
 
   // The legacy inline Apify path posted to /api/webhooks/apify, which this PR
-  // removed. With USE_BULLMQ_COLLECTORS off there is no working ingest path,
-  // so fail loud instead of pretending to roll back.
-  log.error("apify legacy path is unavailable; enable USE_BULLMQ_COLLECTORS");
+  // removed. With USE_BULLMQ_COLLECTORS off there is no working ingest path —
+  // but the Vercel cron may still be configured, so return 200 with a clear
+  // "skipped" payload instead of 500ing on every tick.
+  log.warn("apify poll skipped because USE_BULLMQ_COLLECTORS is disabled", { runId });
   return {
-    status: 500,
+    status: 200,
     payload: {
-      ok: false,
-      error: "Apify legacy path removed; set USE_BULLMQ_COLLECTORS=true to use the async pipeline.",
+      ok: true,
+      skipped: "USE_BULLMQ_COLLECTORS is disabled",
+      runId,
     },
   };
 }

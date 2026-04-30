@@ -28,6 +28,26 @@ export async function processIngestRaw(job: Job<IngestRawJob>): Promise<void> {
     // Insert listings
     const { inserted, skippedExisting } = await bulkInsertListings(listings);
 
+    // No new rows → no per-listing enrichment will run. Mark the run completed
+    // here, otherwise it would stay in `ingesting` forever (ingest-enrich's
+    // counter would never fire).
+    if (inserted.length === 0) {
+      await db
+        .update(schema.collectionRuns)
+        .set({
+          status: "completed",
+          receivedCount: listings.length,
+          skippedExisting,
+          inserted: 0,
+        })
+        .where(eq(schema.collectionRuns.runId, data.runId));
+      log.info("ingest-raw completed (no new listings)", {
+        runId: data.runId,
+        skippedExisting,
+      });
+      return;
+    }
+
     // Update collection run stats
     await db
       .update(schema.collectionRuns)

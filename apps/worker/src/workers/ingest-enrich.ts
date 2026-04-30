@@ -34,11 +34,14 @@ async function processIngestEnrich(job: Job<IngestEnrichJob>): Promise<void> {
       throw new Error(outcome.error ?? "processListing returned failed");
     }
 
-    // Mark run done when all inserted listings have been enriched
+    // Mark run done when all inserted listings have been enriched.
+    // Use a Redis set keyed by listingId so BullMQ retries (or replays)
+    // don't over-count: SADD is idempotent and SCARD gives the unique total.
     const conn = getConnection();
-    const counterKey = `af:run:${data.runId}:enriched`;
-    const enriched = await conn.incr(counterKey);
-    await conn.expire(counterKey, 86400);
+    const setKey = `af:run:${data.runId}:enriched`;
+    await conn.sadd(setKey, String(data.listingId));
+    await conn.expire(setKey, 86400);
+    const enrichedUnique = await conn.scard(setKey);
 
     const db = getDb();
     const [run] = await db
@@ -47,12 +50,16 @@ async function processIngestEnrich(job: Job<IngestEnrichJob>): Promise<void> {
       .where(eq(schema.collectionRuns.runId, data.runId))
       .limit(1);
 
-    if (run && enriched >= run.inserted) {
+    if (run && enrichedUnique >= run.inserted) {
       await db
         .update(schema.collectionRuns)
         .set({ status: "completed" })
         .where(eq(schema.collectionRuns.runId, data.runId));
-      log.info("run done", { runId: data.runId, enriched, inserted: run.inserted });
+      log.info("run done", {
+        runId: data.runId,
+        enrichedUnique,
+        inserted: run.inserted,
+      });
     }
   } catch (err) {
     const message = errorMessage(err);
