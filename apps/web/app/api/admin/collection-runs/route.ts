@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { desc } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/auth-server";
-import { isAdmin } from "@/lib/auth-server";
+import { getCurrentUser, isAdmin } from "@/lib/auth-server";
 import { getDb } from "@/db";
 import { schema } from "@/db";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const user = await getCurrentUser();
