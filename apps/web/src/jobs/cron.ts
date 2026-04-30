@@ -7,6 +7,9 @@ import { createLogger, errorMessage, newId } from "@/lib/log";
 import { bulkInsertListings, type CollectedListing } from "@/ingestion/insert";
 import { processListing } from "@/ingestion/pipeline";
 import { contentHash } from "@/lib/contentHash";
+import { getDb } from "@/db";
+import { listings } from "@/db/schema";
+import { and, eq, lt } from "drizzle-orm";
 
 export type JobRunResult = {
   status: number;
@@ -14,6 +17,8 @@ export type JobRunResult = {
 };
 
 const PROCESS_CONCURRENCY = 4;
+const MAX_RETRY_BATCH_SIZE = 50;
+const MAX_RETRIES_ALLOWED = 3;
 
 export async function runYad2PollJob(options?: {
   enforceSchedule?: boolean;
@@ -38,14 +43,22 @@ export async function runYad2PollJob(options?: {
     const { inserted, skippedExisting } = await bulkInsertListings(collected);
     log.info("ingested", { inserted: inserted.length, skippedExisting });
 
-    const stats = await processBatch(
+    const freshStats = await processBatch(
       inserted.map((row) => row.id),
       log,
     );
 
+    const failedIds = await fetchFailedListingsToRetry();
+    const retryStats = failedIds.length > 0 ? await processBatch(failedIds, log) : { processed: 0, unified: 0, failed: 0, alertsSent: 0 };
+
     log.info("job finished", {
       durationMs: Date.now() - startedAt,
-      ...stats,
+      freshProcessed: freshStats.processed,
+      freshUnified: freshStats.unified,
+      freshFailed: freshStats.failed,
+      retryProcessed: retryStats.processed,
+      retryUnified: retryStats.unified,
+      retryFailed: retryStats.failed,
     });
     return {
       status: 200,
@@ -54,7 +67,8 @@ export async function runYad2PollJob(options?: {
         fetched: listings.length,
         inserted: inserted.length,
         skippedExisting,
-        ...stats,
+        fresh: freshStats,
+        retry: retryStats,
         localTime,
         durationMs: Date.now() - startedAt,
       },
@@ -111,10 +125,22 @@ export async function runApifyPollJob(options: {
   try {
     const result = await startFacebookGroupsRun({ webhookUrl, webhookSecret });
     if (!result) {
-      return { status: 200, payload: { ok: true, skipped: "no monitored groups" } };
+      log.info("no monitored groups, processing retries only");
+    } else {
+      log.info("apify run started", { runId: result.runId, groupCount: result.groupCount });
     }
-    log.info("apify run started", { runId: result.runId, groupCount: result.groupCount });
-    return { status: 200, payload: { ok: true, ...result } };
+
+    const failedIds = await fetchFailedListingsToRetry();
+    const retryStats = failedIds.length > 0 ? await processBatch(failedIds, log) : { processed: 0, unified: 0, failed: 0, alertsSent: 0 };
+
+    return {
+      status: 200,
+      payload: {
+        ok: true,
+        apifyRun: result || { skipped: "no monitored groups" },
+        retry: retryStats,
+      },
+    };
   } catch (err) {
     log.error("apify poll failed", { error: errorMessage(err) });
     return {
@@ -165,4 +191,19 @@ async function processBatch(
     }
   }
   return stats;
+}
+
+async function fetchFailedListingsToRetry(): Promise<number[]> {
+  const db = getDb();
+  const failed = await db
+    .select({ id: listings.id })
+    .from(listings)
+    .where(
+      and(
+        eq(listings.status, "failed"),
+        lt(listings.retries, MAX_RETRIES_ALLOWED),
+      ),
+    )
+    .limit(MAX_RETRY_BATCH_SIZE);
+  return failed.map((row) => row.id);
 }
