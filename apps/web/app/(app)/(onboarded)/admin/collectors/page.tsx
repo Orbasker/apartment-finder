@@ -7,6 +7,8 @@ type Run = {
   id: number;
   runId: string;
   source: string;
+  cityId: string | null;
+  cityNameHe: string | null;
   status: string;
   enqueuedAt: string;
   collectedAt: string | null;
@@ -60,7 +62,7 @@ export default function CollectorsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Collectors — Admin</h1>
+      <h1 className="text-xl font-semibold">Collectors - Admin</h1>
 
       <div className="flex gap-3">
         <button
@@ -93,19 +95,26 @@ export default function CollectorsPage() {
         <table className="w-full">
           <thead className="bg-muted text-xs uppercase text-muted-foreground">
             <tr>
-              {["Source", "Status", "Enqueued", "Received", "Inserted", "Skipped", "Error"].map(
-                (h) => (
-                  <th key={h} className="px-3 py-2 text-start font-medium">
-                    {h}
-                  </th>
-                ),
-              )}
+              {[
+                "Source",
+                "City",
+                "Status",
+                "Enqueued",
+                "Received",
+                "Inserted",
+                "Skipped",
+                "Error",
+              ].map((h) => (
+                <th key={h} className="px-3 py-2 text-start font-medium">
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y">
             {runs.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
+                <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
                   No runs yet
                 </td>
               </tr>
@@ -113,6 +122,7 @@ export default function CollectorsPage() {
             {runs.map((r) => (
               <tr key={r.id} className="hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">{r.source}</td>
+                <td className="px-3 py-2">{r.cityNameHe ?? r.cityId ?? "-"}</td>
                 <td className={`px-3 py-2 font-semibold ${STATUS_COLOR[r.status] ?? ""}`}>
                   {r.status}
                 </td>
@@ -122,7 +132,7 @@ export default function CollectorsPage() {
                 <td className="px-3 py-2">{r.receivedCount}</td>
                 <td className="px-3 py-2">{r.inserted}</td>
                 <td className="px-3 py-2">{r.skippedExisting}</td>
-                <td className="px-3 py-2 max-w-xs truncate text-red-600">{r.error ?? "—"}</td>
+                <td className="px-3 py-2 max-w-xs truncate text-red-600">{r.error ?? "-"}</td>
               </tr>
             ))}
           </tbody>

@@ -15,7 +15,7 @@ const log = createLogger("worker:ingest-raw");
 export async function processIngestRaw(job: Job<IngestRawJob>): Promise<void> {
   const data = ingestRawJobSchema.parse(job.data);
   const db = getDb();
-  log.info("ingest-raw started", { runId: data.runId, source: data.source });
+  log.info("ingest-raw started", { runId: data.runId, source: data.source, cityId: data.cityId });
 
   try {
     const res = await fetch(data.blobUrl);
@@ -64,7 +64,7 @@ export async function processIngestRaw(job: Job<IngestRawJob>): Promise<void> {
       inserted.map((row) =>
         ingestNormalizedQueue.add(
           "ingest-normalized",
-          { runId: data.runId, source: data.source, listingId: row.id },
+          { runId: data.runId, source: data.source, cityId: data.cityId, listingId: row.id },
           { attempts: 3, backoff: { type: "exponential", delay: 5_000 } },
         ),
       ),

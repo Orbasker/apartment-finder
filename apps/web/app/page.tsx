@@ -10,7 +10,7 @@ import { AiExtractor } from "./_landing/ai-extractor";
 import { ChatPreview } from "./_landing/chat-preview";
 
 export const metadata = {
-  title: "Apartment Finder - דירה בתל אביב, לפני כולם",
+  title: "Apartment Finder - דירה בעיר שלך, לפני כולם",
   description:
     "סורקים את Yad2, Madlan וקבוצות פייסבוק 24/7. AI מחלץ את הפרטים, מסנן לפי הטעם שלך, ושולח התראה לאימייל / WhatsApp / Telegram.",
 };
@@ -57,7 +57,7 @@ export default async function HomePage() {
         <div className="order-2 md:order-1">
           <Pill>AI · רץ 24/7 · מקורות מרובים</Pill>
           <h1 className="mt-4 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-[2.6rem]">
-            דירה בתל אביב,
+            דירה בעיר שלך,
             <br />
             <span className="text-accent">לפני כולם.</span>
           </h1>

@@ -39,6 +39,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
   const [apt] = await db
     .select({
       id: apartments.id,
+      cityId: apartments.cityId,
       neighborhood: apartments.neighborhood,
       city: apartments.city,
       rooms: apartments.rooms,
@@ -57,15 +58,21 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
   const rooms = apt.rooms;
   const sqm = apt.sqm;
   const neighborhood = apt.neighborhood;
+  const cityId = apt.cityId;
   const city = apt.city;
 
   // SQL prefilter on user_filters.
   const candidates = await db
-    .select({ userId: userFilters.userId, strictUnknowns: userFilters.strictUnknowns })
+    .select({
+      userId: userFilters.userId,
+      strictUnknowns: userFilters.strictUnknowns,
+      notifyOnUnknownMustHave: userFilters.notifyOnUnknownMustHave,
+    })
     .from(userFilters)
     .where(
       and(
         eq(userFilters.isActive, true),
+        cityPredicate(cityId, city),
         price == null
           ? sql`true`
           : and(
@@ -84,7 +91,6 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
               or(isNull(userFilters.sqmMax), gte(userFilters.sqmMax, sqm)),
               or(isNull(userFilters.sqmMin), lte(userFilters.sqmMin, sqm)),
             ),
-        cityPredicate(city),
         neighborhoodPredicate(neighborhood, city),
       ),
     );
@@ -123,7 +129,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
       .from(userFilterAttributes)
       .where(eq(userFilterAttributes.userId, c.userId));
 
-    const attrPass = checkAttributeRequirements(userAttrs, knownAttrs, c.strictUnknowns);
+    const attrPass = checkAttributeRequirements(userAttrs, knownAttrs, c.notifyOnUnknownMustHave);
     if (!attrPass.pass) continue;
 
     if (apartmentEmbedding) {
@@ -153,17 +159,24 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
  * Empty allowlist → pass everything. Non-empty → apartment.city must match
  * one of the user's selected city names (case/whitespace-normalized).
  */
-function cityPredicate(apartmentCity: string | null) {
+function cityPredicate(apartmentCityId: string | null, apartmentCity: string | null) {
   const noCitySelections = sql`NOT EXISTS (
     SELECT 1 FROM ${userFilterCities}
     WHERE ${userFilterCities.userId} = ${userFilters.userId}
   )`;
   const cityMatches =
-    apartmentCity != null
+    apartmentCityId != null || apartmentCity != null
       ? sql`EXISTS (
           SELECT 1 FROM ${userFilterCities}
           WHERE ${userFilterCities.userId} = ${userFilters.userId}
-            AND lower(trim(${userFilterCities.nameHe})) = lower(trim(${apartmentCity}))
+            AND (
+              ${apartmentCityId != null ? sql`${userFilterCities.cityId} = ${apartmentCityId}` : sql`false`}
+              OR ${
+                apartmentCity != null
+                  ? sql`lower(trim(${userFilterCities.nameHe})) = lower(trim(${apartmentCity}))`
+                  : sql`false`
+              }
+            )
         )`
       : sql`false`;
   return or(noCitySelections, cityMatches);
@@ -190,7 +203,7 @@ function neighborhoodPredicate(apartmentNeighborhood: string | null, apartmentCi
     if (apartmentNeighborhood == null) return sql`false`;
     // City clause is only included when the apartment has a city. Binding a
     // parameter solely under `$N IS NULL` makes PG fail with "could not
-    // determine data type of parameter" — handle the null branch in JS.
+    // determine data type of parameter" - handle the null branch in JS.
     const cityClause =
       apartmentCity != null
         ? sql`AND lower(trim(${userFilterNeighborhoods.cityNameHe})) = lower(trim(${apartmentCity}))`
@@ -210,7 +223,7 @@ function neighborhoodPredicate(apartmentNeighborhood: string | null, apartmentCi
 export function checkAttributeRequirements(
   userAttrs: Array<{ key: ApartmentAttributeKey; requirement: AttributeRequirement }>,
   knownAttrs: Map<ApartmentAttributeKey, boolean>,
-  strictUnknowns: boolean,
+  notifyOnUnknownMustHave: boolean,
 ): {
   pass: boolean;
   matchedAttributes: ApartmentAttributeKey[];
@@ -229,14 +242,18 @@ export function checkAttributeRequirements(
       case "required_true":
         if (known === true) matched.push(ua.key);
         else if (known === false) return fail();
-        else if (strictUnknowns) return fail();
-        else unverified.push(ua.key);
+        else {
+          unverified.push(ua.key);
+          if (!notifyOnUnknownMustHave) return fail();
+        }
         break;
       case "required_false":
         if (known === false) matched.push(ua.key);
         else if (known === true) return fail();
-        else if (strictUnknowns) return fail();
-        else unverified.push(ua.key);
+        else {
+          unverified.push(ua.key);
+          if (!notifyOnUnknownMustHave) return fail();
+        }
         break;
       case "preferred_true":
         if (known === true) matched.push(ua.key);

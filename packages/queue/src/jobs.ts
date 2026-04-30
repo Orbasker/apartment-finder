@@ -3,18 +3,21 @@ import { z } from "zod";
 export const collectJobSchema = z.object({
   runId: z.string(),
   source: z.enum(["yad2", "facebook"]),
+  cityId: z.string().min(1),
   enqueuedAt: z.number(), // Date.now()
 });
 
 export const ingestRawJobSchema = z.object({
   runId: z.string(),
   source: z.enum(["yad2", "facebook"]),
+  cityId: z.string().min(1).optional(),
   blobUrl: z.string().url(),
 });
 
 export const ingestNormalizedJobSchema = z.object({
   runId: z.string(),
   source: z.enum(["yad2", "facebook"]),
+  cityId: z.string().min(1).optional(),
   listingId: z.number().int(),
 });
 

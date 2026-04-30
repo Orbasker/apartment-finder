@@ -74,6 +74,7 @@ describe("schema: listings", () => {
     for (const f of [
       "id",
       "source",
+      "city_id",
       "source_id",
       "url",
       "raw_text",
@@ -204,6 +205,7 @@ describe("schema: apartments", () => {
     const names = columnNames(getTableColumns(schema.apartments));
     for (const f of [
       "id",
+      "city_id",
       "place_id",
       "lat",
       "lon",
@@ -219,6 +221,35 @@ describe("schema: apartments", () => {
       "primary_listing_id",
       "first_seen_at",
       "last_seen_at",
+    ]) {
+      expect(names).toContain(f);
+    }
+  });
+});
+
+describe("schema: cities", () => {
+  test("cities table is the catalog source of truth", () => {
+    expect(schema.cities).toBeDefined();
+    expect(getTableName(schema.cities)).toBe("cities");
+    const cols = getTableColumns(schema.cities);
+    expect(cols.id.primary).toBe(true);
+    const names = columnNames(cols);
+    for (const f of [
+      "id",
+      "slug",
+      "name_he",
+      "name_en",
+      "place_id",
+      "center_lat",
+      "center_lon",
+      "bbox_north",
+      "bbox_east",
+      "bbox_south",
+      "bbox_west",
+      "is_active",
+      "is_launch_ready",
+      "yad2_feed_url",
+      "facebook_group_urls",
     ]) {
       expect(names).toContain(f);
     }
@@ -380,11 +411,18 @@ describe("schema: geocode_cache", () => {
 });
 
 describe("schema: user_filter_cities", () => {
-  test("composite PK on (user_id, place_id)", () => {
+  test("composite PK on (user_id, city_id)", () => {
     const cfg = getTableConfig(schema.userFilterCities);
     expect(cfg.primaryKeys).toHaveLength(1);
     const pk = cfg.primaryKeys[0]!.columns.map((c) => c.name).sort();
-    expect(pk).toEqual(["place_id", "user_id"]);
+    expect(pk).toEqual(["city_id", "user_id"]);
+  });
+
+  test("stores catalog city id plus localized names", () => {
+    const names = columnNames(getTableColumns(schema.userFilterCities));
+    for (const f of ["user_id", "city_id", "place_id", "name_he", "name_en", "created_at"]) {
+      expect(names).toContain(f);
+    }
   });
 
   test("FK to user cascades", () => {
@@ -403,7 +441,16 @@ describe("schema: user_filter_neighborhoods (Google Places)", () => {
   test("user_filter_neighborhoods carries cached Google place_id + display name + city", () => {
     const cols = getTableColumns(schema.userFilterNeighborhoods);
     const names = columnNames(cols);
-    for (const f of ["user_id", "place_id", "name_he", "city_name_he", "kind", "created_at"]) {
+    for (const f of [
+      "user_id",
+      "city_id",
+      "city_place_id",
+      "place_id",
+      "name_he",
+      "city_name_he",
+      "kind",
+      "created_at",
+    ]) {
       expect(names).toContain(f);
     }
   });
@@ -454,8 +501,11 @@ describe("schema: type exports compile", () => {
     const _und: schema.UserNotificationDestinations | null = null;
     const _tlt: schema.TelegramLinkToken | null = null;
     const _gc: schema.GeocodeCache | null = null;
+    const _c: schema.City | null = null;
     expect(
-      [_l, _nl, _le, _la, _a, _al, _uf, _ufa, _uft, _sa, _und, _tlt, _gc].every((v) => v === null),
+      [_l, _nl, _le, _la, _a, _al, _uf, _ufa, _uft, _sa, _und, _tlt, _gc, _c].every(
+        (v) => v === null,
+      ),
     ).toBe(true);
   });
 });
@@ -489,6 +539,7 @@ describe("schema: collection_runs table (APA-24)", () => {
       "id",
       "run_id",
       "source",
+      "city_id",
       "status",
       "enqueued_at",
       "collected_at",
@@ -547,8 +598,12 @@ describe("schema: collection_runs table (APA-24)", () => {
     expect(sourceIdx).toBeDefined();
   });
 
-  test("no foreign keys (standalone audit table, no FK rebind needed)", () => {
+  test("city FK uses set null so audit rows survive city removal", () => {
     const cfg = getTableConfig(schema.collectionRuns);
-    expect(cfg.foreignKeys).toHaveLength(0);
+    const cityFk = cfg.foreignKeys.find((f) =>
+      f.reference().columns.some((c) => c.name === "city_id"),
+    );
+    expect(cityFk).toBeDefined();
+    expect(cityFk!.onDelete).toBe("set null");
   });
 });

@@ -3,7 +3,7 @@ import { getConnection } from "./connection";
 
 // Lazy queue accessor. The Queue instance is created on first access, not at
 // module import time. This defers the REDIS_URL requirement to the first actual
-// enqueue operation — safe to import in Next.js routes where REDIS_URL may not
+// enqueue operation - safe to import in Next.js routes where REDIS_URL may not
 // be set at build time (e.g., page-data collection).
 function makeLazyQueue(name: string) {
   let instance: Queue | null = null;

@@ -1,4 +1,8 @@
-import type { CollectorAdapter, CollectorResult } from "@apartment-finder/queue";
+import type {
+  CollectorAdapter,
+  CollectorCityConfig,
+  CollectorResult,
+} from "@apartment-finder/queue";
 import { contentHash } from "@apartment-finder/shared/contentHash";
 import { env } from "../env.js";
 import type { CollectedListing } from "../ingestion/insert.js";
@@ -26,7 +30,8 @@ async function apifyFetch(
   return res.json();
 }
 
-function listGroups(): string[] {
+function listGroups(city: CollectorCityConfig): string[] {
+  if (city.facebookGroupUrls.length > 0) return city.facebookGroupUrls;
   const raw = env().APIFY_GROUPS ?? "";
   return raw
     .split(";")
@@ -49,13 +54,17 @@ async function waitForRun(runId: string, maxMs = 5 * 60 * 1000): Promise<string>
   throw new Error(`Apify run ${runId} timed out`);
 }
 
-function apifyItemToCollected(item: Record<string, unknown>): CollectedListing | null {
+function apifyItemToCollected(
+  item: Record<string, unknown>,
+  cityId: string,
+): CollectedListing | null {
   const url = (item["url"] ?? item["postUrl"] ?? item["link"]) as string | undefined;
   const text = (item["text"] ?? item["message"] ?? item["content"]) as string | undefined;
   if (!url && !text) return null;
   const sourceId = (item["postId"] ?? item["id"] ?? contentHash(JSON.stringify(item))) as string;
   return {
     source: "facebook",
+    cityId,
     sourceId: String(sourceId),
     url: url ?? "",
     rawText: text ?? null,
@@ -71,8 +80,8 @@ function apifyItemToCollected(item: Record<string, unknown>): CollectedListing |
 export class FacebookAdapter implements CollectorAdapter {
   readonly source = "facebook" as const;
 
-  async collect(): Promise<CollectorResult> {
-    const groups = listGroups();
+  async collect(city: CollectorCityConfig): Promise<CollectorResult> {
+    const groups = listGroups(city);
     if (groups.length === 0) return { rawPayload: [], receivedCount: 0 };
 
     const response = (await apifyFetch(`/acts/${FB_GROUPS_ACTOR_ID}/runs`, {
@@ -93,7 +102,7 @@ export class FacebookAdapter implements CollectorAdapter {
     >[];
 
     const normalized: CollectedListing[] = items
-      .map(apifyItemToCollected)
+      .map((item) => apifyItemToCollected(item, city.id))
       .filter((x): x is CollectedListing => x !== null);
     return { rawPayload: normalized, receivedCount: normalized.length };
   }

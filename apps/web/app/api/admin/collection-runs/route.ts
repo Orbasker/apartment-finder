@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { getCurrentUser, isAdmin } from "@/lib/auth-server";
 import { getDb } from "@/db";
 import { schema } from "@/db";
@@ -17,6 +17,8 @@ export async function GET() {
       id: schema.collectionRuns.id,
       runId: schema.collectionRuns.runId,
       source: schema.collectionRuns.source,
+      cityId: schema.collectionRuns.cityId,
+      cityNameHe: schema.cities.nameHe,
       status: schema.collectionRuns.status,
       enqueuedAt: schema.collectionRuns.enqueuedAt,
       collectedAt: schema.collectionRuns.collectedAt,
@@ -27,6 +29,7 @@ export async function GET() {
       error: schema.collectionRuns.error,
     })
     .from(schema.collectionRuns)
+    .leftJoin(schema.cities, eq(schema.cities.id, schema.collectionRuns.cityId))
     .orderBy(desc(schema.collectionRuns.enqueuedAt))
     .limit(20);
 

@@ -8,6 +8,7 @@ const log = createLogger("ingestion:unify");
 export type UnifyInput = {
   listingId: number;
   extractionId: number;
+  cityId: string | null;
   placeId: string | null;
   lat: number | null;
   lon: number | null;
@@ -48,7 +49,7 @@ export async function findOrCreateApartment(input: UnifyInput): Promise<UnifyRes
 
   // 2) geo + size match
   if (input.lat != null && input.lon != null) {
-    const hit = await findByGeoAndSize(input.lat, input.lon, input.rooms, input.sqm);
+    const hit = await findByGeoAndSize(input.lat, input.lon, input.rooms, input.sqm, input.cityId);
     if (hit) {
       log.info("matched by geo+size", { apartmentId: hit, listingId: input.listingId });
       return await link(input, hit, "geo_radius", 0.85);
@@ -57,7 +58,7 @@ export async function findOrCreateApartment(input: UnifyInput): Promise<UnifyRes
 
   // 3) embedding match within ±200m bbox
   if (input.embedding && input.embedding.length > 0 && input.lat != null && input.lon != null) {
-    const hit = await findByEmbedding(input.embedding, input.lat, input.lon);
+    const hit = await findByEmbedding(input.embedding, input.lat, input.lon, input.cityId);
     if (hit) {
       log.info("matched by embedding", { apartmentId: hit, listingId: input.listingId });
       return await link(input, hit, "embedding", 0.7);
@@ -85,6 +86,7 @@ async function findByGeoAndSize(
   lon: number,
   rooms: number | null,
   sqm: number | null,
+  cityId: string | null,
 ): Promise<number | null> {
   const db = getDb();
   const dLat = metersToLat(GEO_RADIUS_METERS);
@@ -100,6 +102,7 @@ async function findByGeoAndSize(
     .from(apartments)
     .where(
       and(
+        inputCityPredicate(cityId),
         sql`${apartments.lat} BETWEEN ${lat - dLat} AND ${lat + dLat}`,
         sql`${apartments.lon} BETWEEN ${lon - dLon} AND ${lon + dLon}`,
       ),
@@ -124,6 +127,7 @@ async function findByEmbedding(
   embedding: number[],
   lat: number,
   lon: number,
+  cityId: string | null,
 ): Promise<number | null> {
   const db = getDb();
   const dLat = metersToLat(GEO_BBOX_METERS);
@@ -137,8 +141,10 @@ async function findByEmbedding(
     })
     .from(listingExtractions)
     .innerJoin(apartmentListings, eq(apartmentListings.listingId, listingExtractions.listingId))
+    .innerJoin(apartments, eq(apartments.id, apartmentListings.apartmentId))
     .where(
       and(
+        inputCityPredicate(cityId),
         sql`${listingExtractions.lat} BETWEEN ${lat - dLat} AND ${lat + dLat}`,
         sql`${listingExtractions.lon} BETWEEN ${lon - dLon} AND ${lon + dLon}`,
         sql`${listingExtractions.embedding} IS NOT NULL`,
@@ -165,6 +171,7 @@ async function createApartment(input: UnifyInput): Promise<number> {
       houseNumber: input.houseNumber,
       neighborhood: input.neighborhood,
       city: input.city,
+      cityId: input.cityId,
       rooms: input.rooms,
       sqm: input.sqm,
       floor: input.floor,
@@ -197,10 +204,17 @@ async function link(
     .update(apartments)
     .set({
       lastSeenAt: new Date(),
+      ...(input.cityId != null ? { cityId: input.cityId } : {}),
       ...(input.priceNis != null ? { priceNisLatest: input.priceNis } : {}),
     })
     .where(eq(apartments.id, apartmentId));
   return { apartmentId, matchedBy, confidence };
+}
+
+function inputCityPredicate(cityId: string | null) {
+  return cityId == null
+    ? sql`true`
+    : sql`${apartments.cityId} IS NULL OR ${apartments.cityId} = ${cityId}`;
 }
 
 // ---------------------------------------------------------------------------

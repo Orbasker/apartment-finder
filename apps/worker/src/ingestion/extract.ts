@@ -10,7 +10,7 @@ import { recordAiUsage } from "../lib/aiUsage.js";
 const EXTRACTION_MODEL = "google/gemini-2.5-flash";
 
 const SYSTEM_PROMPT = [
-  "You extract structured Tel Aviv apartment-rental fields from raw listing text.",
+  "You extract structured Israeli apartment-rental fields from raw listing text.",
   "Output strict JSON matching the provided schema.",
   "",
   "Rules:",

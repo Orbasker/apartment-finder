@@ -11,10 +11,20 @@ vi.mock("@apartment-finder/queue", () => ({
 }));
 
 const mockUpdate = vi.fn();
-const mockDb = { update: mockUpdate };
+const mockSelect = vi.fn();
+const mockDb = { update: mockUpdate, select: mockSelect };
 vi.mock("../db/index.js", () => ({
   getDb: vi.fn(() => mockDb),
-  schema: { collectionRuns: {} },
+  schema: {
+    collectionRuns: {},
+    cities: {
+      id: "cities.id",
+      nameHe: "cities.nameHe",
+      nameEn: "cities.nameEn",
+      yad2FeedUrl: "cities.yad2FeedUrl",
+      facebookGroupUrls: "cities.facebookGroupUrls",
+    },
+  },
 }));
 
 const mockPut = vi.fn();
@@ -68,6 +78,21 @@ describe("processCollect", () => {
     const mockWhere = vi.fn().mockResolvedValue([]);
     const mockSet = vi.fn().mockReturnValue({ where: mockWhere });
     mockUpdate.mockReturnValue({ set: mockSet });
+    mockSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([
+            {
+              id: "tel-aviv",
+              nameHe: "תל אביב-יפו",
+              nameEn: "Tel Aviv-Yafo",
+              yad2FeedUrl: "https://example.com/yad2",
+              facebookGroupUrls: [],
+            },
+          ]),
+        }),
+      }),
+    });
 
     mockYad2Collect.mockResolvedValue({ rawPayload: [{ id: 1 }], receivedCount: 1 });
 
@@ -87,6 +112,7 @@ describe("processCollect", () => {
       data: {
         runId: "run-1",
         source: "yad2",
+        cityId: "tel-aviv",
         enqueuedAt: Date.now(),
       } satisfies CollectJob,
     } as Job<CollectJob>;
@@ -94,6 +120,9 @@ describe("processCollect", () => {
     await processCollect(job);
 
     expect(mockYad2Collect).toHaveBeenCalledTimes(1);
+    expect(mockYad2Collect).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "tel-aviv", nameHe: "תל אביב-יפו" }),
+    );
     expect(mockPut).toHaveBeenCalledWith(
       "collection-runs/run-1.json",
       expect.any(String),
@@ -128,6 +157,7 @@ describe("processCollect", () => {
       data: {
         runId: "run-big",
         source: "yad2",
+        cityId: "tel-aviv",
         enqueuedAt: Date.now(),
       } satisfies CollectJob,
     } as Job<CollectJob>;
@@ -152,6 +182,7 @@ describe("processCollect", () => {
       data: {
         runId: "run-webhook-fail",
         source: "yad2",
+        cityId: "tel-aviv",
         enqueuedAt: Date.now(),
       } satisfies CollectJob,
     } as Job<CollectJob>;

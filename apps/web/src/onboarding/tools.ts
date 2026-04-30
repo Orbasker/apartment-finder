@@ -15,11 +15,8 @@ import {
   setAttribute as setAttr,
   upsertFilters,
 } from "@/filters/store";
-import {
-  autocompleteCities,
-  autocompleteNeighborhoods,
-  listNeighborhoodsInCity,
-} from "@/lib/googlePlaces";
+import { searchActiveCities } from "@/cities/store";
+import { autocompleteNeighborhoods, listNeighborhoodsInCity } from "@/lib/googlePlaces";
 import { activeChannels, loadDestinations, upsertDestinations } from "@/notifications/destinations";
 import { mintLinkToken } from "@/notifications/telegram-tokens";
 import { env } from "@/lib/env";
@@ -67,36 +64,39 @@ export function buildOnboardingTools(userId: string) {
 
     searchCity: tool({
       description:
-        "Resolve a user-typed city name to Google Places candidates. Returns up to a few options; the model should pick the best match (or ask the user to disambiguate when ambiguous), then call `selectCity` with the chosen placeId+nameHe. The UI does NOT render chips for this tool. ALWAYS resolve a city this way BEFORE searchNeighborhoods, which needs an authoritative cityPlaceId.",
+        "Resolve a user-typed city name to active catalog cities. Returns options that the UI renders as clickable city chips. Wait for the user to choose a city chip before moving on to neighborhoods. ALWAYS resolve a city this way BEFORE searchNeighborhoods, which needs an authoritative cityId.",
       inputSchema: z.object({
         query: z.string().min(1).describe("User's typed city name in Hebrew, e.g. 'תל אביב'."),
       }),
       execute: async ({ query }) => {
-        const candidates = await autocompleteCities(query);
+        const candidates = await searchActiveCities(query);
         return { ok: true, candidates };
       },
     }),
 
     selectCity: tool({
       description:
-        "Save the chosen city to the user's filter set. Pass the exact placeId+nameHe from a prior searchCity result — never invent place_ids. Call this immediately after picking the best candidate (or after user disambiguation). After it succeeds, move on to searchNeighborhoods using the same cityPlaceId+cityNameHe.",
+        "Fallback-only city save for cases where the user chooses a city in plain text instead of clicking a city chip. Pass the exact cityId/placeId/nameHe/nameEn from a prior searchCity result - never invent ids. Usually the UI chip click saves the city, so do not call this immediately after searchCity.",
       inputSchema: z.object({
+        cityId: z.string().min(1).describe("City catalog id from searchCity."),
         placeId: z.string().min(1).describe("Google place_id from searchCity."),
         nameHe: z.string().min(1).describe("Hebrew city name from searchCity."),
+        nameEn: z.string().min(1).describe("English city name from searchCity."),
       }),
-      execute: async ({ placeId, nameHe }) => {
-        await addCity(userId, { placeId, nameHe });
-        return { ok: true, placeId, nameHe };
+      execute: async ({ cityId, placeId, nameHe, nameEn }) => {
+        await addCity(userId, { cityId, placeId, nameHe, nameEn });
+        return { ok: true, cityId, placeId, nameHe, nameEn };
       },
     }),
 
     searchNeighborhoods: tool({
       description:
-        "Find neighborhoods inside a specific city via Google Places. The chat UI renders the result as clickable chips — clicking a chip saves the neighborhood (and its parent city) for the current user, so DO NOT call any save tool for chips. Pass an empty `query` plus `cityNameHe` + `cityPlaceId` to browse the city's neighborhoods; pass a non-empty `query` for typeahead. Always specify `kind`. Both `cityPlaceId` and `cityNameHe` MUST come from a prior searchCity result for the same city.",
+        "Find neighborhoods inside a specific city via Google Places. The chat UI renders the result as clickable chips - clicking a chip saves the neighborhood (and its parent city) for the current user, so DO NOT call any save tool for chips. Pass an empty `query` plus `cityId` + `cityNameHe` + `cityPlaceId` to browse the city's neighborhoods; pass a non-empty `query` for typeahead. Always specify `kind`. `cityId`, `cityPlaceId`, and `cityNameHe` MUST come from a prior searchCity result for the same city.",
       inputSchema: z.object({
         query: z
           .string()
           .describe("User's typed neighborhood name in Hebrew, or empty string to browse."),
+        cityId: z.string().min(1).describe("City catalog id (from a prior searchCity result)."),
         cityPlaceId: z
           .string()
           .min(1)
@@ -106,7 +106,7 @@ export function buildOnboardingTools(userId: string) {
           .enum(["allowed", "blocked"])
           .describe("Whether a chip click adds the choice to the allowed or blocked list."),
       }),
-      execute: async ({ query, cityPlaceId, cityNameHe, kind }) => {
+      execute: async ({ query, cityId, cityPlaceId, cityNameHe, kind }) => {
         const trimmed = query.trim();
         const raw =
           trimmed === ""
@@ -117,6 +117,7 @@ export function buildOnboardingTools(userId: string) {
         const candidates = raw.map((c) => ({
           placeId: c.placeId,
           nameHe: c.nameHe,
+          cityId,
           cityPlaceId,
           cityNameHe,
         }));

@@ -7,8 +7,8 @@ import { processListing } from "@/ingestion/pipeline";
 import { contentHash } from "@/lib/contentHash";
 import { collectQueue } from "@apartment-finder/queue";
 import { getDb } from "@/db";
-import { collectionRuns, listings } from "@/db/schema";
-import { and, eq, lt } from "drizzle-orm";
+import { cities, collectionRuns, listings } from "@/db/schema";
+import { and, eq, isNotNull, lt } from "drizzle-orm";
 
 export type JobRunResult = {
   status: number;
@@ -25,8 +25,8 @@ export async function runYad2PollJob(options?: {
   const startedAt = Date.now();
   const localTime = describeLocalSchedule();
   const enforceSchedule = options?.enforceSchedule ?? true;
-  const runId = newId();
-  const log = createLogger("job:yad2", { run: runId });
+  const batchId = newId();
+  const log = createLogger("job:yad2", { run: batchId });
 
   if (enforceSchedule && !shouldRunYad2Poll()) {
     log.info("skipped outside schedule", { localTime });
@@ -36,45 +36,55 @@ export async function runYad2PollJob(options?: {
   // NEW: enqueue-only path (BullMQ workers on VPS handle everything)
   if (env().USE_BULLMQ_COLLECTORS === "true") {
     const db = getDb();
-    await db.insert(collectionRuns).values({ runId, source: "yad2", status: "queued" });
+    const targets = await listCollectorCities("yad2");
+    const queued: string[] = [];
     try {
-      await collectQueue.add(
-        "collect",
-        { runId, source: "yad2", enqueuedAt: Date.now() },
-        {
-          attempts: 3,
-          backoff: { type: "exponential", delay: 30_000 },
-        },
-      );
+      for (const city of targets) {
+        const runId = `${batchId}-${city.id}-yad2`;
+        await db
+          .insert(collectionRuns)
+          .values({ runId, source: "yad2", cityId: city.id, status: "queued" });
+        await collectQueue.add(
+          "collect",
+          { runId, source: "yad2", cityId: city.id, enqueuedAt: Date.now() },
+          {
+            attempts: 3,
+            backoff: { type: "exponential", delay: 30_000 },
+          },
+        );
+        queued.push(runId);
+      }
     } catch (err) {
       const message = errorMessage(err);
-      log.error("enqueue failed; marking run failed", { runId, error: message });
-      await db
-        .update(collectionRuns)
-        .set({ status: "failed", error: `enqueue failed: ${message}` })
-        .where(eq(collectionRuns.runId, runId))
-        .catch(() => {});
-      return { status: 500, payload: { ok: false, runId, error: message, localTime } };
+      log.error("enqueue failed", { error: message });
+      return { status: 500, payload: { ok: false, batchId, queued, error: message, localTime } };
     }
-    log.info("collect enqueued (bullmq)", { runId, localTime });
-    return { status: 200, payload: { ok: true, runId, queued: true, localTime } };
+    log.info("collect enqueued (bullmq)", { batchId, runs: queued.length, localTime });
+    return { status: 200, payload: { ok: true, batchId, runIds: queued, queued: true, localTime } };
   }
 
   // OLD: inline path (kept for rollback safety; remove once bullmq is verified in prod)
   log.info("job started", { localTime, enforceSchedule });
 
   try {
-    const listings = await fetchYad2Listings();
-    log.info("yad2 fetched", { listings: listings.length });
+    const targets = await listCollectorCities("yad2");
+    const allInserted: number[] = [];
+    let fetched = 0;
+    let skippedExisting = 0;
 
-    const collected = listings.map(yad2ToCollected);
-    const { inserted, skippedExisting } = await bulkInsertListings(collected);
-    log.info("ingested", { inserted: inserted.length, skippedExisting });
+    for (const city of targets) {
+      const listings = await fetchYad2Listings({ feedUrl: city.yad2FeedUrl ?? undefined });
+      fetched += listings.length;
+      log.info("yad2 fetched", { cityId: city.id, listings: listings.length });
 
-    const freshStats = await processBatch(
-      inserted.map((row) => row.id),
-      log,
-    );
+      const collected = listings.map((listing) => yad2ToCollected(listing, city.id));
+      const inserted = await bulkInsertListings(collected);
+      skippedExisting += inserted.skippedExisting;
+      allInserted.push(...inserted.inserted.map((row) => row.id));
+    }
+    log.info("ingested", { inserted: allInserted.length, skippedExisting });
+
+    const freshStats = await processBatch(allInserted, log);
 
     const failedIds = await fetchFailedListingsToRetry();
     const retryStats =
@@ -95,8 +105,8 @@ export async function runYad2PollJob(options?: {
       status: 200,
       payload: {
         ok: true,
-        fetched: listings.length,
-        inserted: inserted.length,
+        fetched,
+        inserted: allInserted.length,
         skippedExisting,
         fresh: freshStats,
         retry: retryStats,
@@ -125,8 +135,8 @@ export async function runApifyPollJob(options: {
   enforceSchedule?: boolean;
 }): Promise<JobRunResult> {
   const enforceSchedule = options.enforceSchedule ?? true;
-  const runId = newId();
-  const log = createLogger("job:apify", { run: runId });
+  const batchId = newId();
+  const log = createLogger("job:apify", { run: batchId });
 
   if (enforceSchedule && !shouldRunApifyPoll()) {
     return { status: 200, payload: { ok: true, skipped: "outside schedule" } };
@@ -135,41 +145,44 @@ export async function runApifyPollJob(options: {
   // NEW: enqueue-only path (BullMQ workers on VPS handle everything)
   if (env().USE_BULLMQ_COLLECTORS === "true") {
     const db = getDb();
-    await db.insert(collectionRuns).values({ runId, source: "facebook", status: "queued" });
+    const targets = await listCollectorCities("facebook");
+    const queued: string[] = [];
     try {
-      await collectQueue.add(
-        "collect",
-        { runId, source: "facebook", enqueuedAt: Date.now() },
-        {
-          attempts: 3,
-          backoff: { type: "exponential", delay: 30_000 },
-        },
-      );
+      for (const city of targets) {
+        const runId = `${batchId}-${city.id}-facebook`;
+        await db
+          .insert(collectionRuns)
+          .values({ runId, source: "facebook", cityId: city.id, status: "queued" });
+        await collectQueue.add(
+          "collect",
+          { runId, source: "facebook", cityId: city.id, enqueuedAt: Date.now() },
+          {
+            attempts: 3,
+            backoff: { type: "exponential", delay: 30_000 },
+          },
+        );
+        queued.push(runId);
+      }
     } catch (err) {
       const message = errorMessage(err);
-      log.error("enqueue failed; marking run failed", { runId, error: message });
-      await db
-        .update(collectionRuns)
-        .set({ status: "failed", error: `enqueue failed: ${message}` })
-        .where(eq(collectionRuns.runId, runId))
-        .catch(() => {});
-      return { status: 500, payload: { ok: false, runId, error: message } };
+      log.error("enqueue failed", { error: message });
+      return { status: 500, payload: { ok: false, batchId, queued, error: message } };
     }
-    log.info("collect enqueued (bullmq)", { runId });
-    return { status: 200, payload: { ok: true, runId, queued: true } };
+    log.info("collect enqueued (bullmq)", { batchId, runs: queued.length });
+    return { status: 200, payload: { ok: true, batchId, runIds: queued, queued: true } };
   }
 
   // The legacy inline Apify path posted to /api/webhooks/apify, which this PR
-  // removed. With USE_BULLMQ_COLLECTORS off there is no working ingest path —
+  // removed. With USE_BULLMQ_COLLECTORS off there is no working ingest path -
   // but the Vercel cron may still be configured, so return 200 with a clear
   // "skipped" payload instead of 500ing on every tick.
-  log.warn("apify poll skipped because USE_BULLMQ_COLLECTORS is disabled", { runId });
+  log.warn("apify poll skipped because USE_BULLMQ_COLLECTORS is disabled", { batchId });
   return {
     status: 200,
     payload: {
       ok: true,
       skipped: "USE_BULLMQ_COLLECTORS is disabled",
-      runId,
+      batchId,
     },
   };
 }
@@ -178,9 +191,10 @@ export async function runApifyPollJob(options: {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function yad2ToCollected(listing: Yad2Listing): CollectedListing {
+function yad2ToCollected(listing: Yad2Listing, cityId: string): CollectedListing {
   return {
     source: "yad2",
+    cityId,
     sourceId: listing.sourceId,
     url: listing.url,
     rawText: null,
@@ -190,6 +204,24 @@ function yad2ToCollected(listing: Yad2Listing): CollectedListing {
     authorName: listing.authorName,
     authorProfile: listing.authorProfile,
   };
+}
+
+async function listCollectorCities(source: "yad2" | "facebook") {
+  const rows = await getDb()
+    .select({
+      id: cities.id,
+      yad2FeedUrl: cities.yad2FeedUrl,
+      facebookGroupUrls: cities.facebookGroupUrls,
+    })
+    .from(cities)
+    .where(
+      and(
+        eq(cities.isActive, true),
+        eq(cities.isLaunchReady, true),
+        source === "yad2" ? isNotNull(cities.yad2FeedUrl) : eq(cities.isLaunchReady, true),
+      ),
+    );
+  return source === "facebook" ? rows.filter((row) => row.facebookGroupUrls.length > 0) : rows;
 }
 
 type BatchStats = { processed: number; unified: number; failed: number; alertsSent: number };

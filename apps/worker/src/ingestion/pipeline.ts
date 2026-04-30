@@ -131,6 +131,7 @@ export async function processListing(listingId: number): Promise<ProcessOutcome>
     const unify = await findOrCreateApartment({
       listingId,
       extractionId: extractionRow.id,
+      cityId: listing.cityId,
       placeId: geo.placeId,
       lat: geo.lat,
       lon: geo.lon,

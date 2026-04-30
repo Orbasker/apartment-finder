@@ -7,6 +7,7 @@ type Kind = "allowed" | "blocked";
 type NeighborhoodInput = {
   placeId: string;
   nameHe: string;
+  cityId: string;
   cityPlaceId: string;
   cityNameHe: string;
 };
@@ -18,7 +19,9 @@ export async function pickNeighborhoodsAction(
   const user = await getCurrentUser();
   if (!user) return { ok: false, reason: "unauthorized" };
   if (kind !== "allowed" && kind !== "blocked") return { ok: false, reason: "bad_kind" };
-  const valid = selections.filter((s) => s.placeId && s.nameHe && s.cityPlaceId && s.cityNameHe);
+  const valid = selections.filter(
+    (s) => s.placeId && s.nameHe && s.cityId && s.cityPlaceId && s.cityNameHe,
+  );
   if (valid.length === 0) return { ok: false, reason: "missing_fields" };
   for (const selection of valid) {
     await addNeighborhoodFilter(user.id, kind, selection);
