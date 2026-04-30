@@ -14,11 +14,7 @@ export const metadata = {
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
-export default async function ListingsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function ListingsPage({ searchParams }: { searchParams: SearchParams }) {
   const user = (await getCurrentUser())!;
   const sp = await searchParams;
   const query = parseListingsQuery(sp);
@@ -27,9 +23,7 @@ export default async function ListingsPage({
   return (
     <main className="flex w-full flex-col gap-4 sm:gap-6">
       <header>
-        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
-          {t("title")}
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t("title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </header>
 

@@ -53,11 +53,7 @@ function parsePositiveFloat(s: string | undefined): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function parseEnum<T extends string>(
-  s: string | undefined,
-  allowed: readonly T[],
-  fallback: T,
-): T {
+function parseEnum<T extends string>(s: string | undefined, allowed: readonly T[], fallback: T): T {
   return s !== undefined && (allowed as readonly string[]).includes(s) ? (s as T) : fallback;
 }
 

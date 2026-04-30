@@ -22,10 +22,7 @@ export async function ListingsResultSlot({
   }
 
   return (
-    <ul
-      className="divide-y rounded-md border bg-background text-sm"
-      aria-label="Listings"
-    >
+    <ul className="divide-y rounded-md border bg-background text-sm" aria-label="Listings">
       {result.rows.map((r) => (
         <li key={r.id} className="flex items-center justify-between gap-3 p-3">
           <div>

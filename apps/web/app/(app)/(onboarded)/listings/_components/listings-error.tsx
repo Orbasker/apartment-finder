@@ -10,9 +10,7 @@ export function ListingsError({ message }: { message?: string }) {
       <CardHeader>
         <CardTitle className="text-base text-destructive">{t("title")}</CardTitle>
       </CardHeader>
-      <CardContent className="text-sm text-muted-foreground">
-        {message ?? t("body")}
-      </CardContent>
+      <CardContent className="text-sm text-muted-foreground">{message ?? t("body")}</CardContent>
     </Card>
   );
 }

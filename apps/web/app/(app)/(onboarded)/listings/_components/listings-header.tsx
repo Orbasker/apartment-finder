@@ -34,18 +34,14 @@ export function ListingsHeader() {
     chips.push({
       key: `n-${name}`,
       label: name,
-      onRemove: () =>
-        setQuery({ neighborhood: query.neighborhood.filter((p) => p !== name) }),
+      onRemove: () => setQuery({ neighborhood: query.neighborhood.filter((p) => p !== name) }),
     });
   }
 
   const showClear = chips.length > 0 || query.sort !== "newest";
 
   return (
-    <section
-      className="flex flex-col gap-3 border-b pb-3"
-      aria-busy={isPending || undefined}
-    >
+    <section className="flex flex-col gap-3 border-b pb-3" aria-busy={isPending || undefined}>
       <div className="flex flex-wrap items-center gap-2">
         <div data-slot="view-toggle" className="flex items-center gap-1">
           <Button

@@ -42,10 +42,7 @@ export function useListingsQuery(): {
       const next: ListingsQuery = {
         ...query,
         ...patch,
-        page:
-          opts.resetPage === false || patch.page !== undefined
-            ? (patch.page ?? query.page)
-            : 1,
+        page: opts.resetPage === false || patch.page !== undefined ? (patch.page ?? query.page) : 1,
       };
       const qs = serializeListingsQuery(next);
       const href = qs.toString().length > 0 ? `/listings?${qs.toString()}` : "/listings";
