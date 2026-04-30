@@ -37,11 +37,31 @@ vi.mock("../lib/log.js", () => ({
 const mockFetch = vi.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
 
-describe("createIngestRawWorker handler", () => {
+const RAW_LISTINGS = [
+  {
+    source: "yad2",
+    sourceId: "a1",
+    url: "https://yad2.co.il/a1",
+    rawText: null,
+    rawJson: {},
+    contentHash: "abc",
+    postedAt: null,
+  },
+  {
+    source: "yad2",
+    sourceId: "a2",
+    url: "https://yad2.co.il/a2",
+    rawText: null,
+    rawJson: {},
+    contentHash: "def",
+    postedAt: null,
+  },
+];
+
+describe("processIngestRaw", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Set up DB mock chain
     const mockWhere = vi.fn().mockResolvedValue([]);
     const mockSet = vi.fn().mockReturnValue({ where: mockWhere });
     mockUpdate.mockReturnValue({ set: mockSet });
@@ -51,70 +71,64 @@ describe("createIngestRawWorker handler", () => {
         { id: 1, source: "yad2", sourceId: "a1" },
         { id: 2, source: "yad2", sourceId: "a2" },
       ],
-      skippedExisting: 1,
+      skippedExisting: 0,
     });
 
-    // Mock fetch for downloading blob
     mockFetch.mockResolvedValue({
       ok: true,
-      text: vi.fn().mockResolvedValue(
-        JSON.stringify([
-          {
-            source: "yad2",
-            sourceId: "a1",
-            url: "https://yad2.co.il/a1",
-            rawText: null,
-            rawJson: {},
-            contentHash: "abc",
-            postedAt: null,
-          },
-          {
-            source: "yad2",
-            sourceId: "a2",
-            url: "https://yad2.co.il/a2",
-            rawText: null,
-            rawJson: {},
-            contentHash: "def",
-            postedAt: null,
-          },
-          {
-            source: "yad2",
-            sourceId: "a3",
-            url: "https://yad2.co.il/a3",
-            rawText: null,
-            rawJson: {},
-            contentHash: "ghi",
-            postedAt: null,
-          },
-        ]),
-      ),
+      status: 200,
+      text: vi.fn().mockResolvedValue(JSON.stringify(RAW_LISTINGS)),
     });
   });
 
-  test("creates worker without error", async () => {
-    const { createIngestRawWorker } = await import("./ingest-raw.js");
-    const worker = createIngestRawWorker();
-    expect(worker).toBeDefined();
-    await worker.close();
-  });
-
-  test("happy path: downloads blob, calls bulkInsertListings, enqueues ingest-normalized per inserted listing", async () => {
-    const { createIngestRawWorker } = await import("./ingest-raw.js");
+  test("happy path: downloads blob, calls bulkInsertListings, updates run, enqueues ingest-normalized per inserted listing", async () => {
+    const { processIngestRaw } = await import("./ingest-raw.js");
     const { ingestNormalizedQueue } = await import("@apartment-finder/queue");
 
-    const worker = createIngestRawWorker();
+    const job = {
+      data: {
+        runId: "run-2",
+        source: "yad2",
+        blobUrl: "https://blob.vercel.app/collection-runs/run-2.json",
+      } satisfies IngestRawJob,
+    } as Job<IngestRawJob>;
 
-    const jobData: IngestRawJob = {
-      runId: "run-2",
-      source: "yad2",
-      blobUrl: "https://blob.vercel.app/collection-runs/run-2.json",
-    };
+    await processIngestRaw(job);
 
-    // The worker's processor function is invoked internally by BullMQ.
-    // We verify the worker was created and the mocks are set up correctly.
-    expect(worker).toBeDefined();
-    // ingestNormalizedQueue.add should be callable — we'll verify via integration
-    expect(ingestNormalizedQueue.add).toBeDefined();
-    await worker.close();
+    expect(mockFetch).toHaveBeenCalledWith("https://blob.vercel.app/collection-runs/run-2.json");
+    expect(mockBulkInsertListings).toHaveBeenCalledTimes(1);
+    expect(mockBulkInsertListings).toHaveBeenCalledWith(RAW_LISTINGS);
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(ingestNormalizedQueue.add).toHaveBeenCalledTimes(2);
+    expect(ingestNormalizedQueue.add).toHaveBeenNthCalledWith(
+      1,
+      "ingest-normalized",
+      expect.objectContaining({ runId: "run-2", source: "yad2", listingId: 1 }),
+      expect.any(Object),
+    );
+    expect(ingestNormalizedQueue.add).toHaveBeenNthCalledWith(
+      2,
+      "ingest-normalized",
+      expect.objectContaining({ runId: "run-2", source: "yad2", listingId: 2 }),
+      expect.any(Object),
+    );
+  });
+
+  test("blob download failure: throws and does not insert or enqueue", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, text: vi.fn() });
+    const { processIngestRaw } = await import("./ingest-raw.js");
+    const { ingestNormalizedQueue } = await import("@apartment-finder/queue");
+
+    const job = {
+      data: {
+        runId: "run-3",
+        source: "yad2",
+        blobUrl: "https://blob.vercel.app/collection-runs/run-3.json",
+      } satisfies IngestRawJob,
+    } as Job<IngestRawJob>;
+
+    await expect(processIngestRaw(job)).rejects.toThrow(/Failed to download blob/);
+    expect(mockBulkInsertListings).not.toHaveBeenCalled();
+    expect(ingestNormalizedQueue.add).not.toHaveBeenCalled();
   });
 });

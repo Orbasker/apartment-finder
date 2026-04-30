@@ -8,12 +8,11 @@ import {
 } from "@apartment-finder/queue";
 import { getDb, schema } from "../db/index.js";
 import { bulkInsertListings, type CollectedListing } from "../ingestion/insert.js";
-import { env } from "../env.js";
 import { createLogger, errorMessage } from "../lib/log.js";
 
 const log = createLogger("worker:ingest-raw");
 
-async function processIngestRaw(job: Job<IngestRawJob>): Promise<void> {
+export async function processIngestRaw(job: Job<IngestRawJob>): Promise<void> {
   const data = ingestRawJobSchema.parse(job.data);
   const db = getDb();
   log.info("ingest-raw started", { runId: data.runId, source: data.source });

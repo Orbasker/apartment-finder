@@ -25,7 +25,8 @@ export async function runYad2PollJob(options?: {
   const startedAt = Date.now();
   const localTime = describeLocalSchedule();
   const enforceSchedule = options?.enforceSchedule ?? true;
-  const log = createLogger("job:yad2", { run: newId() });
+  const runId = newId();
+  const log = createLogger("job:yad2", { run: runId });
 
   if (enforceSchedule && !shouldRunYad2Poll()) {
     log.info("skipped outside schedule", { localTime });
@@ -34,17 +35,27 @@ export async function runYad2PollJob(options?: {
 
   // NEW: enqueue-only path (BullMQ workers on VPS handle everything)
   if (env().USE_BULLMQ_COLLECTORS === "true") {
-    const runId = newId();
     const db = getDb();
     await db.insert(collectionRuns).values({ runId, source: "yad2", status: "queued" });
-    await collectQueue.add(
-      "collect",
-      { runId, source: "yad2", enqueuedAt: Date.now() },
-      {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 30_000 },
-      },
-    );
+    try {
+      await collectQueue.add(
+        "collect",
+        { runId, source: "yad2", enqueuedAt: Date.now() },
+        {
+          attempts: 3,
+          backoff: { type: "exponential", delay: 30_000 },
+        },
+      );
+    } catch (err) {
+      const message = errorMessage(err);
+      log.error("enqueue failed; marking run failed", { runId, error: message });
+      await db
+        .update(collectionRuns)
+        .set({ status: "failed", error: `enqueue failed: ${message}` })
+        .where(eq(collectionRuns.runId, runId))
+        .catch(() => {});
+      return { status: 500, payload: { ok: false, runId, error: message, localTime } };
+    }
     log.info("collect enqueued (bullmq)", { runId, localTime });
     return { status: 200, payload: { ok: true, runId, queued: true, localTime } };
   }
@@ -114,7 +125,8 @@ export async function runApifyPollJob(options: {
   enforceSchedule?: boolean;
 }): Promise<JobRunResult> {
   const enforceSchedule = options.enforceSchedule ?? true;
-  const log = createLogger("job:apify", { run: newId() });
+  const runId = newId();
+  const log = createLogger("job:apify", { run: runId });
 
   if (enforceSchedule && !shouldRunApifyPoll()) {
     return { status: 200, payload: { ok: true, skipped: "outside schedule" } };
@@ -122,17 +134,27 @@ export async function runApifyPollJob(options: {
 
   // NEW: enqueue-only path (BullMQ workers on VPS handle everything)
   if (env().USE_BULLMQ_COLLECTORS === "true") {
-    const runId = newId();
     const db = getDb();
     await db.insert(collectionRuns).values({ runId, source: "facebook", status: "queued" });
-    await collectQueue.add(
-      "collect",
-      { runId, source: "facebook", enqueuedAt: Date.now() },
-      {
-        attempts: 3,
-        backoff: { type: "exponential", delay: 30_000 },
-      },
-    );
+    try {
+      await collectQueue.add(
+        "collect",
+        { runId, source: "facebook", enqueuedAt: Date.now() },
+        {
+          attempts: 3,
+          backoff: { type: "exponential", delay: 30_000 },
+        },
+      );
+    } catch (err) {
+      const message = errorMessage(err);
+      log.error("enqueue failed; marking run failed", { runId, error: message });
+      await db
+        .update(collectionRuns)
+        .set({ status: "failed", error: `enqueue failed: ${message}` })
+        .where(eq(collectionRuns.runId, runId))
+        .catch(() => {});
+      return { status: 500, payload: { ok: false, runId, error: message } };
+    }
     log.info("collect enqueued (bullmq)", { runId });
     return { status: 200, payload: { ok: true, runId, queued: true } };
   }

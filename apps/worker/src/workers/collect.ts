@@ -17,7 +17,7 @@ const log = createLogger("worker:collect");
 const BLOB_WARN_BYTES = 4 * 1024 * 1024;
 const BLOB_MAX_BYTES = 5 * 1024 * 1024;
 
-async function processCollect(job: Job<CollectJob>): Promise<void> {
+export async function processCollect(job: Job<CollectJob>): Promise<void> {
   const data = collectJobSchema.parse(job.data);
   const db = getDb();
   log.info("collect started", { runId: data.runId, source: data.source });
