@@ -13,12 +13,14 @@ import {
   markOnboarded,
   removeNeighborhoodFilter,
   setAttribute as setAttr,
+  setRadiusFilter,
   upsertFilters,
 } from "@/filters/store";
 import {
   autocompleteCities,
   autocompleteNeighborhoods,
   listNeighborhoodsInCity,
+  searchRadiusPoints,
 } from "@/lib/googlePlaces";
 import { activeChannels, loadDestinations, upsertDestinations } from "@/notifications/destinations";
 import { mintLinkToken } from "@/notifications/telegram-tokens";
@@ -62,6 +64,48 @@ export function buildOnboardingTools(userId: string) {
       execute: async ({ minSqm, maxSqm }) => {
         await upsertFilters(userId, { sqmMin: minSqm, sqmMax: maxSqm });
         return { ok: true, sqmMin: minSqm, sqmMax: maxSqm };
+      },
+    }),
+
+    searchRadiusPoints: tool({
+      description:
+        "Resolve a user-typed address, landmark, street, or intersection to location candidates for a radius filter. Use this before setRadiusSearch. Do not mention coordinates or place IDs to the user.",
+      inputSchema: z.object({
+        query: z.string().min(1).describe("User's typed point in Hebrew."),
+      }),
+      execute: async ({ query }) => {
+        const candidates = await searchRadiusPoints(query);
+        return { ok: true, candidates };
+      },
+    }),
+
+    setRadiusSearch: tool({
+      description:
+        "Save a radius search around a point returned by searchRadiusPoints. radiusKm is the maximum distance from the point in kilometers.",
+      inputSchema: z.object({
+        placeId: z.string().min(1),
+        nameHe: z.string().min(1),
+        lat: z.number().min(-90).max(90),
+        lon: z.number().min(-180).max(180),
+        radiusKm: z.number().positive(),
+      }),
+      execute: async ({ placeId, nameHe, lat, lon, radiusKm }) => {
+        await setRadiusFilter(userId, {
+          centerLat: lat,
+          centerLon: lon,
+          radiusKm,
+          label: nameHe,
+        });
+        return { ok: true, placeId, nameHe, radiusKm };
+      },
+    }),
+
+    clearRadiusSearch: tool({
+      description: "Remove the user's radius search filter.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        await setRadiusFilter(userId, null);
+        return { ok: true };
       },
     }),
 

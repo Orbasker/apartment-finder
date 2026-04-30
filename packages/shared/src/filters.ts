@@ -84,6 +84,14 @@ export const NeighborhoodSelectionSchema = z.object({
 });
 export type NeighborhoodSelection = z.infer<typeof NeighborhoodSelectionSchema>;
 
+export const RadiusSelectionSchema = z.object({
+  centerLat: z.number().min(-90).max(90),
+  centerLon: z.number().min(-180).max(180),
+  radiusKm: z.number().positive(),
+  label: z.string().min(1).optional(),
+});
+export type RadiusSelection = z.infer<typeof RadiusSelectionSchema>;
+
 export const FiltersSchema = z.object({
   priceMinNis: z.number().int().nonnegative().nullable(),
   priceMaxNis: z.number().int().positive().nullable(),
@@ -94,6 +102,7 @@ export const FiltersSchema = z.object({
   cities: z.array(CitySelectionSchema).default([]),
   allowedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
   blockedNeighborhoods: z.array(NeighborhoodSelectionSchema).default([]),
+  radius: RadiusSelectionSchema.nullable().default(null),
   wishes: z.array(z.string()).default([]),
   dealbreakers: z.array(z.string()).default([]),
   attributes: z.array(FilterAttributeSchema).default([]),
@@ -118,6 +127,7 @@ export function countActiveFilters(f: Filters): number {
   if (f.cities.length > 0) count++;
   if (f.allowedNeighborhoods.length > 0) count++;
   if (f.blockedNeighborhoods.length > 0) count++;
+  if (f.radius != null) count++;
   for (const a of f.attributes) {
     if (a.requirement !== "dont_care") count++;
   }
@@ -135,6 +145,7 @@ export const defaultFilters: Filters = {
   cities: [],
   allowedNeighborhoods: [],
   blockedNeighborhoods: [],
+  radius: null,
   wishes: [],
   dealbreakers: [],
   attributes: [],

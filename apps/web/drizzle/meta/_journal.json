@@ -29,6 +29,13 @@
       "when": 1777567919102,
       "tag": "0003_clever_the_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777585773596,
+      "tag": "0004_careful_iron_patriot",
+      "breakpoints": true
     }
   ]
 }

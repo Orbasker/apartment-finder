@@ -6,6 +6,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -286,6 +287,9 @@ export const userFilters = pgTable("user_filters", {
   roomsMax: real("rooms_max"),
   sqmMin: integer("sqm_min"),
   sqmMax: integer("sqm_max"),
+  centerLat: doublePrecision("center_lat"),
+  centerLon: doublePrecision("center_lon"),
+  radiusKm: numeric("radius_km"),
   wishes: text("wishes")
     .array()
     .notNull()

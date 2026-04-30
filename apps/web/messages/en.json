@@ -56,6 +56,19 @@
     "loading": "Loading…",
     "noResults": "No city found"
   },
+  "RadiusSearch": {
+    "sectionTitle": "Radius from point",
+    "sectionDescription": "Filter apartments by distance from a point of interest, like work, transit, or school.",
+    "emptyState": "No radius filter is set.",
+    "searchButton": "Choose point",
+    "searchPlaceholder": "Search address or place",
+    "typeToSearch": "Start typing to search",
+    "loading": "Loading…",
+    "noResults": "No results found",
+    "radiusLabel": "Radius in km",
+    "savedPointLabel": "Selected point",
+    "clear": "Clear radius"
+  },
   "Email": {
     "SignInCode": {
       "subject": "Your sign-in code: {otp}",
