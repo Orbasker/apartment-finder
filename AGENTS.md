@@ -189,7 +189,7 @@ Single `0000_*.sql` migration (drizzle-generated, hand-extended with `CREATE EXT
 - **`listing_attributes`** - KV booleans, **NOT NULL value** (absence-of-row = unknown). PK `(listing_id, key)`.
 - **`apartments`** - canonical entity with Google `place_id` + lat/lon + latest price/rooms/sqm.
 - **`apartment_listings`** - M:N linking apartments to listings, with `confidence` and `matched_by` (`place_id` / `geo_radius` / `embedding` / `created`). Unique on `listing_id` (one listing → one apartment).
-- **`user_filters`** - one row per user. Hot-path columns (price/rooms/sqm), text arrays for neighborhoods/wishes/dealbreakers, `strict_unknowns`, `daily_alert_cap`, `is_active`.
+- **`user_filters`** - one row per user. Hot-path columns (price/rooms/sqm), optional radius center (`center_lat`, `center_lon`, `radius_km`), text arrays for wishes/dealbreakers, `strict_unknowns`, `daily_alert_cap`, `is_active`.
 - **`user_filter_attributes`** - normalized per-attribute requirements. PK `(user_id, key)`.
 - **`user_filter_texts`** - embedded wishes/dealbreakers. `vector(1536)` with HNSW. Cosine-compared against listing embedding at match time.
 - **`sent_alerts`** - outbox dedup. PK `(user_id, apartment_id, destination)` so the same listing can fan out to email and Telegram independently. `destination` is the `notification_destination` enum (`email`, `telegram`).

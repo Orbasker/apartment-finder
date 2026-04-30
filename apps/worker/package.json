@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun run src/index.ts",
-    "start": "bun run src/index.ts",
+    "dev": "bun --env-file=../../.env run src/index.ts",
+    "start": "bun --env-file=../../.env run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target=bun",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --reporter=verbose"

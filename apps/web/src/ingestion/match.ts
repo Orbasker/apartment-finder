@@ -42,6 +42,8 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
       cityId: apartments.cityId,
       neighborhood: apartments.neighborhood,
       city: apartments.city,
+      lat: apartments.lat,
+      lon: apartments.lon,
       rooms: apartments.rooms,
       sqm: apartments.sqm,
       priceNisLatest: apartments.priceNisLatest,
@@ -60,6 +62,8 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
   const neighborhood = apt.neighborhood;
   const cityId = apt.cityId;
   const city = apt.city;
+  const lat = apt.lat;
+  const lon = apt.lon;
 
   // SQL prefilter on user_filters.
   const candidates = await db
@@ -91,7 +95,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
               or(isNull(userFilters.sqmMax), gte(userFilters.sqmMax, sqm)),
               or(isNull(userFilters.sqmMin), lte(userFilters.sqmMin, sqm)),
             ),
-        neighborhoodPredicate(neighborhood, city),
+        locationPredicate(neighborhood, city, lat, lon),
       ),
     );
 
@@ -183,41 +187,104 @@ function cityPredicate(apartmentCityId: string | null, apartmentCity: string | n
 }
 
 /**
- * Neighborhood predicate against `user_filter_neighborhoods`.
- *
- * Both sides come from Google's geocoder, so we match on a normalized
- * (lower(trim) of name_he, city_name_he) pair:
- *
- * - Allowed: pass if the user has NO allowed selections, OR the apartment's
- *   (neighborhood, city) matches one of the user's allowed pairs.
- * - Blocked: fail if the apartment's (neighborhood, city) matches a blocked pair.
+ * Combines explicit allowed neighborhoods and the optional radius filter.
+ * Allowed neighborhood and radius are ORed so radius broadens selected
+ * neighborhoods; blocked neighborhoods still always block.
  */
-function neighborhoodPredicate(apartmentNeighborhood: string | null, apartmentCity: string | null) {
+function locationPredicate(
+  apartmentNeighborhood: string | null,
+  apartmentCity: string | null,
+  apartmentLat: number | null,
+  apartmentLon: number | null,
+) {
   const noAllowedSelections = sql`NOT EXISTS (
     SELECT 1 FROM ${userFilterNeighborhoods}
     WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
       AND ${userFilterNeighborhoods.kind} = 'allowed'
   )`;
+  const noRadiusSelection = sql`${userFilters.centerLat} IS NULL
+    OR ${userFilters.centerLon} IS NULL
+    OR ${userFilters.radiusKm} IS NULL`;
 
-  const matchPair = (kind: "allowed" | "blocked") => {
-    if (apartmentNeighborhood == null) return sql`false`;
-    // City clause is only included when the apartment has a city. Binding a
-    // parameter solely under `$N IS NULL` makes PG fail with "could not
-    // determine data type of parameter" - handle the null branch in JS.
-    const cityClause =
-      apartmentCity != null
-        ? sql`AND lower(trim(${userFilterNeighborhoods.cityNameHe})) = lower(trim(${apartmentCity}))`
-        : sql``;
-    return sql`EXISTS (
-      SELECT 1 FROM ${userFilterNeighborhoods}
-      WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
-        AND ${eq(userFilterNeighborhoods.kind, kind)}
-        AND lower(trim(${userFilterNeighborhoods.nameHe})) = lower(trim(${apartmentNeighborhood}))
-        ${cityClause}
-    )`;
-  };
+  return and(
+    sql`NOT (${neighborhoodMatchPair(apartmentNeighborhood, apartmentCity, "blocked")})`,
+    or(
+      and(noAllowedSelections, noRadiusSelection),
+      neighborhoodMatchPair(apartmentNeighborhood, apartmentCity, "allowed"),
+      radiusMatchPredicate(apartmentLat, apartmentLon),
+    ),
+  );
+}
 
-  return and(or(noAllowedSelections, matchPair("allowed")), sql`NOT (${matchPair("blocked")})`);
+function neighborhoodMatchPair(
+  apartmentNeighborhood: string | null,
+  apartmentCity: string | null,
+  kind: "allowed" | "blocked",
+) {
+  if (apartmentNeighborhood == null) return sql`false`;
+  const cityClause =
+    apartmentCity != null
+      ? sql`AND lower(trim(${userFilterNeighborhoods.cityNameHe})) = lower(trim(${apartmentCity}))`
+      : sql``;
+  return sql`EXISTS (
+    SELECT 1 FROM ${userFilterNeighborhoods}
+    WHERE ${userFilterNeighborhoods.userId} = ${userFilters.userId}
+      AND ${eq(userFilterNeighborhoods.kind, kind)}
+      AND lower(trim(${userFilterNeighborhoods.nameHe})) = lower(trim(${apartmentNeighborhood}))
+      ${cityClause}
+  )`;
+}
+
+function radiusMatchPredicate(apartmentLat: number | null, apartmentLon: number | null) {
+  if (apartmentLat == null || apartmentLon == null) return sql`false`;
+
+  const distanceKm = sql`(
+    6371 * 2 * asin(
+      sqrt(
+        least(
+          1,
+          power(sin(radians((${userFilters.centerLat} - ${apartmentLat}) / 2)), 2)
+          + cos(radians(${apartmentLat}))
+          * cos(radians(${userFilters.centerLat}))
+          * power(sin(radians((${userFilters.centerLon} - ${apartmentLon}) / 2)), 2)
+        )
+      )
+    )
+  )`;
+  return sql`${userFilters.centerLat} IS NOT NULL
+    AND ${userFilters.centerLon} IS NOT NULL
+    AND ${userFilters.radiusKm} IS NOT NULL
+    AND ${distanceKm} <= ${userFilters.radiusKm}`;
+}
+
+export function isWithinRadiusKm(input: {
+  apartmentLat: number | null;
+  apartmentLon: number | null;
+  centerLat: number | null;
+  centerLon: number | null;
+  radiusKm: number | null;
+}): boolean {
+  const { apartmentLat, apartmentLon, centerLat, centerLon, radiusKm } = input;
+  if (
+    apartmentLat == null ||
+    apartmentLon == null ||
+    centerLat == null ||
+    centerLon == null ||
+    radiusKm == null
+  ) {
+    return false;
+  }
+  return haversineDistanceKm(apartmentLat, apartmentLon, centerLat, centerLon) <= radiusKm;
+}
+
+function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(Math.min(1, a)));
 }
 
 export function checkAttributeRequirements(

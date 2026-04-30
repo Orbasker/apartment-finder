@@ -16,7 +16,11 @@ import {
   replaceTexts,
   upsertFilters,
 } from "@/filters/store";
-import type { CitySelection, NeighborhoodSelection } from "@apartment-finder/shared";
+import type {
+  CitySelection,
+  NeighborhoodSelection,
+  RadiusSelection,
+} from "@apartment-finder/shared";
 
 function parseOptionalInt(v: FormDataEntryValue | null): number | null {
   if (typeof v !== "string" || v.trim() === "") return null;
@@ -101,9 +105,26 @@ function parseNeighborhoodSelections(formData: FormData, name: string): Neighbor
   return out;
 }
 
+function parseRadiusSelection(formData: FormData): RadiusSelection | null {
+  const label = formData.get("radiusLabel");
+  const centerLat = parseOptionalNum(formData.get("centerLat"));
+  const centerLon = parseOptionalNum(formData.get("centerLon"));
+  const radiusKm = parseOptionalNum(formData.get("radiusKm"));
+  if (centerLat == null || centerLon == null || radiusKm == null || radiusKm <= 0) {
+    return null;
+  }
+  return {
+    centerLat,
+    centerLon,
+    radiusKm,
+    label: typeof label === "string" && label.trim() ? label.trim() : undefined,
+  };
+}
+
 export async function saveFiltersAction(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
+  const radius = parseRadiusSelection(formData);
 
   await upsertFilters(user.id, {
     priceMinNis: parseOptionalInt(formData.get("priceMinNis")),
@@ -112,6 +133,9 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
     roomsMax: parseOptionalNum(formData.get("roomsMax")),
     sqmMin: parseOptionalInt(formData.get("sqmMin")),
     sqmMax: parseOptionalInt(formData.get("sqmMax")),
+    centerLat: radius?.centerLat ?? null,
+    centerLon: radius?.centerLon ?? null,
+    radiusKm: radius ? String(radius.radiusKm) : null,
     strictUnknowns: formData.get("strictUnknowns") === "on",
     notifyOnUnknownMustHave: formData.get("notifyOnUnknownMustHave") === "on",
     isActive: formData.get("isActive") === "on",

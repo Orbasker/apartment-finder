@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { CityNeighborhoodsWizard } from "@/components/city-neighborhoods-wizard";
+import { RadiusSearchPicker } from "@/components/radius-search-picker";
 import { saveFiltersAction } from "./actions";
 import type { StoredFilters } from "@/filters/store";
 
@@ -30,6 +31,7 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
     filters.attributes.map((a) => [a.key, a.requirement]),
   );
   const tCities = useTranslations("Cities");
+  const tRadius = useTranslations("RadiusSearch");
   const tUnknowns = useTranslations("FilterSettings");
 
   return (
@@ -83,6 +85,10 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
           defaultAllowed={filters.allowedNeighborhoods}
           defaultBlocked={filters.blockedNeighborhoods}
         />
+      </Section>
+
+      <Section title={tRadius("sectionTitle")} description={tRadius("sectionDescription")}>
+        <RadiusSearchPicker defaultRadius={filters.radius} />
       </Section>
 
       <Section title="מפרט מלא">

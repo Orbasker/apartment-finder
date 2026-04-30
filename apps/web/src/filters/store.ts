@@ -6,6 +6,7 @@ import {
   type CitySelection,
   type Filters,
   type NeighborhoodSelection,
+  type RadiusSelection,
 } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import {
@@ -78,6 +79,14 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     nameHe,
     nameEn,
   }));
+  const radius: RadiusSelection | null =
+    row?.centerLat != null && row.centerLon != null && row.radiusKm != null
+      ? {
+          centerLat: row.centerLat,
+          centerLon: row.centerLon,
+          radiusKm: Number(row.radiusKm),
+        }
+      : null;
 
   if (!row) {
     return {
@@ -90,6 +99,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       cities,
       allowedNeighborhoods,
       blockedNeighborhoods,
+      radius: null,
       wishes: [],
       dealbreakers: [],
       attributes: [],
@@ -111,6 +121,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     cities,
     allowedNeighborhoods,
     blockedNeighborhoods,
+    radius,
     wishes: row.wishes ?? [],
     dealbreakers: row.dealbreakers ?? [],
     attributes: attrs,
@@ -130,6 +141,9 @@ type ScalarPatch = Partial<{
   roomsMax: number | null;
   sqmMin: number | null;
   sqmMax: number | null;
+  centerLat: number | null;
+  centerLon: number | null;
+  radiusKm: string | null;
   wishes: string[];
   dealbreakers: string[];
   strictUnknowns: boolean;
@@ -149,6 +163,26 @@ export async function upsertFilters(userId: string, patch: ScalarPatch): Promise
       target: userFilters.userId,
       set: { ...patch, updatedAt: new Date() },
     });
+}
+
+export async function setRadiusFilter(
+  userId: string,
+  radius: RadiusSelection | null,
+): Promise<void> {
+  await upsertFilters(
+    userId,
+    radius
+      ? {
+          centerLat: radius.centerLat,
+          centerLon: radius.centerLon,
+          radiusKm: String(radius.radiusKm),
+        }
+      : {
+          centerLat: null,
+          centerLon: null,
+          radiusKm: null,
+        },
+  );
 }
 
 export async function setAttribute(
@@ -412,6 +446,7 @@ export function countActive(f: StoredFilters): number {
   if (f.cities.length > 0) count++;
   if (f.allowedNeighborhoods.length > 0) count++;
   if (f.blockedNeighborhoods.length > 0) count++;
+  if (f.radius != null) count++;
   for (const a of f.attributes) {
     if (a.requirement !== "dont_care") count++;
   }
