@@ -140,6 +140,12 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
             description="אם פעיל: דרישה כמו 'חובה מעלית' תיכשל גם כשהמודעה לא מזכירה מעלית כלל."
             defaultChecked={filters.strictUnknowns}
           />
+          <Toggle
+            name="notifyOnUnknownMustHave"
+            label="הודע כשלא בטוח בדרישות חובה"
+            description="אם פעיל: קבל התראה גם כשלא ברור אם דירה עומדת בדרישות החובה שלך. אם לא: דלג על דירות שלא בטוח בהן."
+            defaultChecked={filters.notifyOnUnknownMustHave}
+          />
           <Toggle name="isActive" label="התראות פעילות" defaultChecked={filters.isActive} />
         </div>
       </Section>

@@ -264,6 +264,7 @@ export const userFilters = pgTable("user_filters", {
     .notNull()
     .default(sql`'{}'::text[]`),
   strictUnknowns: boolean("strict_unknowns").default(true).notNull(),
+  notifyOnUnknownMustHave: boolean("notify_on_unknown_must_have").default(true).notNull(),
   dailyAlertCap: integer("daily_alert_cap").default(20).notNull(),
   maxAgeHours: integer("max_age_hours").default(48).notNull(),
   isActive: boolean("is_active").default(true).notNull(),

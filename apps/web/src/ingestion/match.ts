@@ -22,6 +22,7 @@ export type MatchedUser = {
   userId: string;
   triggeredBy: "filter";
   matchedAttributes: ApartmentAttributeKey[];
+  unknownMustHaves: ApartmentAttributeKey[];
 };
 
 /**
@@ -57,7 +58,11 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
 
   // SQL prefilter on user_filters.
   const candidates = await db
-    .select({ userId: userFilters.userId, strictUnknowns: userFilters.strictUnknowns })
+    .select({
+      userId: userFilters.userId,
+      strictUnknowns: userFilters.strictUnknowns,
+      notifyOnUnknownMustHave: userFilters.notifyOnUnknownMustHave,
+    })
     .from(userFilters)
     .where(
       and(
@@ -119,7 +124,11 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
       .from(userFilterAttributes)
       .where(eq(userFilterAttributes.userId, c.userId));
 
-    const attrPass = checkAttributeRequirements(userAttrs, knownAttrs, c.strictUnknowns);
+    const attrPass = checkAttributeRequirements(
+      userAttrs,
+      knownAttrs,
+      c.notifyOnUnknownMustHave,
+    );
     if (!attrPass.pass) continue;
 
     if (apartmentEmbedding) {
@@ -131,6 +140,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
       userId: c.userId,
       triggeredBy: "filter",
       matchedAttributes: attrPass.matchedAttributes,
+      unknownMustHaves: attrPass.unknownMustHaves,
     });
   }
 
@@ -201,21 +211,28 @@ function neighborhoodPredicate(apartmentNeighborhood: string | null, apartmentCi
 export function checkAttributeRequirements(
   userAttrs: Array<{ key: ApartmentAttributeKey; requirement: AttributeRequirement }>,
   knownAttrs: Map<ApartmentAttributeKey, boolean>,
-  strictUnknowns: boolean,
-): { pass: boolean; matchedAttributes: ApartmentAttributeKey[] } {
+  notifyOnUnknownMustHave: boolean,
+): { pass: boolean; matchedAttributes: ApartmentAttributeKey[]; unknownMustHaves: ApartmentAttributeKey[] } {
   const matched: ApartmentAttributeKey[] = [];
+  const unknownMustHaves: ApartmentAttributeKey[] = [];
   for (const ua of userAttrs) {
     const known = knownAttrs.get(ua.key);
     switch (ua.requirement) {
       case "required_true":
         if (known === true) matched.push(ua.key);
-        else if (known === false) return { pass: false, matchedAttributes: [] };
-        else if (strictUnknowns) return { pass: false, matchedAttributes: [] };
+        else if (known === false) return { pass: false, matchedAttributes: [], unknownMustHaves: [] };
+        else {
+          unknownMustHaves.push(ua.key);
+          if (!notifyOnUnknownMustHave) return { pass: false, matchedAttributes: [], unknownMustHaves: [] };
+        }
         break;
       case "required_false":
         if (known === false) matched.push(ua.key);
-        else if (known === true) return { pass: false, matchedAttributes: [] };
-        else if (strictUnknowns) return { pass: false, matchedAttributes: [] };
+        else if (known === true) return { pass: false, matchedAttributes: [], unknownMustHaves: [] };
+        else {
+          unknownMustHaves.push(ua.key);
+          if (!notifyOnUnknownMustHave) return { pass: false, matchedAttributes: [], unknownMustHaves: [] };
+        }
         break;
       case "preferred_true":
         if (known === true) matched.push(ua.key);
@@ -224,7 +241,7 @@ export function checkAttributeRequirements(
         break;
     }
   }
-  return { pass: true, matchedAttributes: matched };
+  return { pass: true, matchedAttributes: matched, unknownMustHaves };
 }
 
 async function dealbreakerHits(userId: string, embedding: number[]): Promise<boolean> {

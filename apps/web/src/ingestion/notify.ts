@@ -48,6 +48,7 @@ export async function sendInstantAlert(input: {
   userId: string;
   apartmentId: number;
   matchedAttributes: ApartmentAttributeKey[];
+  unknownMustHaves?: ApartmentAttributeKey[];
 }): Promise<NotifyOutcome> {
   const db = getDb();
 

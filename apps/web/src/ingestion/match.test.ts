@@ -13,6 +13,7 @@ describe("checkAttributeRequirements", () => {
     );
     expect(r.pass).toBe(true);
     expect(r.matchedAttributes).toEqual(["elevator"]);
+    expect(r.unknownMustHaves).toEqual([]);
   });
 
   test("required_true fails when listing has value=false", () => {
@@ -22,25 +23,28 @@ describe("checkAttributeRequirements", () => {
       true,
     );
     expect(r.pass).toBe(false);
+    expect(r.unknownMustHaves).toEqual([]);
   });
 
-  test("required_true fails on unknown when strictUnknowns=true", () => {
-    const r = checkAttributeRequirements(
-      [{ key: "elevator", requirement: "required_true" }],
-      known([]),
-      true,
-    );
-    expect(r.pass).toBe(false);
-  });
-
-  test("required_true passes on unknown when strictUnknowns=false", () => {
+  test("required_true fails on unknown when notifyOnUnknownMustHave=false", () => {
     const r = checkAttributeRequirements(
       [{ key: "elevator", requirement: "required_true" }],
       known([]),
       false,
     );
+    expect(r.pass).toBe(false);
+    expect(r.unknownMustHaves).toEqual(["elevator"]);
+  });
+
+  test("required_true passes on unknown when notifyOnUnknownMustHave=true", () => {
+    const r = checkAttributeRequirements(
+      [{ key: "elevator", requirement: "required_true" }],
+      known([]),
+      true,
+    );
     expect(r.pass).toBe(true);
     expect(r.matchedAttributes).toEqual([]);
+    expect(r.unknownMustHaves).toEqual(["elevator"]);
   });
 
   test("required_false fails when listing has value=true", () => {
@@ -50,6 +54,7 @@ describe("checkAttributeRequirements", () => {
       true,
     );
     expect(r.pass).toBe(false);
+    expect(r.unknownMustHaves).toEqual([]);
   });
 
   test("required_false passes when listing has value=false", () => {
@@ -60,6 +65,7 @@ describe("checkAttributeRequirements", () => {
     );
     expect(r.pass).toBe(true);
     expect(r.matchedAttributes).toEqual(["shared_apartment"]);
+    expect(r.unknownMustHaves).toEqual([]);
   });
 
   test("preferred_true never fails the match (advisory only)", () => {
@@ -124,4 +130,51 @@ describe("checkAttributeRequirements", () => {
     expect(r.pass).toBe(true);
     expect(r.matchedAttributes.sort()).toEqual(["elevator", "parking", "shared_apartment"]);
   });
+});
+
+  test("unknown must-haves with notifyOnUnknownMustHave=true: tracks unknowns and passes", () => {
+    const r = checkAttributeRequirements(
+      [
+        { key: "elevator", requirement: "required_true" },
+        { key: "parking", requirement: "required_true" },
+      ],
+      known([["elevator", true]]),
+      true,
+    );
+    expect(r.pass).toBe(true);
+    expect(r.matchedAttributes).toEqual(["elevator"]);
+    expect(r.unknownMustHaves).toEqual(["parking"]);
+  });
+
+  test("unknown must-haves with notifyOnUnknownMustHave=false: fails", () => {
+    const r = checkAttributeRequirements(
+      [
+        { key: "elevator", requirement: "required_true" },
+        { key: "parking", requirement: "required_true" },
+      ],
+      known([["elevator", true]]),
+      false,
+    );
+    expect(r.pass).toBe(false);
+    expect(r.unknownMustHaves).toEqual(["parking"]);
+  });
+
+  test("required_false unknown with notifyOnUnknownMustHave=true: tracks unknown and passes", () => {
+    const r = checkAttributeRequirements(
+      [{ key: "shared_apartment", requirement: "required_false" }],
+      known([]),
+      true,
+    );
+    expect(r.pass).toBe(true);
+    expect(r.unknownMustHaves).toEqual(["shared_apartment"]);
+  });
+
+  test("required_false unknown with notifyOnUnknownMustHave=false: fails", () => {
+    const r = checkAttributeRequirements(
+      [{ key: "shared_apartment", requirement: "required_false" }],
+      known([]),
+      false,
+    );
+    expect(r.pass).toBe(false);
+    expect(r.unknownMustHaves).toEqual(["shared_apartment"]);
 });

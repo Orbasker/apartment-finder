@@ -101,6 +101,7 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
     sqmMin: parseOptionalInt(formData.get("sqmMin")),
     sqmMax: parseOptionalInt(formData.get("sqmMax")),
     strictUnknowns: formData.get("strictUnknowns") === "on",
+    notifyOnUnknownMustHave: formData.get("notifyOnUnknownMustHave") === "on",
     isActive: formData.get("isActive") === "on",
     dailyAlertCap: parseOptionalInt(formData.get("dailyAlertCap")) ?? 20,
     maxAgeHours: parseOptionalInt(formData.get("maxAgeHours")) ?? 48,

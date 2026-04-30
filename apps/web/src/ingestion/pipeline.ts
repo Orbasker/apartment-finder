@@ -155,6 +155,7 @@ export async function processListing(listingId: number): Promise<ProcessOutcome>
         userId: m.userId,
         apartmentId: unify.apartmentId,
         matchedAttributes: m.matchedAttributes,
+        unknownMustHaves: m.unknownMustHaves,
       });
       alertsSent += outcome.channels.filter((c) => c.status === "sent").length;
     }
