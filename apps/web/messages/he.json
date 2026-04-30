@@ -73,5 +73,9 @@
     "unknownsStrictLabel": "להתעלם — לשלוח רק כשהמערכת בטוחה",
     "unknownsStrictHelp": "תקבלו פחות התראות, אבל כל אחת תעמוד בכל הדרישות שלכם בוודאות."
   },
-  "Onboarding": {}
+  "Onboarding": {},
+  "Listings": {
+    "title": "רשימת דירות",
+    "subtitle": "כל הדירות שהתאימו לסינונים שלך."
+  }
 }
