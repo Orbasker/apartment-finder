@@ -57,35 +57,37 @@ describe("createIngestRawWorker handler", () => {
     // Mock fetch for downloading blob
     mockFetch.mockResolvedValue({
       ok: true,
-      text: vi.fn().mockResolvedValue(JSON.stringify([
-        {
-          source: "yad2",
-          sourceId: "a1",
-          url: "https://yad2.co.il/a1",
-          rawText: null,
-          rawJson: {},
-          contentHash: "abc",
-          postedAt: null,
-        },
-        {
-          source: "yad2",
-          sourceId: "a2",
-          url: "https://yad2.co.il/a2",
-          rawText: null,
-          rawJson: {},
-          contentHash: "def",
-          postedAt: null,
-        },
-        {
-          source: "yad2",
-          sourceId: "a3",
-          url: "https://yad2.co.il/a3",
-          rawText: null,
-          rawJson: {},
-          contentHash: "ghi",
-          postedAt: null,
-        },
-      ])),
+      text: vi.fn().mockResolvedValue(
+        JSON.stringify([
+          {
+            source: "yad2",
+            sourceId: "a1",
+            url: "https://yad2.co.il/a1",
+            rawText: null,
+            rawJson: {},
+            contentHash: "abc",
+            postedAt: null,
+          },
+          {
+            source: "yad2",
+            sourceId: "a2",
+            url: "https://yad2.co.il/a2",
+            rawText: null,
+            rawJson: {},
+            contentHash: "def",
+            postedAt: null,
+          },
+          {
+            source: "yad2",
+            sourceId: "a3",
+            url: "https://yad2.co.il/a3",
+            rawText: null,
+            rawJson: {},
+            contentHash: "ghi",
+            postedAt: null,
+          },
+        ]),
+      ),
     });
   });
 

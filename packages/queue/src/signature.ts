@@ -13,9 +13,7 @@ interface VerifyOptions extends SignOptions {
 }
 
 export function signRequest({ body, secret, timestamp }: SignOptions): string {
-  return createHmac("sha256", secret)
-    .update(`${timestamp}\n${body}`)
-    .digest("hex");
+  return createHmac("sha256", secret).update(`${timestamp}\n${body}`).digest("hex");
 }
 
 export function verifyRequest({
@@ -34,10 +32,7 @@ export function verifyRequest({
   // Timing-safe compare
   const expected = signRequest({ body, secret, timestamp });
   try {
-    return timingSafeEqual(
-      Buffer.from(expected, "hex"),
-      Buffer.from(signature, "hex"),
-    );
+    return timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
   } catch {
     // Buffer lengths differ → bad hex → not equal
     return false;

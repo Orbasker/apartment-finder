@@ -64,7 +64,7 @@ function apifyItemToCollected(item: Record<string, unknown>): CollectedListing |
     postedAt: item["timestamp"] ? new Date(item["timestamp"] as string) : null,
     authorName: ((item["authorName"] ?? item["author"]) as string | undefined) ?? null,
     authorProfile: ((item["authorUrl"] ?? item["profileUrl"]) as string | undefined) ?? null,
-    sourceGroupUrl: ((item["groupUrl"]) as string | undefined) ?? null,
+    sourceGroupUrl: (item["groupUrl"] as string | undefined) ?? null,
   };
 }
 
@@ -87,9 +87,10 @@ export class FacebookAdapter implements CollectorAdapter {
     log.info("apify run started", { runId, groups: groups.length });
 
     const datasetId = await waitForRun(runId);
-    const items = (await apifyFetch(
-      `/datasets/${encodeURIComponent(datasetId)}/items`,
-    )) as Record<string, unknown>[];
+    const items = (await apifyFetch(`/datasets/${encodeURIComponent(datasetId)}/items`)) as Record<
+      string,
+      unknown
+    >[];
 
     const normalized: CollectedListing[] = items
       .map(apifyItemToCollected)

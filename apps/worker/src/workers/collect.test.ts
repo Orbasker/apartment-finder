@@ -11,7 +11,9 @@ vi.mock("@apartment-finder/queue", () => ({
   getConnection: vi.fn(() => ({ options: {} })),
 }));
 
-const mockUpdate = vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }) });
+const mockUpdate = vi
+  .fn()
+  .mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }) });
 const mockDb = { update: mockUpdate };
 vi.mock("../db/index.js", () => ({
   getDb: vi.fn(() => mockDb),

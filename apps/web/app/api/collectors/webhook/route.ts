@@ -62,7 +62,11 @@ export async function POST(req: Request): Promise<Response> {
     if (data.status === "error") {
       await db
         .update(collectionRuns)
-        .set({ status: "failed", error: data.error ?? "unknown error", failed: data.receivedCount ?? 0 })
+        .set({
+          status: "failed",
+          error: data.error ?? "unknown error",
+          failed: data.receivedCount ?? 0,
+        })
         .where(eq(collectionRuns.runId, data.runId));
       return NextResponse.json({ ok: true, recorded: "error" });
     }

@@ -77,7 +77,6 @@ export const notificationDestinationEnum = pgEnum("notification_destination", [
   "telegram",
 ]);
 
-
 export const collectionRunStatusEnum = pgEnum("collection_run_status", [
   "queued",
   "collecting",

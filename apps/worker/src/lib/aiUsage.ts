@@ -191,7 +191,10 @@ function getPricing(modelId: string): Pricing | null {
 }
 
 async function loadAiUsageDb() {
-  const [{ getDb }, { aiUsage }] = await Promise.all([import("../db/index.js"), import("../db/schema.js")]);
+  const [{ getDb }, { aiUsage }] = await Promise.all([
+    import("../db/index.js"),
+    import("../db/schema.js"),
+  ]);
 
   return {
     db: getDb(),

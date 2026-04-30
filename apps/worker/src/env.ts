@@ -29,7 +29,10 @@ export function env(): WorkerEnv {
   if (cached) return cached;
   const parsed = EnvSchema.safeParse(process.env);
   if (!parsed.success) {
-    console.error("Invalid environment variables:", JSON.stringify(parsed.error.flatten().fieldErrors));
+    console.error(
+      "Invalid environment variables:",
+      JSON.stringify(parsed.error.flatten().fieldErrors),
+    );
     throw new Error("Invalid environment variables");
   }
   cached = parsed.data;

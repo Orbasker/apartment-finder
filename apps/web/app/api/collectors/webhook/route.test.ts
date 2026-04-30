@@ -14,8 +14,16 @@ vi.mock("@/lib/env", () => ({
 }));
 
 vi.mock("@/lib/log", () => ({
-  withApiLog: vi.fn((name: string, req: Request, handler: (log: { info: ReturnType<typeof vi.fn>; warn: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn> }) => Promise<Response>) =>
-    handler({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+  withApiLog: vi.fn(
+    (
+      name: string,
+      req: Request,
+      handler: (log: {
+        info: ReturnType<typeof vi.fn>;
+        warn: ReturnType<typeof vi.fn>;
+        error: ReturnType<typeof vi.fn>;
+      }) => Promise<Response>,
+    ) => handler({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
   ),
 }));
 
@@ -23,10 +31,7 @@ import { verifyRequest, ingestRawQueue } from "@apartment-finder/queue";
 import { getDb } from "@/db";
 import { POST } from "./route";
 
-function makeRequest(
-  body: string,
-  headers: Record<string, string> = {},
-): Request {
+function makeRequest(body: string, headers: Record<string, string> = {}): Request {
   return new Request("http://localhost/api/collectors/webhook", {
     method: "POST",
     body,

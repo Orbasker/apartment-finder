@@ -28,8 +28,7 @@ async function processCollect(job: Job<CollectJob>): Promise<void> {
       .set({ status: "collecting" })
       .where(eq(schema.collectionRuns.runId, data.runId));
 
-    const adapter =
-      data.source === "yad2" ? new Yad2Adapter() : new FacebookAdapter();
+    const adapter = data.source === "yad2" ? new Yad2Adapter() : new FacebookAdapter();
     const { rawPayload, receivedCount } = await adapter.collect();
 
     const bodyStr = JSON.stringify(rawPayload);
@@ -41,14 +40,10 @@ async function processCollect(job: Job<CollectJob>): Promise<void> {
       log.warn("payload approaching size limit", { bytes, runId: data.runId });
     }
 
-    const { url } = await put(
-      `collection-runs/${data.runId}.json`,
-      bodyStr,
-      {
-        access: "public",
-        token: env().BLOB_READ_WRITE_TOKEN,
-      },
-    );
+    const { url } = await put(`collection-runs/${data.runId}.json`, bodyStr, {
+      access: "public",
+      token: env().BLOB_READ_WRITE_TOKEN,
+    });
 
     await db
       .update(schema.collectionRuns)
@@ -70,18 +65,15 @@ async function processCollect(job: Job<CollectJob>): Promise<void> {
       timestamp,
     });
 
-    const res = await fetch(
-      `${env().APP_PUBLIC_ORIGIN}/api/collectors/webhook`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Signature": signature,
-          "X-Timestamp": timestamp,
-        },
-        body: completionBody,
+    const res = await fetch(`${env().APP_PUBLIC_ORIGIN}/api/collectors/webhook`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Signature": signature,
+        "X-Timestamp": timestamp,
       },
-    );
+      body: completionBody,
+    });
     if (!res.ok) {
       log.warn("webhook returned non-ok", {
         status: res.status,

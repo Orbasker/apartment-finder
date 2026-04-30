@@ -57,12 +57,8 @@ async function processIngestNormalized(job: Job<IngestNormalizedJob>): Promise<v
 }
 
 export function createIngestNormalizedWorker() {
-  return new Worker<IngestNormalizedJob>(
-    "ingest-normalized",
-    processIngestNormalized,
-    {
-      connection: getConnection(),
-      concurrency: 8,
-    },
-  );
+  return new Worker<IngestNormalizedJob>("ingest-normalized", processIngestNormalized, {
+    connection: getConnection(),
+    concurrency: 8,
+  });
 }

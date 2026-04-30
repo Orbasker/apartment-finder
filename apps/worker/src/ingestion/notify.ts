@@ -2,7 +2,14 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { getDb } from "../db/index.js";
-import { apartments, listingExtractions, listings, sentAlerts, user, userFilters } from "../db/schema.js";
+import {
+  apartments,
+  listingExtractions,
+  listings,
+  sentAlerts,
+  user,
+  userFilters,
+} from "../db/schema.js";
 import { env } from "../lib/env.js";
 import { createLogger, errorMessage } from "../lib/log.js";
 import {
@@ -12,10 +19,7 @@ import {
 } from "@apartment-finder/shared";
 import { MatchAlertEmail, type MatchAlertProps } from "../emails/MatchAlert.js";
 import { activeChannels, loadDestinations } from "../notifications/destinations.js";
-import {
-  isTelegramConfigured,
-  sendMatchAlert as sendTelegramMatchAlert,
-} from "./telegram.js";
+import { isTelegramConfigured, sendMatchAlert as sendTelegramMatchAlert } from "./telegram.js";
 
 const log = createLogger("ingestion:notify");
 
