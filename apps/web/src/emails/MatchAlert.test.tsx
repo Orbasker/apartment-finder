@@ -11,6 +11,7 @@ const baseProps: MatchAlertProps = {
   floor: 3,
   priceNis: 7500,
   sourceUrl: "https://example.com/listing/42",
+  listingUrl: "https://example.com/listings/42",
   filtersUrl: "https://example.com/filters",
   matchedAttributes: ["elevator", "parking"],
   unverifiedAttributes: [],
@@ -29,6 +30,8 @@ describe("MatchAlertEmail", () => {
     const html = await render(MatchAlertEmail(baseProps));
     expect(html).toContain("דירה חדשה תואמת לסינונים שלך");
     expect(html).toContain("פתח את המודעה");
+    expect(html).toContain("https://example.com/listings/42");
+    expect(html).toContain("צפייה במודעה במקור");
     expect(html).toContain("https://example.com/listing/42");
   });
 
@@ -67,6 +70,7 @@ describe("MatchAlertEmail", () => {
         floor: null,
         priceNis: null,
         sourceUrl: null,
+        listingUrl: null,
         filtersUrl: null,
         matchedAttributes: [],
         unverifiedAttributes: [],

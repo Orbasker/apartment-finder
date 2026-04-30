@@ -27,6 +27,7 @@ export type MatchAlertProps = {
   floor: number | null;
   priceNis: number | null;
   sourceUrl: string | null;
+  listingUrl: string | null;
   filtersUrl: string | null;
   matchedAttributes: ApartmentAttributeKey[];
   unverifiedAttributes: ApartmentAttributeKey[];
@@ -171,12 +172,26 @@ export function MatchAlertEmail(props: MatchAlertProps) {
 
             <Hr style={hr} />
 
-            {props.sourceUrl ? (
+            {props.listingUrl ? (
+              <Section style={{ textAlign: "start" }}>
+                <Button href={props.listingUrl} style={ctaButton}>
+                  פתח את המודעה
+                </Button>
+              </Section>
+            ) : props.sourceUrl ? (
               <Section style={{ textAlign: "start" }}>
                 <Button href={props.sourceUrl} style={ctaButton}>
                   פתח את המודעה
                 </Button>
               </Section>
+            ) : null}
+
+            {props.listingUrl && props.sourceUrl ? (
+              <Text style={{ ...paragraph, ...muted, marginTop: "12px" }}>
+                <Link href={props.sourceUrl} style={link}>
+                  צפייה במודעה במקור
+                </Link>
+              </Text>
             ) : null}
           </Section>
 
