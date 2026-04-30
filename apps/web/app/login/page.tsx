@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GoogleOneTap } from "@/components/auth/google-one-tap";
 import { isGoogleConfigured } from "@/lib/auth";
 import { env } from "@/lib/env";
+import { LocaleSwitcher } from "./locale-switcher";
 import { LoginForm } from "./login-form";
 
 export async function generateMetadata() {
@@ -40,6 +41,9 @@ export default async function LoginPage({
           <LoginForm initialError={urlError} googleEnabled={googleEnabled} />
         </CardContent>
       </Card>
+      <div className="mt-6">
+        <LocaleSwitcher />
+      </div>
     </main>
   );
 }

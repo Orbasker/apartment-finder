@@ -183,6 +183,18 @@ export function buildOnboardingTools(userId: string) {
       },
     }),
 
+    setNotifyOnUnknown: tool({
+      description:
+        "Save the user's global preference for must-have requirements that the listing doesn't confirm or refute. Pass `notify=true` (default, recommended) to receive the alert anyway with the unverified field tagged; `notify=false` to skip the listing until every must-have is confirmed. Ask once during onboarding, after collecting the must-have attributes.",
+      inputSchema: z.object({
+        notify: z.boolean(),
+      }),
+      execute: async ({ notify }) => {
+        await upsertFilters(userId, { strictUnknowns: !notify });
+        return { ok: true, notify };
+      },
+    }),
+
     setNotificationDestinations: tool({
       description:
         "Set the user's notification destinations: email, Telegram, or both. At least one must be true. If telegram is true and the user has not yet linked their account, the result includes `telegramConnectUrl` - render it as a button so the user can link the bot. Once they hit /start, the bot binds the chat ID and returns control to the chat.",

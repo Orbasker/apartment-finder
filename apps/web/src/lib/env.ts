@@ -15,6 +15,9 @@ const EnvSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   NEXT_PUBLIC_GOOGLE_CLIENT_ID: z.string().optional(),
 
+  /** Email auto-promoted to `role = 'admin'` on first sign-in. */
+  ADMIN_EMAIL: z.string().email().optional(),
+
   AI_GATEWAY_API_KEY: z.string().optional(),
 
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
@@ -25,8 +28,8 @@ const EnvSchema = z.object({
   APIFY_WEBHOOK_SECRET: z.string().optional(),
   /** Public https origin for webhooks (Vercel URL, ngrok, etc.). Required for Apify when not using a public deployment URL. */
   APP_PUBLIC_ORIGIN: z.string().url().optional(),
-  /** Comma-separated list of Facebook group URLs to scrape via Apify. */
-  FACEBOOK_GROUP_URLS: z.string().optional(),
+  /** Semicolon-separated list of Facebook group URLs to scrape via Apify. */
+  APIFY_GROUPS: z.string().optional(),
 
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),

@@ -33,6 +33,7 @@ export type TelegramAlertProps = {
   priceNis: number | null;
   sourceUrl: string | null;
   matchedAttributes: ApartmentAttributeKey[];
+  unverifiedAttributes: ApartmentAttributeKey[];
   pricePerSqm: number | null;
   arnonaNis: number | null;
   vaadBayitNis: number | null;
@@ -136,6 +137,14 @@ export function buildMessageHtml(p: TelegramAlertProps): string {
     lines.push("<i>תואם לסינונים שלך:</i>");
     lines.push(
       escapeHtml(p.matchedAttributes.map((k) => APARTMENT_ATTRIBUTE_LABELS[k] ?? k).join(" · ")),
+    );
+  }
+
+  if (p.unverifiedAttributes.length > 0) {
+    lines.push("");
+    lines.push("<i>לא הצלחנו לאמת מהמודעה (כדאי לבדוק במודעה עצמה):</i>");
+    lines.push(
+      escapeHtml(p.unverifiedAttributes.map((k) => APARTMENT_ATTRIBUTE_LABELS[k] ?? k).join(" · ")),
     );
   }
 

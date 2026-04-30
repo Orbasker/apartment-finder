@@ -13,6 +13,7 @@ const baseProps: MatchAlertProps = {
   sourceUrl: "https://example.com/listing/42",
   filtersUrl: "https://example.com/filters",
   matchedAttributes: ["elevator", "parking"],
+  unverifiedAttributes: [],
   pricePerSqm: 125,
   arnonaNis: 500,
   vaadBayitNis: 200,
@@ -68,6 +69,7 @@ describe("MatchAlertEmail", () => {
         sourceUrl: null,
         filtersUrl: null,
         matchedAttributes: [],
+        unverifiedAttributes: [],
         pricePerSqm: null,
         arnonaNis: null,
         vaadBayitNis: null,
@@ -93,5 +95,19 @@ describe("MatchAlertEmail", () => {
     expect(html).toContain("ריהוט");
     expect(html).toContain("כולל");
     expect(html).toMatch(/<bdi>₪500<\/bdi>/);
+  });
+
+  test("renders the unverified-must-haves section when present", async () => {
+    const html = await render(
+      MatchAlertEmail({ ...baseProps, unverifiedAttributes: ["elevator", "safe_room"] }),
+    );
+    expect(html).toContain("לא הצלחנו לאמת מהמודעה");
+    expect(html).toContain("מעלית");
+    expect(html).toContain("מרחב מוגן");
+  });
+
+  test("hides the unverified section when empty", async () => {
+    const html = await render(MatchAlertEmail({ ...baseProps, unverifiedAttributes: [] }));
+    expect(html).not.toContain("לא הצלחנו לאמת מהמודעה");
   });
 });

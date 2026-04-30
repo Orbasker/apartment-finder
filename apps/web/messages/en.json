@@ -1,0 +1,76 @@
+{
+  "Layout": {
+    "metadata": {
+      "description": "Find an apartment in Tel Aviv — instant alerts based on your filters."
+    },
+    "skipToContent": "Skip to content"
+  },
+  "Login": {
+    "metadata": {
+      "title": "Sign in — Apartment Finder",
+      "description": "Sign in to Apartment Finder."
+    },
+    "subtitle": "Instant alerts about new apartments in Tel Aviv, based on your filters.",
+    "cardTitle": "Sign in",
+    "google": {
+      "continueWith": "Continue with Google",
+      "redirecting": "Redirecting to Google…",
+      "errorFallback": "Google sign-in failed"
+    },
+    "divider": "or",
+    "email": {
+      "label": "Email",
+      "submit": "Send verification code",
+      "submitting": "Sending code…",
+      "errorFallback": "Failed to send code"
+    },
+    "otp": {
+      "sent": "We sent a 6-digit code to <addr>{email}</addr>.",
+      "label": "Verification code",
+      "submit": "Confirm",
+      "submitting": "Verifying…",
+      "errorFallback": "Invalid code",
+      "changeOrResend": "Change address or resend"
+    },
+    "localeSwitcher": {
+      "label": "Language"
+    }
+  },
+  "Neighborhoods": {
+    "allowedTitle": "Allowed neighborhoods",
+    "blockedTitle": "Blocked neighborhoods",
+    "searchPlaceholder": "Search neighborhood",
+    "typeToSearch": "Start typing to search",
+    "loading": "Loading…",
+    "noResults": "No results",
+    "removeChip": "Remove"
+  },
+  "Cities": {
+    "sectionTitle": "Cities and neighborhoods",
+    "sectionDescription": "Add a city, then its neighborhoods. You can add multiple cities.",
+    "emptyState": "No city selected. Add a city to get started.",
+    "addCity": "Add city",
+    "removeCity": "Remove city",
+    "searchPlaceholder": "Search city",
+    "typeToSearch": "Start typing to search",
+    "loading": "Loading…",
+    "noResults": "No city found"
+  },
+  "Email": {
+    "SignInCode": {
+      "subject": "Your sign-in code: {otp}",
+      "preview": "Your sign-in code: {otp}",
+      "heading": "Your sign-in code for Apartment Finder",
+      "instruction": "Enter the following code on the sign-in page:",
+      "expiry": "This code expires in {minutes} minutes. If you didn't request it, you can ignore this email."
+    }
+  },
+  "FilterSettings": {
+    "unknownsTitle": "When info is missing",
+    "unknownsQuestion": "If a listing doesn't say whether it has, say, an elevator or parking that you marked as a must-have — what should we do?",
+    "unknownsNotifyLabel": "Send me the alert anyway — I'll decide for myself",
+    "unknownsNotifyHelp": "Recommended if you'd rather see more listings and filter manually. We'll mark which field we couldn't verify.",
+    "unknownsStrictLabel": "Skip it — only alert me when every must-have is confirmed",
+    "unknownsStrictHelp": "You'll get fewer alerts, but each one will definitely meet all your hard requirements."
+  }
+}

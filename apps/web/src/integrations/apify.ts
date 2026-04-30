@@ -42,9 +42,9 @@ async function apifyFetch(
 }
 
 export function listMonitoredGroups(): Array<{ url: string; label: string | null }> {
-  const raw = env().FACEBOOK_GROUP_URLS ?? "";
+  const raw = env().APIFY_GROUPS ?? "";
   return raw
-    .split(",")
+    .split(";")
     .map((url) => url.trim())
     .filter(Boolean)
     .map((url) => ({ url, label: null }));
