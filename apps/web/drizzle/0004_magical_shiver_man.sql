@@ -1,4 +1,5 @@
-CREATE TABLE "cities" (
+-- Idempotent: safe when parts of this migration were applied manually or when migrate is re-run.
+CREATE TABLE IF NOT EXISTS "cities" (
 	"id" text PRIMARY KEY NOT NULL,
 	"slug" text NOT NULL,
 	"name_he" text NOT NULL,
@@ -18,16 +19,32 @@ CREATE TABLE "cities" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "user_filter_neighborhoods" DROP CONSTRAINT "user_filter_neighborhoods_city_fk";
+ALTER TABLE "user_filter_neighborhoods" DROP CONSTRAINT IF EXISTS "user_filter_neighborhoods_city_fk";
 --> statement-breakpoint
-ALTER TABLE "user_filter_cities" DROP CONSTRAINT "user_filter_cities_user_id_place_id_pk";--> statement-breakpoint
-ALTER TABLE "apartments" ADD COLUMN "city_id" text;--> statement-breakpoint
-ALTER TABLE "collection_runs" ADD COLUMN "city_id" text;--> statement-breakpoint
-ALTER TABLE "listings" ADD COLUMN "city_id" text;--> statement-breakpoint
-ALTER TABLE "user_filter_cities" ADD COLUMN "city_id" text NOT NULL;--> statement-breakpoint
-ALTER TABLE "user_filter_cities" ADD COLUMN "name_en" text NOT NULL;--> statement-breakpoint
-ALTER TABLE "user_filter_neighborhoods" ADD COLUMN "city_id" text NOT NULL;--> statement-breakpoint
-ALTER TABLE "user_filter_cities" ADD CONSTRAINT "user_filter_cities_user_id_city_id_pk" PRIMARY KEY("user_id","city_id");--> statement-breakpoint
+ALTER TABLE "user_filter_cities" DROP CONSTRAINT IF EXISTS "user_filter_cities_user_id_place_id_pk";
+--> statement-breakpoint
+ALTER TABLE "apartments" ADD COLUMN IF NOT EXISTS "city_id" text;
+--> statement-breakpoint
+ALTER TABLE "collection_runs" ADD COLUMN IF NOT EXISTS "city_id" text;
+--> statement-breakpoint
+ALTER TABLE "listings" ADD COLUMN IF NOT EXISTS "city_id" text;
+--> statement-breakpoint
+ALTER TABLE "user_filter_cities" ADD COLUMN IF NOT EXISTS "city_id" text NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "user_filter_cities" ADD COLUMN IF NOT EXISTS "name_en" text NOT NULL;
+--> statement-breakpoint
+ALTER TABLE "user_filter_neighborhoods" ADD COLUMN IF NOT EXISTS "city_id" text NOT NULL;
+--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint c
+		JOIN pg_namespace n ON n.oid = c.connamespace
+		WHERE n.nspname = 'public' AND c.conname = 'user_filter_cities_user_id_city_id_pk'
+	) THEN
+		ALTER TABLE "user_filter_cities" ADD CONSTRAINT "user_filter_cities_user_id_city_id_pk" PRIMARY KEY ("user_id","city_id");
+	END IF;
+END $$;
+--> statement-breakpoint
 INSERT INTO "cities" (
 	"id",
 	"slug",
@@ -67,13 +84,62 @@ ON CONFLICT ("id") DO UPDATE SET
 	"is_launch_ready" = EXCLUDED."is_launch_ready",
 	"yad2_feed_url" = EXCLUDED."yad2_feed_url",
 	"facebook_group_urls" = EXCLUDED."facebook_group_urls",
-	"updated_at" = now();--> statement-breakpoint
-CREATE UNIQUE INDEX "cities_slug_unique" ON "cities" USING btree ("slug");--> statement-breakpoint
-CREATE INDEX "cities_active_launch_ready_idx" ON "cities" USING btree ("is_active","is_launch_ready");--> statement-breakpoint
-ALTER TABLE "apartments" ADD CONSTRAINT "apartments_city_id_cities_id_fk" FOREIGN KEY ("city_id") REFERENCES "public"."cities"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "collection_runs" ADD CONSTRAINT "collection_runs_city_id_cities_id_fk" FOREIGN KEY ("city_id") REFERENCES "public"."cities"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "listings" ADD CONSTRAINT "listings_city_id_cities_id_fk" FOREIGN KEY ("city_id") REFERENCES "public"."cities"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_filter_cities" ADD CONSTRAINT "user_filter_cities_city_id_cities_id_fk" FOREIGN KEY ("city_id") REFERENCES "public"."cities"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_filter_neighborhoods" ADD CONSTRAINT "user_filter_neighborhoods_city_fk" FOREIGN KEY ("user_id","city_id") REFERENCES "public"."user_filter_cities"("user_id","city_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "apartments_city_idx" ON "apartments" USING btree ("city_id");--> statement-breakpoint
-CREATE INDEX "collection_runs_city_idx" ON "collection_runs" USING btree ("city_id","enqueued_at");
+	"updated_at" = now();
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "cities_slug_unique" ON "cities" USING btree ("slug");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "cities_active_launch_ready_idx" ON "cities" USING btree ("is_active","is_launch_ready");
+--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint c
+		JOIN pg_namespace n ON n.oid = c.connamespace
+		WHERE n.nspname = 'public' AND c.conname = 'apartments_city_id_cities_id_fk'
+	) THEN
+		ALTER TABLE "apartments" ADD CONSTRAINT "apartments_city_id_cities_id_fk" FOREIGN KEY ("city_id") REFERENCES "public"."cities"("id") ON DELETE set null ON UPDATE no action;
+	END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint c
+		JOIN pg_namespace n ON n.oid = c.connamespace
+		WHERE n.nspname = 'public' AND c.conname = 'collection_runs_city_id_cities_id_fk'
+	) THEN
+		ALTER TABLE "collection_runs" ADD CONSTRAINT "collection_runs_city_id_cities_id_fk" FOREIGN KEY ("city_id") REFERENCES "public"."cities"("id") ON DELETE set null ON UPDATE no action;
+	END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint c
+		JOIN pg_namespace n ON n.oid = c.connamespace
+		WHERE n.nspname = 'public' AND c.conname = 'listings_city_id_cities_id_fk'
+	) THEN
+		ALTER TABLE "listings" ADD CONSTRAINT "listings_city_id_cities_id_fk" FOREIGN KEY ("city_id") REFERENCES "public"."cities"("id") ON DELETE set null ON UPDATE no action;
+	END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint c
+		JOIN pg_namespace n ON n.oid = c.connamespace
+		WHERE n.nspname = 'public' AND c.conname = 'user_filter_cities_city_id_cities_id_fk'
+	) THEN
+		ALTER TABLE "user_filter_cities" ADD CONSTRAINT "user_filter_cities_city_id_cities_id_fk" FOREIGN KEY ("city_id") REFERENCES "public"."cities"("id") ON DELETE cascade ON UPDATE no action;
+	END IF;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint c
+		JOIN pg_namespace n ON n.oid = c.connamespace
+		WHERE n.nspname = 'public' AND c.conname = 'user_filter_neighborhoods_city_fk'
+	) THEN
+		ALTER TABLE "user_filter_neighborhoods" ADD CONSTRAINT "user_filter_neighborhoods_city_fk" FOREIGN KEY ("user_id","city_id") REFERENCES "public"."user_filter_cities"("user_id","city_id") ON DELETE cascade ON UPDATE no action;
+	END IF;
+END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "apartments_city_idx" ON "apartments" USING btree ("city_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "collection_runs_city_idx" ON "collection_runs" USING btree ("city_id","enqueued_at");
