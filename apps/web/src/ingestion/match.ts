@@ -61,7 +61,11 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
 
   // SQL prefilter on user_filters.
   const candidates = await db
-    .select({ userId: userFilters.userId, strictUnknowns: userFilters.strictUnknowns })
+    .select({
+      userId: userFilters.userId,
+      strictUnknowns: userFilters.strictUnknowns,
+      notifyOnUnknownMustHave: userFilters.notifyOnUnknownMustHave,
+    })
     .from(userFilters)
     .where(
       and(
@@ -123,7 +127,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
       .from(userFilterAttributes)
       .where(eq(userFilterAttributes.userId, c.userId));
 
-    const attrPass = checkAttributeRequirements(userAttrs, knownAttrs, c.strictUnknowns);
+    const attrPass = checkAttributeRequirements(userAttrs, knownAttrs, c.notifyOnUnknownMustHave);
     if (!attrPass.pass) continue;
 
     if (apartmentEmbedding) {
@@ -210,7 +214,7 @@ function neighborhoodPredicate(apartmentNeighborhood: string | null, apartmentCi
 export function checkAttributeRequirements(
   userAttrs: Array<{ key: ApartmentAttributeKey; requirement: AttributeRequirement }>,
   knownAttrs: Map<ApartmentAttributeKey, boolean>,
-  strictUnknowns: boolean,
+  notifyOnUnknownMustHave: boolean,
 ): {
   pass: boolean;
   matchedAttributes: ApartmentAttributeKey[];
@@ -229,14 +233,18 @@ export function checkAttributeRequirements(
       case "required_true":
         if (known === true) matched.push(ua.key);
         else if (known === false) return fail();
-        else if (strictUnknowns) return fail();
-        else unverified.push(ua.key);
+        else {
+          unverified.push(ua.key);
+          if (!notifyOnUnknownMustHave) return fail();
+        }
         break;
       case "required_false":
         if (known === false) matched.push(ua.key);
         else if (known === true) return fail();
-        else if (strictUnknowns) return fail();
-        else unverified.push(ua.key);
+        else {
+          unverified.push(ua.key);
+          if (!notifyOnUnknownMustHave) return fail();
+        }
         break;
       case "preferred_true":
         if (known === true) matched.push(ua.key);

@@ -10,6 +10,7 @@ const baseProps: TelegramAlertProps = {
   floor: 2,
   priceNis: 7500,
   sourceUrl: "https://example.com/x",
+  listingUrl: null,
   matchedAttributes: [],
   unverifiedAttributes: [],
   pricePerSqm: 125,

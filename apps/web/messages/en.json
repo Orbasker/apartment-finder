@@ -72,5 +72,6 @@
     "unknownsNotifyHelp": "Recommended if you'd rather see more listings and filter manually. We'll mark which field we couldn't verify.",
     "unknownsStrictLabel": "Skip it — only alert me when every must-have is confirmed",
     "unknownsStrictHelp": "You'll get fewer alerts, but each one will definitely meet all your hard requirements."
-  }
+  },
+  "Onboarding": {}
 }

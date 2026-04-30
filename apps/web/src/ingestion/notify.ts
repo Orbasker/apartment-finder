@@ -2,7 +2,14 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { getDb } from "@/db";
-import { apartments, listingExtractions, sentAlerts, user, userFilters } from "@/db/schema";
+import {
+  apartments,
+  listingExtractions,
+  listings,
+  sentAlerts,
+  user,
+  userFilters,
+} from "@/db/schema";
 import { env } from "@/lib/env";
 import { createLogger, errorMessage } from "@/lib/log";
 import {
@@ -146,6 +153,7 @@ type ApartmentDetails = {
   floor: number | null;
   priceNisLatest: number | null;
   primaryListingId: number | null;
+  sourceUrl: string | null;
   condition: string | null;
   arnonaNis: number | null;
   vaadBayitNis: number | null;
@@ -168,6 +176,7 @@ async function loadApartmentForAlert(apartmentId: number): Promise<ApartmentDeta
       floor: apartments.floor,
       priceNisLatest: apartments.priceNisLatest,
       primaryListingId: apartments.primaryListingId,
+      sourceUrl: listings.url,
       condition: listingExtractions.condition,
       arnonaNis: listingExtractions.arnonaNis,
       vaadBayitNis: listingExtractions.vaadBayitNis,
@@ -177,6 +186,7 @@ async function loadApartmentForAlert(apartmentId: number): Promise<ApartmentDeta
       furnitureStatus: listingExtractions.furnitureStatus,
     })
     .from(apartments)
+    .leftJoin(listings, eq(listings.id, apartments.primaryListingId))
     .leftJoin(listingExtractions, eq(listingExtractions.listingId, apartments.primaryListingId))
     .where(eq(apartments.id, apartmentId))
     .limit(1);
@@ -191,9 +201,7 @@ async function loadApartmentForAlert(apartmentId: number): Promise<ApartmentDeta
 }
 
 function buildSourceUrl(apt: ApartmentDetails): string | null {
-  const siteOrigin = (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
-  if (!apt.primaryListingId || !siteOrigin) return null;
-  return `${siteOrigin}/listings/${apt.primaryListingId}`;
+  return apt.sourceUrl ?? null;
 }
 
 async function sendEmail(args: {
@@ -223,6 +231,7 @@ async function sendEmail(args: {
   const apt = args.apartment;
   const siteOrigin = (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
   const filtersUrl = siteOrigin ? `${siteOrigin}/filters` : null;
+  const listingUrl = siteOrigin ? `${siteOrigin}/listings/${apt.id}` : null;
   const sourceUrl = buildSourceUrl(apt);
 
   const subject = buildSubject({
@@ -240,6 +249,7 @@ async function sendEmail(args: {
     floor: apt.floor,
     priceNis: apt.priceNisLatest,
     sourceUrl,
+    listingUrl,
     filtersUrl,
     matchedAttributes: args.matchedAttributes,
     unverifiedAttributes: args.unverifiedAttributes,
@@ -307,6 +317,8 @@ async function sendTelegram(args: {
 
   const apt = args.apartment;
   const sourceUrl = buildSourceUrl(apt);
+  const siteOrigin = (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  const listingUrl = siteOrigin ? `${siteOrigin}/listings/${apt.id}` : null;
 
   const result = await sendTelegramMatchAlert({
     chatId: args.chatId,
@@ -317,6 +329,7 @@ async function sendTelegram(args: {
     floor: apt.floor,
     priceNis: apt.priceNisLatest,
     sourceUrl,
+    listingUrl,
     matchedAttributes: args.matchedAttributes,
     unverifiedAttributes: args.unverifiedAttributes,
     pricePerSqm: apt.pricePerSqm,

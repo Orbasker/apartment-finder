@@ -1,0 +1,1 @@
+ALTER TABLE "user_filters" ADD COLUMN "notify_on_unknown_must_have" boolean DEFAULT true NOT NULL;

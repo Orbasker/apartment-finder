@@ -81,6 +81,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       dealbreakers: [],
       attributes: [],
       strictUnknowns: false,
+      notifyOnUnknownMustHave: true,
       dailyAlertCap: 20,
       maxAgeHours: 48,
       isActive: true,
@@ -101,6 +102,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     dealbreakers: row.dealbreakers ?? [],
     attributes: attrs,
     strictUnknowns: row.strictUnknowns,
+    notifyOnUnknownMustHave: row.notifyOnUnknownMustHave,
     dailyAlertCap: row.dailyAlertCap,
     maxAgeHours: row.maxAgeHours,
     isActive: row.isActive,
@@ -118,6 +120,7 @@ type ScalarPatch = Partial<{
   wishes: string[];
   dealbreakers: string[];
   strictUnknowns: boolean;
+  notifyOnUnknownMustHave: boolean;
   dailyAlertCap: number;
   maxAgeHours: number;
   isActive: boolean;

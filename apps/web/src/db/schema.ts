@@ -77,7 +77,6 @@ export const notificationDestinationEnum = pgEnum("notification_destination", [
   "telegram",
 ]);
 
-
 export const collectionRunStatusEnum = pgEnum("collection_run_status", [
   "queued",
   "collecting",
@@ -298,6 +297,7 @@ export const userFilters = pgTable("user_filters", {
   // When a must-have attribute is unknown on a listing, false = notify (default,
   // user would rather over-see than miss); true = drop until confirmed.
   strictUnknowns: boolean("strict_unknowns").default(false).notNull(),
+  notifyOnUnknownMustHave: boolean("notify_on_unknown_must_have").default(true).notNull(),
   dailyAlertCap: integer("daily_alert_cap").default(20).notNull(),
   maxAgeHours: integer("max_age_hours").default(48).notNull(),
   isActive: boolean("is_active").default(true).notNull(),

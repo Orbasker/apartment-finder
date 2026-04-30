@@ -1,8 +1,3 @@
--- APA-24: Add collection_runs audit table to track every collector run from
--- enqueue through completion. Each row represents one collection cycle
--- (yad2 poll or Apify run). The runId column has a UNIQUE constraint used
--- as the idempotency anchor in the webhook handler (UPDATE ... WHERE
--- webhookReceivedAt IS NULL RETURNING id returns 0 rows on replay).
 CREATE TYPE "public"."collection_run_status" AS ENUM('queued', 'collecting', 'collected', 'ingesting', 'completed', 'failed');--> statement-breakpoint
 CREATE TABLE "collection_runs" (
 	"id" bigserial PRIMARY KEY NOT NULL,
@@ -17,8 +12,8 @@ CREATE TABLE "collection_runs" (
 	"inserted" integer DEFAULT 0 NOT NULL,
 	"skipped_existing" integer DEFAULT 0 NOT NULL,
 	"failed" integer DEFAULT 0 NOT NULL,
-	"error" text,
-	CONSTRAINT "collection_runs_run_id_unique" UNIQUE("run_id")
+	"error" text
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX "collection_runs_run_id_unique" ON "collection_runs" USING btree ("run_id");--> statement-breakpoint
 CREATE INDEX "collection_runs_source_idx" ON "collection_runs" USING btree ("source","enqueued_at");

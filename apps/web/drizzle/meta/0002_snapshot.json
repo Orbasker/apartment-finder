@@ -1,6 +1,6 @@
 {
-  "id": "b488a227-86ff-4690-83af-85bcdc65790e",
-  "prevId": "7510b97c-1707-4c0a-9272-822b302df84b",
+  "id": "c42aa223-583b-4940-bf78-df950080224f",
+  "prevId": "3795447d-49d8-45b7-9507-5982dcc8483a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -500,135 +500,6 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.collection_runs": {
-      "name": "collection_runs",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigserial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "run_id": {
-          "name": "run_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "listing_source",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "collection_run_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'queued'"
-        },
-        "enqueued_at": {
-          "name": "enqueued_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "collected_at": {
-          "name": "collected_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "webhook_received_at": {
-          "name": "webhook_received_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "raw_blob_url": {
-          "name": "raw_blob_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "received_count": {
-          "name": "received_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "inserted": {
-          "name": "inserted",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "skipped_existing": {
-          "name": "skipped_existing",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "failed": {
-          "name": "failed",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "collection_runs_source_idx": {
-          "name": "collection_runs_source_idx",
-          "columns": [
-            {
-              "expression": "source",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "enqueued_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "collection_runs_run_id_unique": {
-          "name": "collection_runs_run_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "run_id"
-          ]
-        }
-      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1995,6 +1866,13 @@
           "notNull": true,
           "default": false
         },
+        "notify_on_unknown_must_have": {
+          "name": "notify_on_unknown_must_have",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
         "daily_alert_cap": {
           "name": "daily_alert_cap",
           "type": "integer",
@@ -2229,18 +2107,6 @@
         "ai",
         "user",
         "manual"
-      ]
-    },
-    "public.collection_run_status": {
-      "name": "collection_run_status",
-      "schema": "public",
-      "values": [
-        "queued",
-        "collecting",
-        "collected",
-        "ingesting",
-        "completed",
-        "failed"
       ]
     },
     "public.filter_text_kind": {
