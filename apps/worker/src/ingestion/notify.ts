@@ -2,7 +2,7 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import { Resend } from "resend";
 import { render } from "@react-email/render";
 import { getDb } from "../db/index.js";
-import { apartments, listingExtractions, sentAlerts, user, userFilters } from "../db/schema.js";
+import { apartments, listingExtractions, listings, sentAlerts, user, userFilters } from "../db/schema.js";
 import { env } from "../lib/env.js";
 import { createLogger, errorMessage } from "../lib/log.js";
 import {
@@ -146,6 +146,7 @@ type ApartmentDetails = {
   floor: number | null;
   priceNisLatest: number | null;
   primaryListingId: number | null;
+  listingUrl: string | null;
   condition: string | null;
   arnonaNis: number | null;
   vaadBayitNis: number | null;
@@ -168,6 +169,7 @@ async function loadApartmentForAlert(apartmentId: number): Promise<ApartmentDeta
       floor: apartments.floor,
       priceNisLatest: apartments.priceNisLatest,
       primaryListingId: apartments.primaryListingId,
+      listingUrl: listings.url,
       condition: listingExtractions.condition,
       arnonaNis: listingExtractions.arnonaNis,
       vaadBayitNis: listingExtractions.vaadBayitNis,
@@ -177,6 +179,7 @@ async function loadApartmentForAlert(apartmentId: number): Promise<ApartmentDeta
       furnitureStatus: listingExtractions.furnitureStatus,
     })
     .from(apartments)
+    .leftJoin(listings, eq(listings.id, apartments.primaryListingId))
     .leftJoin(listingExtractions, eq(listingExtractions.listingId, apartments.primaryListingId))
     .where(eq(apartments.id, apartmentId))
     .limit(1);
@@ -191,9 +194,7 @@ async function loadApartmentForAlert(apartmentId: number): Promise<ApartmentDeta
 }
 
 function buildSourceUrl(apt: ApartmentDetails): string | null {
-  const siteOrigin = (env().APP_PUBLIC_ORIGIN ?? "").replace(/\/$/, "");
-  if (!apt.primaryListingId || !siteOrigin) return null;
-  return `${siteOrigin}/listings/${apt.primaryListingId}`;
+  return apt.listingUrl ?? null;
 }
 
 async function sendEmail(args: {

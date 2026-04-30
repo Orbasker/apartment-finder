@@ -23,6 +23,7 @@ const STATUS_COLOR: Record<string, string> = {
   collected: "text-blue-800",
   ingesting: "text-purple-600",
   done: "text-green-600",
+  completed: "text-green-600",
   failed: "text-red-600",
 };
 

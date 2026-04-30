@@ -50,7 +50,7 @@ async function processIngestEnrich(job: Job<IngestEnrichJob>): Promise<void> {
     if (run && enriched >= run.inserted) {
       await db
         .update(schema.collectionRuns)
-        .set({ status: "done" })
+        .set({ status: "completed" })
         .where(eq(schema.collectionRuns.runId, data.runId));
       log.info("run done", { runId: data.runId, enriched, inserted: run.inserted });
     }
