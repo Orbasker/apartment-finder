@@ -1,8 +1,6 @@
 import { fetchYad2Listings, Yad2UpstreamUnavailableError, type Yad2Listing } from "@/scrapers/yad2";
-import { isApifyConfigured, startFacebookGroupsRun } from "@/integrations/apify";
 import { describeLocalSchedule, shouldRunApifyPoll, shouldRunYad2Poll } from "@/lib/schedule";
 import { env } from "@/lib/env";
-import { isLoopbackOrigin, resolveAppPublicOrigin } from "@/lib/appOrigin";
 import { createLogger, errorMessage, newId } from "@/lib/log";
 import { bulkInsertListings, type CollectedListing } from "@/ingestion/insert";
 import { processListing } from "@/ingestion/pipeline";
@@ -139,58 +137,18 @@ export async function runApifyPollJob(options: {
     return { status: 200, payload: { ok: true, runId, queued: true } };
   }
 
-  // OLD: inline path (kept for rollback safety; remove once bullmq is verified in prod)
-  if (!isApifyConfigured()) {
-    return { status: 200, payload: { ok: false, skipped: "APIFY_TOKEN not set" } };
-  }
-
-  const webhookSecret = env().APIFY_WEBHOOK_SECRET;
-  if (!webhookSecret) {
-    return { status: 500, payload: { ok: false, error: "APIFY_WEBHOOK_SECRET not set" } };
-  }
-
-  const origin = resolveAppPublicOrigin(options.origin);
-  if (isLoopbackOrigin(origin)) {
-    return {
-      status: 400,
-      payload: {
-        ok: false,
-        error: "Apify cannot call webhooks on localhost. Set APP_PUBLIC_ORIGIN to a public origin.",
-      },
-    };
-  }
-
-  const webhookUrl = new URL("/api/webhooks/apify", origin).toString();
-
-  try {
-    const result = await startFacebookGroupsRun({ webhookUrl, webhookSecret });
-    if (!result) {
-      log.info("no monitored groups, processing retries only");
-    } else {
-      log.info("apify run started", { runId: result.runId, groupCount: result.groupCount });
-    }
-
-    const failedIds = await fetchFailedListingsToRetry();
-    const retryStats =
-      failedIds.length > 0
-        ? await processBatch(failedIds, log)
-        : { processed: 0, unified: 0, failed: 0, alertsSent: 0 };
-
-    return {
-      status: 200,
-      payload: {
-        ok: true,
-        apifyRun: result || { skipped: "no monitored groups" },
-        retry: retryStats,
-      },
-    };
-  } catch (err) {
-    log.error("apify poll failed", { error: errorMessage(err) });
-    return {
-      status: 500,
-      payload: { ok: false, error: err instanceof Error ? err.message : String(err) },
-    };
-  }
+  // The legacy inline Apify path posted to /api/webhooks/apify, which this PR
+  // removed. With USE_BULLMQ_COLLECTORS off there is no working ingest path,
+  // so fail loud instead of pretending to roll back.
+  log.error("apify legacy path is unavailable; enable USE_BULLMQ_COLLECTORS");
+  return {
+    status: 500,
+    payload: {
+      ok: false,
+      error:
+        "Apify legacy path removed; set USE_BULLMQ_COLLECTORS=true to use the async pipeline.",
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

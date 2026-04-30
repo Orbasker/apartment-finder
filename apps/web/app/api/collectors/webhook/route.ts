@@ -11,14 +11,23 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const WebhookBody = z.object({
+const WebhookBodyBase = z.object({
   runId: z.string().min(1),
   source: z.enum(["yad2", "facebook"]),
-  status: z.enum(["ok", "error"]),
-  receivedCount: z.number().int().optional(),
-  blobUrl: z.string().url().optional(),
-  error: z.string().optional(),
 });
+
+const WebhookBody = z.discriminatedUnion("status", [
+  WebhookBodyBase.extend({
+    status: z.literal("ok"),
+    receivedCount: z.number().int().optional(),
+    blobUrl: z.string().url(),
+  }),
+  WebhookBodyBase.extend({
+    status: z.literal("error"),
+    receivedCount: z.number().int().optional(),
+    error: z.string(),
+  }),
+]);
 
 export async function POST(req: Request): Promise<Response> {
   return withApiLog("collectors:webhook", req, async (log) => {
@@ -47,7 +56,16 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    const parsed = WebhookBody.safeParse(JSON.parse(body));
+    let payload: unknown;
+    try {
+      payload = JSON.parse(body);
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: "Invalid JSON payload" },
+        { status: 400 },
+      );
+    }
+    const parsed = WebhookBody.safeParse(payload);
     if (!parsed.success) {
       return NextResponse.json(
         { ok: false, error: "Invalid payload", issues: parsed.error.flatten() },
@@ -77,7 +95,7 @@ export async function POST(req: Request): Promise<Response> {
       .update(collectionRuns)
       .set({
         webhookReceivedAt: new Date(),
-        rawBlobUrl: data.blobUrl ?? null,
+        rawBlobUrl: data.blobUrl,
         status: "ingesting",
         receivedCount: data.receivedCount ?? 0,
       })
@@ -91,7 +109,7 @@ export async function POST(req: Request): Promise<Response> {
 
     await ingestRawQueue.add(
       "ingest-raw",
-      { runId: data.runId, source: data.source, blobUrl: data.blobUrl! },
+      { runId: data.runId, source: data.source, blobUrl: data.blobUrl },
       { attempts: 5, backoff: { type: "exponential", delay: 10_000 } },
     );
 

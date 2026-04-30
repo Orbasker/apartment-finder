@@ -1,4 +1,4 @@
-import { createLogger, errorMessage } from "../lib/log";
+import { createLogger, errorMessage } from "../lib/log.js";
 
 /**
  * Rich Yad2 listing shape returned by the scraper. Pre-extracted structured

@@ -1,4 +1,6 @@
-// Lazy ioredis singleton. TLS-aware. BullMQ requires maxRetriesPerRequest:null.
+// HMAC-SHA256 signing/verification for collector webhooks.
+// Signed payload is `${timestamp}\n${body}`; verify enforces a replay window
+// (default 5 min) and uses timingSafeEqual to avoid leaking via comparison.
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 interface SignOptions {
