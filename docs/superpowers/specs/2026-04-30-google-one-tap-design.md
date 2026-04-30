@@ -47,10 +47,10 @@ The `oneTapClient` plugin requires `clientId` at construction time. Since `auth-
 
 ## Server-side gating
 
-| Page | Render `<GoogleOneTap>` when |
-|---|---|
-| `/login` | `isGoogleConfigured()` |
-| `/` | `!authed && isGoogleConfigured()` |
+| Page     | Render `<GoogleOneTap>` when      |
+| -------- | --------------------------------- |
+| `/login` | `isGoogleConfigured()`            |
+| `/`      | `!authed && isGoogleConfigured()` |
 
 Authed users on `/login` are out of scope (the existing app doesn't auto-redirect them; not changing here).
 
@@ -67,13 +67,13 @@ Without this, Google's One Tap script silently refuses to render the prompt. Thi
 
 ## Error handling
 
-| Condition | Behavior |
-|---|---|
-| Google env vars missing | `<GoogleOneTap>` not rendered server-side. |
-| User already authed (on `/`) | `<GoogleOneTap>` not rendered server-side. |
-| One Tap dismissed | `console.log` only. UI unchanged. |
-| One Tap rejected (FedCM ineligible, third-party cookies blocked, no Google session) | `console.log` only. UI unchanged. |
-| Better Auth `onSuccess` fires | `window.location.href = redirectTo`. |
+| Condition                                                                           | Behavior                                   |
+| ----------------------------------------------------------------------------------- | ------------------------------------------ |
+| Google env vars missing                                                             | `<GoogleOneTap>` not rendered server-side. |
+| User already authed (on `/`)                                                        | `<GoogleOneTap>` not rendered server-side. |
+| One Tap dismissed                                                                   | `console.log` only. UI unchanged.          |
+| One Tap rejected (FedCM ineligible, third-party cookies blocked, no Google session) | `console.log` only. UI unchanged.          |
+| Better Auth `onSuccess` fires                                                       | `window.location.href = redirectTo`.       |
 
 No user-visible error toasts. Dismissals are normal user behavior; surfacing them as errors would be noise.
 
