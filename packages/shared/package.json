@@ -9,12 +9,15 @@
     ".": "./src/index.ts",
     "./filters": "./src/filters.ts",
     "./listing": "./src/listing.ts",
-    "./extraction": "./src/extraction.ts"
+    "./extraction": "./src/extraction.ts",
+    "./gateway": "./src/gateway.ts",
+    "./contentHash": "./src/contentHash.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "^1.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

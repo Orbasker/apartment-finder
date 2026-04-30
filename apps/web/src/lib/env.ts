@@ -42,6 +42,13 @@ const EnvSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
   NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string().optional(),
+
+  // Validated at connect time in packages/queue; keep loose here so a malformed
+  // value on Vercel can't crash unrelated route builds via env().
+  REDIS_URL: z.string().min(1).optional(),
+  COLLECTOR_WEBHOOK_SECRET: z.string().min(32).optional(),
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  USE_BULLMQ_COLLECTORS: z.string().optional(), // "true" to enable
 });
 
 export type Env = z.infer<typeof EnvSchema>;

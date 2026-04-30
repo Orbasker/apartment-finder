@@ -137,7 +137,6 @@ apps/
         telegram-tokens.ts      mintLinkToken / consumeLinkToken (15-min TTL)
       jobs/cron.ts              runYad2PollJob() / runApifyPollJob()
       scrapers/yad2.ts          Yad2 fetch + normalize
-      integrations/apify.ts     Apify run + dataset fetch
       lib/
         auth.ts                 better-auth setup
         auth-server.ts          getCurrentUser, isAdmin
@@ -147,7 +146,6 @@ apps/
         log.ts                  createLogger, withApiLog
         schedule.ts             cron schedule helpers (Asia/Jerusalem)
         cronAuth.ts             verifyCronRequest
-        appOrigin.ts            resolveAppPublicOrigin
         utils.ts                cn() helper
         contentHash.ts          sha256 helper
         aiUsage.ts              recordAiUsage + cost estimate
@@ -317,6 +315,47 @@ All planned MVP PRs (#56 demolition → #62 schema → #63 ingestion → #64 onb
 - **Browse UI** is intentionally absent. Don't add one without product approval.
 - **Browser extension / admin panel** - removed in PR1; do not bring back.
 - **AI judging / scoring** - removed; matching is filter-only.
+
+## APA-24: BullMQ Async Collectors (Operational Notes)
+
+### Architecture
+
+- Vercel crons enqueue a `collect` job via `collectQueue.add()` (gated by `USE_BULLMQ_COLLECTORS=true`).
+- `apps/worker` (VPS, Docker Compose) drains 6 BullMQ queues: `collect -> ingest-raw -> ingest-normalized -> ingest-enrich -> ingest-persist -> ingest-notify`.
+- The collect worker archives raw payload to Vercel Blob, then POSTs a signed completion to `/api/collectors/webhook`.
+- The webhook verifies HMAC-SHA256 (5-min replay window), idempotently records `collection_runs.webhookReceivedAt`, and enqueues `ingest-raw`.
+
+### Redis
+
+- Upstash Redis (TLS). Set `REDIS_URL=rediss://...` in both Vercel project env AND VPS docker-compose `.env`.
+- BullMQ requires `maxRetriesPerRequest: null` (handled in `packages/queue/src/connection.ts`).
+
+### Worker Deployment
+
+1. Set all env vars in `apps/worker/.env` on the VPS (see `apps/worker/.env.example`).
+2. `docker compose -f apps/worker/docker-compose.yml up -d` from the repo root.
+3. Monitor: `curl http://vps-host:8080/health` - should return `{ ok: true, uptime, queues: {...} }`.
+4. **IMPORTANT**: Single-process worker only (1 replica). Running >= 2 replicas would double-deliver jobs without an external lock. HA tracked as future work.
+
+### Cutover Procedure
+
+1. Deploy `apps/worker` to VPS and verify `/health` returns 200.
+2. Set `USE_BULLMQ_COLLECTORS=true` in Vercel project env.
+3. Redeploy Vercel (env change triggers redeploy).
+4. Trigger one cron manually (`GET /api/cron/poll-yad2`) and verify `collection_runs` row appears with `status=collected`.
+5. **Remove the Apify dashboard webhook** that previously pointed at `/api/webhooks/apify` (that route no longer exists - Apify pings 404 otherwise).
+
+### Rollback
+
+- Set `USE_BULLMQ_COLLECTORS=false` (or delete the env var) in Vercel.
+  - **Yad2 cron** falls back to the inline processing path (still wired up in `runYad2PollJob`).
+  - **Apify cron** does not have a working fallback after this PR (the inline path posted to `/api/webhooks/apify`, which was removed). With the flag off, `runApifyPollJob` returns 200 with a `skipped` payload so the Vercel cron does not generate persistent failures, but no Facebook collection runs are produced. Re-enable the flag (or restore a working Apify path) before relying on Facebook ingestion again.
+
+### Follow-Up PR (once BullMQ is verified in prod)
+
+- Remove `USE_BULLMQ_COLLECTORS` flag and the legacy inline path from `apps/web/src/jobs/cron.ts`.
+- Delete `apps/web/src/{ingestion,scrapers}` and `apps/web/src/integrations/apify.ts` (now in `apps/worker`).
+- Delete `apps/web/src/lib/{gateway,contentHash}.ts` shims.
 
 <!-- VERCEL BEST PRACTICES START -->
 

@@ -1,14 +1,13 @@
 import { fetchYad2Listings, Yad2UpstreamUnavailableError, type Yad2Listing } from "@/scrapers/yad2";
-import { isApifyConfigured, startFacebookGroupsRun } from "@/integrations/apify";
 import { describeLocalSchedule, shouldRunApifyPoll, shouldRunYad2Poll } from "@/lib/schedule";
 import { env } from "@/lib/env";
-import { isLoopbackOrigin, resolveAppPublicOrigin } from "@/lib/appOrigin";
 import { createLogger, errorMessage, newId } from "@/lib/log";
 import { bulkInsertListings, type CollectedListing } from "@/ingestion/insert";
 import { processListing } from "@/ingestion/pipeline";
 import { contentHash } from "@/lib/contentHash";
+import { collectQueue } from "@apartment-finder/queue";
 import { getDb } from "@/db";
-import { listings } from "@/db/schema";
+import { collectionRuns, listings } from "@/db/schema";
 import { and, eq, lt } from "drizzle-orm";
 
 export type JobRunResult = {
@@ -26,13 +25,42 @@ export async function runYad2PollJob(options?: {
   const startedAt = Date.now();
   const localTime = describeLocalSchedule();
   const enforceSchedule = options?.enforceSchedule ?? true;
-  const log = createLogger("job:yad2", { run: newId() });
+  const runId = newId();
+  const log = createLogger("job:yad2", { run: runId });
 
   if (enforceSchedule && !shouldRunYad2Poll()) {
     log.info("skipped outside schedule", { localTime });
     return { status: 200, payload: { ok: true, skipped: "outside schedule", localTime } };
   }
 
+  // NEW: enqueue-only path (BullMQ workers on VPS handle everything)
+  if (env().USE_BULLMQ_COLLECTORS === "true") {
+    const db = getDb();
+    await db.insert(collectionRuns).values({ runId, source: "yad2", status: "queued" });
+    try {
+      await collectQueue.add(
+        "collect",
+        { runId, source: "yad2", enqueuedAt: Date.now() },
+        {
+          attempts: 3,
+          backoff: { type: "exponential", delay: 30_000 },
+        },
+      );
+    } catch (err) {
+      const message = errorMessage(err);
+      log.error("enqueue failed; marking run failed", { runId, error: message });
+      await db
+        .update(collectionRuns)
+        .set({ status: "failed", error: `enqueue failed: ${message}` })
+        .where(eq(collectionRuns.runId, runId))
+        .catch(() => {});
+      return { status: 500, payload: { ok: false, runId, error: message, localTime } };
+    }
+    log.info("collect enqueued (bullmq)", { runId, localTime });
+    return { status: 200, payload: { ok: true, runId, queued: true, localTime } };
+  }
+
+  // OLD: inline path (kept for rollback safety; remove once bullmq is verified in prod)
   log.info("job started", { localTime, enforceSchedule });
 
   try {
@@ -97,63 +125,53 @@ export async function runApifyPollJob(options: {
   enforceSchedule?: boolean;
 }): Promise<JobRunResult> {
   const enforceSchedule = options.enforceSchedule ?? true;
-  const log = createLogger("job:apify", { run: newId() });
+  const runId = newId();
+  const log = createLogger("job:apify", { run: runId });
 
   if (enforceSchedule && !shouldRunApifyPoll()) {
     return { status: 200, payload: { ok: true, skipped: "outside schedule" } };
   }
 
-  if (!isApifyConfigured()) {
-    return { status: 200, payload: { ok: false, skipped: "APIFY_TOKEN not set" } };
-  }
-
-  const webhookSecret = env().APIFY_WEBHOOK_SECRET;
-  if (!webhookSecret) {
-    return { status: 500, payload: { ok: false, error: "APIFY_WEBHOOK_SECRET not set" } };
-  }
-
-  const origin = resolveAppPublicOrigin(options.origin);
-  if (isLoopbackOrigin(origin)) {
-    return {
-      status: 400,
-      payload: {
-        ok: false,
-        error: "Apify cannot call webhooks on localhost. Set APP_PUBLIC_ORIGIN to a public origin.",
-      },
-    };
-  }
-
-  const webhookUrl = new URL("/api/webhooks/apify", origin).toString();
-
-  try {
-    const result = await startFacebookGroupsRun({ webhookUrl, webhookSecret });
-    if (!result) {
-      log.info("no monitored groups, processing retries only");
-    } else {
-      log.info("apify run started", { runId: result.runId, groupCount: result.groupCount });
+  // NEW: enqueue-only path (BullMQ workers on VPS handle everything)
+  if (env().USE_BULLMQ_COLLECTORS === "true") {
+    const db = getDb();
+    await db.insert(collectionRuns).values({ runId, source: "facebook", status: "queued" });
+    try {
+      await collectQueue.add(
+        "collect",
+        { runId, source: "facebook", enqueuedAt: Date.now() },
+        {
+          attempts: 3,
+          backoff: { type: "exponential", delay: 30_000 },
+        },
+      );
+    } catch (err) {
+      const message = errorMessage(err);
+      log.error("enqueue failed; marking run failed", { runId, error: message });
+      await db
+        .update(collectionRuns)
+        .set({ status: "failed", error: `enqueue failed: ${message}` })
+        .where(eq(collectionRuns.runId, runId))
+        .catch(() => {});
+      return { status: 500, payload: { ok: false, runId, error: message } };
     }
-
-    const failedIds = await fetchFailedListingsToRetry();
-    const retryStats =
-      failedIds.length > 0
-        ? await processBatch(failedIds, log)
-        : { processed: 0, unified: 0, failed: 0, alertsSent: 0 };
-
-    return {
-      status: 200,
-      payload: {
-        ok: true,
-        apifyRun: result || { skipped: "no monitored groups" },
-        retry: retryStats,
-      },
-    };
-  } catch (err) {
-    log.error("apify poll failed", { error: errorMessage(err) });
-    return {
-      status: 500,
-      payload: { ok: false, error: err instanceof Error ? err.message : String(err) },
-    };
+    log.info("collect enqueued (bullmq)", { runId });
+    return { status: 200, payload: { ok: true, runId, queued: true } };
   }
+
+  // The legacy inline Apify path posted to /api/webhooks/apify, which this PR
+  // removed. With USE_BULLMQ_COLLECTORS off there is no working ingest path —
+  // but the Vercel cron may still be configured, so return 200 with a clear
+  // "skipped" payload instead of 500ing on every tick.
+  log.warn("apify poll skipped because USE_BULLMQ_COLLECTORS is disabled", { runId });
+  return {
+    status: 200,
+    payload: {
+      ok: true,
+      skipped: "USE_BULLMQ_COLLECTORS is disabled",
+      runId,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

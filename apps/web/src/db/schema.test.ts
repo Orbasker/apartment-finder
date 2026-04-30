@@ -459,3 +459,96 @@ describe("schema: type exports compile", () => {
     ).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// APA-24: collection_runs audit table
+// ---------------------------------------------------------------------------
+
+describe("schema: collection_run_status enum (APA-24)", () => {
+  test("enum exposes exactly 6 status values in pipeline order", () => {
+    expect(schema.collectionRunStatusEnum.enumValues).toEqual([
+      "queued",
+      "collecting",
+      "collected",
+      "ingesting",
+      "completed",
+      "failed",
+    ]);
+  });
+});
+
+describe("schema: collection_runs table (APA-24)", () => {
+  test("table is exported and has the expected name", () => {
+    expect(schema.collectionRuns).toBeDefined();
+    expect(getTableName(schema.collectionRuns)).toBe("collection_runs");
+  });
+
+  test("all expected columns are present", () => {
+    const names = columnNames(getTableColumns(schema.collectionRuns));
+    for (const f of [
+      "id",
+      "run_id",
+      "source",
+      "status",
+      "enqueued_at",
+      "collected_at",
+      "webhook_received_at",
+      "raw_blob_url",
+      "received_count",
+      "inserted",
+      "skipped_existing",
+      "failed",
+      "error",
+    ]) {
+      expect(names).toContain(f);
+    }
+  });
+
+  test("run_id is NOT NULL with unique constraint (idempotency anchor)", () => {
+    const cols = getTableColumns(schema.collectionRuns);
+    expect(cols.runId.notNull).toBe(true);
+    const cfg = getTableConfig(schema.collectionRuns);
+    const uniqueIdx = cfg.indexes.find(
+      (idx) =>
+        idx.config.unique === true &&
+        idx.config.columns.length === 1 &&
+        (idx.config.columns[0] as IndexedColumn).name === "run_id",
+    );
+    expect(uniqueIdx).toBeDefined();
+  });
+
+  test("webhook_received_at is nullable (used in UPDATE WHERE condition for idempotency)", () => {
+    const cols = getTableColumns(schema.collectionRuns);
+    expect(cols.webhookReceivedAt.notNull).toBeFalsy();
+  });
+
+  test("status defaults to 'queued' and is NOT NULL", () => {
+    const cols = getTableColumns(schema.collectionRuns);
+    expect(cols.status.notNull).toBe(true);
+    expect((cols.status as unknown as { default: unknown }).default).toBe("queued");
+  });
+
+  test("received_count / inserted / skipped_existing / failed default to 0 and are NOT NULL", () => {
+    const cols = getTableColumns(schema.collectionRuns);
+    for (const key of ["receivedCount", "inserted", "skippedExisting", "failed"] as const) {
+      expect(cols[key].notNull).toBe(true);
+      expect((cols[key] as unknown as { default: unknown }).default).toBe(0);
+    }
+  });
+
+  test("composite index on (source, enqueued_at) for time-range queries per source", () => {
+    const cfg = getTableConfig(schema.collectionRuns);
+    const sourceIdx = cfg.indexes.find(
+      (idx) =>
+        !idx.config.unique &&
+        idx.config.columns.some((c) => (c as IndexedColumn).name === "source") &&
+        idx.config.columns.some((c) => (c as IndexedColumn).name === "enqueued_at"),
+    );
+    expect(sourceIdx).toBeDefined();
+  });
+
+  test("no foreign keys (standalone audit table, no FK rebind needed)", () => {
+    const cfg = getTableConfig(schema.collectionRuns);
+    expect(cfg.foreignKeys).toHaveLength(0);
+  });
+});
