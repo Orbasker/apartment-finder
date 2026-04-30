@@ -93,6 +93,10 @@ describe("parseListingsQuery", () => {
     const r = parseListingsQuery({ neighborhood: ["ChIJ_a", "", "ChIJ_b"] });
     expect(r.neighborhood).toEqual(["ChIJ_a", "ChIJ_b"]);
   });
+
+  test.each(["oldest", "roomsAsc", "roomsDesc"] as const)("accepts sort=%s", (sort) => {
+    expect(parseListingsQuery({ sort }).sort).toBe(sort);
+  });
 });
 
 describe("serializeListingsQuery", () => {

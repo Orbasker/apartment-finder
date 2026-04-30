@@ -85,8 +85,11 @@
       "sort": {
         "label": "Sort",
         "newest": "Newest",
+        "oldest": "Oldest",
         "priceAsc": "Price: low to high",
-        "priceDesc": "Price: high to low"
+        "priceDesc": "Price: high to low",
+        "roomsAsc": "Rooms: few→many",
+        "roomsDesc": "Rooms: many→few"
       },
       "chips": {
         "label": "Active filters",
@@ -106,6 +109,36 @@
     "error": {
       "title": "Failed to load listings",
       "body": "Something went wrong loading the list. Try refreshing the page."
+    },
+    "table": {
+      "ariaLabel": "Listings",
+      "columns": {
+        "title": "Address",
+        "price": "Price",
+        "rooms": "Rooms / size",
+        "neighborhood": "Neighborhood",
+        "source": "Source",
+        "postedAt": "Posted"
+      },
+      "cell": {
+        "rooms": "{value} rooms",
+        "sqm": "{value} m²",
+        "untitled": "Address unknown"
+      }
+    },
+    "source": {
+      "yad2": "Yad2",
+      "facebook": "Facebook"
+    },
+    "pagination": {
+      "ariaLabel": "Pagination",
+      "status": "Page {page} of {pageCount} · {total} listings",
+      "prev": "Previous",
+      "next": "Next"
+    },
+    "mapPlaceholder": {
+      "title": "Map view",
+      "body": "Map view is coming soon."
     }
   }
 }

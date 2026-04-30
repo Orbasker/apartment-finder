@@ -7,7 +7,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!user) redirect("/login");
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-6">
+    <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
       <main id="main-content">{children}</main>
     </div>
   );

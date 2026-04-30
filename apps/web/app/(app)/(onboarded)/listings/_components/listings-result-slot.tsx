@@ -1,7 +1,12 @@
+import { getTranslations } from "next-intl/server";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadMatchedListings } from "@/listings/store";
 import { isQueryEmpty, type ListingsQuery } from "@/listings/url-state";
+import { ListingsCardList } from "./listings-card-list";
 import { ListingsEmpty } from "./listings-empty";
 import { ListingsError } from "./listings-error";
+import { ListingsPagination } from "./listings-pagination";
+import { ListingsTable } from "./listings-table";
 
 export async function ListingsResultSlot({
   userId,
@@ -21,31 +26,27 @@ export async function ListingsResultSlot({
     return <ListingsEmpty hasActiveFilters={!isQueryEmpty(query)} />;
   }
 
+  if (query.view === "map") {
+    return <MapViewPlaceholder />;
+  }
+
   return (
-    <ul className="divide-y rounded-md border bg-background text-sm" aria-label="Listings">
-      {result.rows.map((r) => (
-        <li key={r.id} className="flex items-center justify-between gap-3 p-3">
-          <div>
-            <div className="font-medium">
-              <bdi>{r.formattedAddress ?? "—"}</bdi>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              <bdi>
-                {[
-                  r.priceNis != null ? `₪${r.priceNis.toLocaleString("he-IL")}` : null,
-                  r.rooms != null ? `${r.rooms} חד׳` : null,
-                  r.neighborhood,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </bdi>
-            </div>
-          </div>
-          <a className="text-xs text-primary underline" href={`/listings/${r.id}`}>
-            פתח
-          </a>
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-3">
+      <ListingsTable rows={result.rows} sort={query.sort} />
+      <ListingsCardList rows={result.rows} />
+      <ListingsPagination page={result.page} pageCount={result.pageCount} total={result.total} />
+    </div>
+  );
+}
+
+async function MapViewPlaceholder() {
+  const t = await getTranslations("Listings.mapPlaceholder");
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{t("title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="text-sm text-muted-foreground">{t("body")}</CardContent>
+    </Card>
   );
 }

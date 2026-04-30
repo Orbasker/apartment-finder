@@ -1,5 +1,11 @@
 export type ListingsView = "table" | "map";
-export type ListingsSort = "newest" | "priceAsc" | "priceDesc";
+export type ListingsSort =
+  | "newest"
+  | "oldest"
+  | "priceAsc"
+  | "priceDesc"
+  | "roomsAsc"
+  | "roomsDesc";
 
 export type ListingsQuery = {
   view: ListingsView;
@@ -24,7 +30,14 @@ export const DEFAULT_QUERY: ListingsQuery = {
 export const PAGE_SIZE = 20;
 
 const VIEWS: readonly ListingsView[] = ["table", "map"] as const;
-const SORTS: readonly ListingsSort[] = ["newest", "priceAsc", "priceDesc"] as const;
+const SORTS: readonly ListingsSort[] = [
+  "newest",
+  "oldest",
+  "priceAsc",
+  "priceDesc",
+  "roomsAsc",
+  "roomsDesc",
+] as const;
 
 type ParamRecord = Record<string, string | string[] | undefined>;
 export type ListingsQueryInput = ParamRecord | URLSearchParams;

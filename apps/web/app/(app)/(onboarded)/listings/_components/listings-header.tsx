@@ -73,8 +73,11 @@ export function ListingsHeader() {
             }
           >
             <option value="newest">{t("sort.newest")}</option>
+            <option value="oldest">{t("sort.oldest")}</option>
             <option value="priceAsc">{t("sort.priceAsc")}</option>
             <option value="priceDesc">{t("sort.priceDesc")}</option>
+            <option value="roomsAsc">{t("sort.roomsAsc")}</option>
+            <option value="roomsDesc">{t("sort.roomsDesc")}</option>
           </select>
         </div>
       </div>

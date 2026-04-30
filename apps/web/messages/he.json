@@ -85,8 +85,11 @@
       "sort": {
         "label": "מיון",
         "newest": "חדשות ביותר",
+        "oldest": "ישנות ביותר",
         "priceAsc": "מחיר: מהנמוך לגבוה",
-        "priceDesc": "מחיר: מהגבוה לנמוך"
+        "priceDesc": "מחיר: מהגבוה לנמוך",
+        "roomsAsc": "חדרים: מעט→הרבה",
+        "roomsDesc": "חדרים: הרבה→מעט"
       },
       "chips": {
         "label": "סינונים פעילים",
@@ -106,6 +109,36 @@
     "error": {
       "title": "שגיאה בטעינת הדירות",
       "body": "משהו השתבש בטעינת הרשימה. נסה/י לרענן את העמוד."
+    },
+    "table": {
+      "ariaLabel": "רשימת דירות",
+      "columns": {
+        "title": "כתובת",
+        "price": "מחיר",
+        "rooms": "חדרים / שטח",
+        "neighborhood": "שכונה",
+        "source": "מקור",
+        "postedAt": "פורסם"
+      },
+      "cell": {
+        "rooms": "{value} חדרים",
+        "sqm": "{value} מ\"ר",
+        "untitled": "כתובת לא ידועה"
+      }
+    },
+    "source": {
+      "yad2": "יד2",
+      "facebook": "פייסבוק"
+    },
+    "pagination": {
+      "ariaLabel": "ניווט בין עמודים",
+      "status": "עמוד {page} מתוך {pageCount} · {total} דירות",
+      "prev": "הקודם",
+      "next": "הבא"
+    },
+    "mapPlaceholder": {
+      "title": "תצוגת מפה",
+      "body": "תצוגת המפה תושק בקרוב."
     }
   }
 }
