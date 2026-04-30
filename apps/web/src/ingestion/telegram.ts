@@ -32,6 +32,7 @@ export type TelegramAlertProps = {
   floor: number | null;
   priceNis: number | null;
   sourceUrl: string | null;
+  listingUrl: string | null;
   matchedAttributes: ApartmentAttributeKey[];
   unverifiedAttributes: ApartmentAttributeKey[];
   pricePerSqm: number | null;
@@ -55,9 +56,7 @@ export async function sendMatchAlert(props: TelegramAlertProps): Promise<Telegra
     const result = await getBot().api.sendMessage(props.chatId, text, {
       parse_mode: "HTML",
       link_preview_options: { is_disabled: true },
-      reply_markup: props.sourceUrl
-        ? { inline_keyboard: [[{ text: "פתח את המודעה", url: props.sourceUrl }]] }
-        : undefined,
+      reply_markup: buildReplyMarkup(props),
     });
     return { ok: true, messageId: result.message_id };
   } catch (err) {
@@ -96,6 +95,19 @@ export async function sendLinkFailure(
   } catch (err) {
     return classifyError(err, chatId);
   }
+}
+
+function buildReplyMarkup(props: TelegramAlertProps) {
+  const buttons: { text: string; url: string }[] = [];
+  if (props.listingUrl) buttons.push({ text: "פתח את המודעה", url: props.listingUrl });
+  if (props.sourceUrl) {
+    buttons.push({
+      text: props.listingUrl ? "צפייה במקור" : "פתח את המודעה",
+      url: props.sourceUrl,
+    });
+  }
+  if (buttons.length === 0) return undefined;
+  return { inline_keyboard: [buttons] };
 }
 
 function classifyError(err: unknown, chatId: string): TelegramSendResult {

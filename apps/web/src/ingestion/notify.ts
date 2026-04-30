@@ -231,6 +231,7 @@ async function sendEmail(args: {
   const apt = args.apartment;
   const siteOrigin = (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
   const filtersUrl = siteOrigin ? `${siteOrigin}/filters` : null;
+  const listingUrl = siteOrigin ? `${siteOrigin}/listings/${apt.id}` : null;
   const sourceUrl = buildSourceUrl(apt);
 
   const subject = buildSubject({
@@ -248,6 +249,7 @@ async function sendEmail(args: {
     floor: apt.floor,
     priceNis: apt.priceNisLatest,
     sourceUrl,
+    listingUrl,
     filtersUrl,
     matchedAttributes: args.matchedAttributes,
     unverifiedAttributes: args.unverifiedAttributes,
@@ -315,6 +317,8 @@ async function sendTelegram(args: {
 
   const apt = args.apartment;
   const sourceUrl = buildSourceUrl(apt);
+  const siteOrigin = (env().NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
+  const listingUrl = siteOrigin ? `${siteOrigin}/listings/${apt.id}` : null;
 
   const result = await sendTelegramMatchAlert({
     chatId: args.chatId,
@@ -325,6 +329,7 @@ async function sendTelegram(args: {
     floor: apt.floor,
     priceNis: apt.priceNisLatest,
     sourceUrl,
+    listingUrl,
     matchedAttributes: args.matchedAttributes,
     unverifiedAttributes: args.unverifiedAttributes,
     pricePerSqm: apt.pricePerSqm,
