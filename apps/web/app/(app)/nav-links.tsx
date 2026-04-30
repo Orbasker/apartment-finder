@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 export const links = [
   { href: "/matches", label: "דירות" },
+  { href: "/listings", label: "רשימה" },
   { href: "/filters", label: "תנאים" },
   { href: "/settings", label: "הגדרות" },
 ] as const;
