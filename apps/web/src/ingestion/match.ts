@@ -168,21 +168,23 @@ function cityPredicate(apartmentCityId: string | null, apartmentCity: string | n
     SELECT 1 FROM ${userFilterCities}
     WHERE ${userFilterCities.userId} = ${userFilters.userId}
   )`;
+  // Prefer the catalog id when the apartment has one. Fall back to Hebrew name
+  // match ONLY when no city_id is set; otherwise apartments.city drift could let
+  // a wrong-city listing satisfy the predicate.
   const cityMatches =
-    apartmentCityId != null || apartmentCity != null
+    apartmentCityId != null
       ? sql`EXISTS (
           SELECT 1 FROM ${userFilterCities}
           WHERE ${userFilterCities.userId} = ${userFilters.userId}
-            AND (
-              ${apartmentCityId != null ? sql`${userFilterCities.cityId} = ${apartmentCityId}` : sql`false`}
-              OR ${
-                apartmentCity != null
-                  ? sql`lower(trim(${userFilterCities.nameHe})) = lower(trim(${apartmentCity}))`
-                  : sql`false`
-              }
-            )
+            AND ${userFilterCities.cityId} = ${apartmentCityId}
         )`
-      : sql`false`;
+      : apartmentCity != null
+        ? sql`EXISTS (
+            SELECT 1 FROM ${userFilterCities}
+            WHERE ${userFilterCities.userId} = ${userFilters.userId}
+              AND lower(trim(${userFilterCities.nameHe})) = lower(trim(${apartmentCity}))
+          )`
+        : sql`false`;
   return or(noCitySelections, cityMatches);
 }
 

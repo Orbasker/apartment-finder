@@ -42,7 +42,7 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
 
   const onSelectCity = useCallback(
     async (city: CityCandidate) => {
-      const result = await pickCityAction(city);
+      const result = await pickCityAction({ cityId: city.cityId });
       if (!result.ok) return { ok: false as const };
       setSubmittedCityIds((prev) => {
         const next = new Set(prev);
@@ -301,9 +301,11 @@ function CityChips({
   async function handleSelect(city: CityCandidate) {
     if (!city.isLaunchReady || submittedIds.has(city.cityId) || busyId) return;
     setBusyId(city.cityId);
-    const result = await onSelect(city);
-    setBusyId(null);
-    if (!result.ok) return;
+    try {
+      await onSelect(city);
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (

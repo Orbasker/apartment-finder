@@ -10,6 +10,7 @@ import {
 } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import {
+  cities,
   userFilterAttributes,
   userFilterCities,
   userFilterNeighborhoods,
@@ -393,16 +394,28 @@ export async function addNeighborhoodFilter(
   selection: NeighborhoodSelection,
 ): Promise<void> {
   const db = getDb();
-  // Insert the parent city first (no-op if already present) so the composite
-  // FK on (user_id, city_place_id) is satisfied.
+  // Resolve the parent city from the catalog so we can never persist
+  // mismatched name_en (previously copied cityNameHe — Hebrew into the
+  // English column) when this code path inserts the parent row itself.
+  const [parentCity] = await db
+    .select({
+      id: cities.id,
+      placeId: cities.placeId,
+      nameHe: cities.nameHe,
+      nameEn: cities.nameEn,
+    })
+    .from(cities)
+    .where(eq(cities.id, selection.cityId))
+    .limit(1);
+  if (!parentCity) return;
   await db
     .insert(userFilterCities)
     .values({
       userId,
-      cityId: selection.cityId,
-      placeId: selection.cityPlaceId,
-      nameHe: selection.cityNameHe,
-      nameEn: selection.cityNameHe,
+      cityId: parentCity.id,
+      placeId: parentCity.placeId,
+      nameHe: parentCity.nameHe,
+      nameEn: parentCity.nameEn,
     })
     .onConflictDoNothing();
   await db
@@ -411,9 +424,9 @@ export async function addNeighborhoodFilter(
       userId,
       placeId: selection.placeId,
       nameHe: selection.nameHe,
-      cityId: selection.cityId,
-      cityPlaceId: selection.cityPlaceId,
-      cityNameHe: selection.cityNameHe,
+      cityId: parentCity.id,
+      cityPlaceId: parentCity.placeId,
+      cityNameHe: parentCity.nameHe,
       kind,
     })
     .onConflictDoNothing();

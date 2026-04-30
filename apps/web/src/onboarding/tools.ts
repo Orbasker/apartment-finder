@@ -16,7 +16,7 @@ import {
   setRadiusFilter,
   upsertFilters,
 } from "@/filters/store";
-import { searchActiveCities } from "@/cities/store";
+import { getCityById, searchActiveCities } from "@/cities/store";
 import {
   autocompleteNeighborhoods,
   listNeighborhoodsInCity,
@@ -123,16 +123,29 @@ export function buildOnboardingTools(userId: string) {
 
     selectCity: tool({
       description:
-        "Fallback-only city save for cases where the user chooses a city in plain text instead of clicking a city chip. Pass the exact cityId/placeId/nameHe/nameEn from a prior searchCity result - never invent ids. Usually the UI chip click saves the city, so do not call this immediately after searchCity.",
+        "Fallback-only city save for cases where the user chooses a city in plain text instead of clicking a city chip. Pass the cityId from a prior searchCity result - never invent ids. The server resolves the rest from the catalog, so the model does not need to echo placeId/nameHe/nameEn.",
       inputSchema: z.object({
         cityId: z.string().min(1).describe("City catalog id from searchCity."),
-        placeId: z.string().min(1).describe("Google place_id from searchCity."),
-        nameHe: z.string().min(1).describe("Hebrew city name from searchCity."),
-        nameEn: z.string().min(1).describe("English city name from searchCity."),
       }),
-      execute: async ({ cityId, placeId, nameHe, nameEn }) => {
-        await addCity(userId, { cityId, placeId, nameHe, nameEn });
-        return { ok: true, cityId, placeId, nameHe, nameEn };
+      execute: async ({ cityId }) => {
+        const city = await getCityById(cityId);
+        if (!city) return { ok: false, reason: "city not found in catalog" } as const;
+        if (!city.isLaunchReady) {
+          return { ok: false, reason: "city not launch-ready yet" } as const;
+        }
+        await addCity(userId, {
+          cityId: city.cityId,
+          placeId: city.placeId,
+          nameHe: city.nameHe,
+          nameEn: city.nameEn,
+        });
+        return {
+          ok: true,
+          cityId: city.cityId,
+          placeId: city.placeId,
+          nameHe: city.nameHe,
+          nameEn: city.nameEn,
+        };
       },
     }),
 

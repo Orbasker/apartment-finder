@@ -78,15 +78,26 @@ ALTER TABLE "user_filter_neighborhoods" ADD COLUMN IF NOT EXISTS "city_id" text;
 -- Matches "תל אביב" → "תל אביב-יפו" via prefix, exact matches the rest.
 -- Existing rows pre-date the catalog and were keyed by Google place_id; we map
 -- by display name since that's the only stable signal.
+--
+-- Also covers re-runs on partially applied DBs where an earlier draft set
+-- city_id but left name_en null — without this, the SET NOT NULL on name_en
+-- below would fail.
 UPDATE "user_filter_cities" ufc
 SET "city_id" = c."id",
     "name_en" = c."name_en"
 FROM "cities" c
-WHERE ufc."city_id" IS NULL
-  AND (
-    c."name_he" = ufc."name_he"
-    OR c."name_he" ILIKE ufc."name_he" || '%'
-    OR ufc."name_he" ILIKE c."name_he" || '%'
+WHERE
+  (
+    ufc."city_id" IS NULL
+    AND (
+      c."name_he" = ufc."name_he"
+      OR c."name_he" ILIKE ufc."name_he" || '%'
+      OR ufc."name_he" ILIKE c."name_he" || '%'
+    )
+  )
+  OR (
+    ufc."city_id" = c."id"
+    AND ufc."name_en" IS NULL
   );
 --> statement-breakpoint
 

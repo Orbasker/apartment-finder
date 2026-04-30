@@ -38,12 +38,12 @@ export async function runYad2PollJob(options?: {
     const db = getDb();
     const targets = await listCollectorCities("yad2");
     const queued: string[] = [];
-    try {
-      for (const city of targets) {
-        const runId = `${batchId}-${city.id}-yad2`;
-        await db
-          .insert(collectionRuns)
-          .values({ runId, source: "yad2", cityId: city.id, status: "queued" });
+    for (const city of targets) {
+      const runId = `${batchId}-${city.id}-yad2`;
+      await db
+        .insert(collectionRuns)
+        .values({ runId, source: "yad2", cityId: city.id, status: "queued" });
+      try {
         await collectQueue.add(
           "collect",
           { runId, source: "yad2", cityId: city.id, enqueuedAt: Date.now() },
@@ -53,11 +53,17 @@ export async function runYad2PollJob(options?: {
           },
         );
         queued.push(runId);
+      } catch (err) {
+        const message = errorMessage(err);
+        log.error("enqueue failed", { runId, cityId: city.id, error: message });
+        // Mark the just-inserted row failed so it doesn't sit in `queued` forever
+        // — no worker will ever pick it up.
+        await db
+          .update(collectionRuns)
+          .set({ status: "failed", error: message })
+          .where(eq(collectionRuns.runId, runId));
+        return { status: 500, payload: { ok: false, batchId, queued, error: message, localTime } };
       }
-    } catch (err) {
-      const message = errorMessage(err);
-      log.error("enqueue failed", { error: message });
-      return { status: 500, payload: { ok: false, batchId, queued, error: message, localTime } };
     }
     log.info("collect enqueued (bullmq)", { batchId, runs: queued.length, localTime });
     return { status: 200, payload: { ok: true, batchId, runIds: queued, queued: true, localTime } };
@@ -147,12 +153,12 @@ export async function runApifyPollJob(options: {
     const db = getDb();
     const targets = await listCollectorCities("facebook");
     const queued: string[] = [];
-    try {
-      for (const city of targets) {
-        const runId = `${batchId}-${city.id}-facebook`;
-        await db
-          .insert(collectionRuns)
-          .values({ runId, source: "facebook", cityId: city.id, status: "queued" });
+    for (const city of targets) {
+      const runId = `${batchId}-${city.id}-facebook`;
+      await db
+        .insert(collectionRuns)
+        .values({ runId, source: "facebook", cityId: city.id, status: "queued" });
+      try {
         await collectQueue.add(
           "collect",
           { runId, source: "facebook", cityId: city.id, enqueuedAt: Date.now() },
@@ -162,11 +168,17 @@ export async function runApifyPollJob(options: {
           },
         );
         queued.push(runId);
+      } catch (err) {
+        const message = errorMessage(err);
+        log.error("enqueue failed", { runId, cityId: city.id, error: message });
+        // Mark the just-inserted row failed so it doesn't sit in `queued` forever
+        // — no worker will ever pick it up.
+        await db
+          .update(collectionRuns)
+          .set({ status: "failed", error: message })
+          .where(eq(collectionRuns.runId, runId));
+        return { status: 500, payload: { ok: false, batchId, queued, error: message } };
       }
-    } catch (err) {
-      const message = errorMessage(err);
-      log.error("enqueue failed", { error: message });
-      return { status: 500, payload: { ok: false, batchId, queued, error: message } };
     }
     log.info("collect enqueued (bullmq)", { batchId, runs: queued.length });
     return { status: 200, payload: { ok: true, batchId, runIds: queued, queued: true } };
