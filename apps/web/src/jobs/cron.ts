@@ -49,7 +49,10 @@ export async function runYad2PollJob(options?: {
     );
 
     const failedIds = await fetchFailedListingsToRetry();
-    const retryStats = failedIds.length > 0 ? await processBatch(failedIds, log) : { processed: 0, unified: 0, failed: 0, alertsSent: 0 };
+    const retryStats =
+      failedIds.length > 0
+        ? await processBatch(failedIds, log)
+        : { processed: 0, unified: 0, failed: 0, alertsSent: 0 };
 
     log.info("job finished", {
       durationMs: Date.now() - startedAt,
@@ -131,7 +134,10 @@ export async function runApifyPollJob(options: {
     }
 
     const failedIds = await fetchFailedListingsToRetry();
-    const retryStats = failedIds.length > 0 ? await processBatch(failedIds, log) : { processed: 0, unified: 0, failed: 0, alertsSent: 0 };
+    const retryStats =
+      failedIds.length > 0
+        ? await processBatch(failedIds, log)
+        : { processed: 0, unified: 0, failed: 0, alertsSent: 0 };
 
     return {
       status: 200,
@@ -198,12 +204,7 @@ async function fetchFailedListingsToRetry(): Promise<number[]> {
   const failed = await db
     .select({ id: listings.id })
     .from(listings)
-    .where(
-      and(
-        eq(listings.status, "failed"),
-        lt(listings.retries, MAX_RETRIES_ALLOWED),
-      ),
-    )
+    .where(and(eq(listings.status, "failed"), lt(listings.retries, MAX_RETRIES_ALLOWED)))
     .limit(MAX_RETRY_BATCH_SIZE);
   return failed.map((row) => row.id);
 }
