@@ -42,6 +42,11 @@ const EnvSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
   NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string().optional(),
+
+  REDIS_URL: z.string().url().optional(),
+  COLLECTOR_WEBHOOK_SECRET: z.string().min(32).optional(),
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  USE_BULLMQ_COLLECTORS: z.string().optional(), // "true" to enable
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -7,6 +7,9 @@ import { createLogger, errorMessage, newId } from "@/lib/log";
 import { bulkInsertListings, type CollectedListing } from "@/ingestion/insert";
 import { processListing } from "@/ingestion/pipeline";
 import { contentHash } from "@/lib/contentHash";
+import { collectQueue } from "@apartment-finder/queue";
+import { getDb } from "@/db";
+import { collectionRuns } from "@/db/schema";
 
 export type JobRunResult = {
   status: number;
@@ -28,6 +31,20 @@ export async function runYad2PollJob(options?: {
     return { status: 200, payload: { ok: true, skipped: "outside schedule", localTime } };
   }
 
+  // NEW: enqueue-only path (BullMQ workers on VPS handle everything)
+  if (env().USE_BULLMQ_COLLECTORS === "true") {
+    const runId = newId();
+    const db = getDb();
+    await db.insert(collectionRuns).values({ runId, source: "yad2", status: "queued" });
+    await collectQueue.add("collect", { runId, source: "yad2", enqueuedAt: Date.now() }, {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 30_000 },
+    });
+    log.info("collect enqueued (bullmq)", { runId, localTime });
+    return { status: 200, payload: { ok: true, runId, queued: true, localTime } };
+  }
+
+  // OLD: inline path (kept for rollback safety; remove once bullmq is verified in prod)
   log.info("job started", { localTime, enforceSchedule });
 
   try {
@@ -86,6 +103,20 @@ export async function runApifyPollJob(options: {
     return { status: 200, payload: { ok: true, skipped: "outside schedule" } };
   }
 
+  // NEW: enqueue-only path (BullMQ workers on VPS handle everything)
+  if (env().USE_BULLMQ_COLLECTORS === "true") {
+    const runId = newId();
+    const db = getDb();
+    await db.insert(collectionRuns).values({ runId, source: "facebook", status: "queued" });
+    await collectQueue.add("collect", { runId, source: "facebook", enqueuedAt: Date.now() }, {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 30_000 },
+    });
+    log.info("collect enqueued (bullmq)", { runId });
+    return { status: 200, payload: { ok: true, runId, queued: true } };
+  }
+
+  // OLD: inline path (kept for rollback safety; remove once bullmq is verified in prod)
   if (!isApifyConfigured()) {
     return { status: 200, payload: { ok: false, skipped: "APIFY_TOKEN not set" } };
   }
