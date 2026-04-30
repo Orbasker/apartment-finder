@@ -33,8 +33,6 @@ export function ListingsHeader() {
   for (const name of query.neighborhood) {
     chips.push({
       key: `n-${name}`,
-      // `query.neighborhood` is a string[] of free-text neighborhood names
-      // (e.g. "פלורנטין"). Just render the name; <bdi> below handles bidi.
       label: name,
       onRemove: () =>
         setQuery({ neighborhood: query.neighborhood.filter((p) => p !== name) }),
@@ -49,8 +47,6 @@ export function ListingsHeader() {
       aria-busy={isPending || undefined}
     >
       <div className="flex flex-wrap items-center gap-2">
-        {/* View-toggle slot. APA-30 fills this; we render a stub now so the
-            layout doesn't shift when the toggle drops in. */}
         <div data-slot="view-toggle" className="flex items-center gap-1">
           <Button
             variant={query.view === "table" ? "default" : "outline"}
@@ -69,8 +65,6 @@ export function ListingsHeader() {
         </div>
 
         <div className="ms-auto flex items-center gap-2">
-          {/* Sort dropdown is intentionally minimal here — APA-30 sub-issue can
-              promote it to a real shadcn Select if needed. */}
           <label className="text-xs text-muted-foreground" htmlFor="listings-sort">
             {t("sort.label")}
           </label>

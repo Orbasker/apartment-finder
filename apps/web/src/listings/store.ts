@@ -7,21 +7,14 @@ import type { MatchedListing, MatchedListingsResult } from "./types";
 import { PAGE_SIZE, type ListingsQuery } from "./url-state";
 
 /**
- * Returns paginated matched listings for a user.
+ * Returns paginated apartments the user has been alerted about. Multi-
+ * destination duplicates (e.g. email + telegram for the same apartment)
+ * are collapsed via MAX(sent_alerts.sent_at) per apartment; that timestamp
+ * also drives the default sort.
  *
- * "Matched" = there exists at least one row in `sent_alerts` for
- * (userId, apartmentId, *), regardless of destination. Multi-destination
- * duplicates (e.g. email + telegram for the same apartment) are collapsed
- * via `MAX(sent_alerts.sentAt)` per apartment.
- *
- * Sort defaults to alert-recency (`MAX(sentAt) DESC`); price-sorts re-order
- * on `apartments.priceNisLatest`. Filters (price, rooms, neighborhood) are
- * pushed into SQL. `neighborhood` matches `apartments.neighborhood` exactly;
- * the header bar's chip values are sourced from distinct neighborhoods in
- * the result set, so text equality is exact by construction.
- *
- * Pagination is offset-based (`page` 1-indexed, `pageSize` constant 20).
- * See APA-31 plan OD-4.
+ * `neighborhood` matches `apartments.neighborhood` text exactly — chip
+ * values come from distinct neighborhoods in the user's own result set,
+ * so equality is exact by construction.
  */
 export async function loadMatchedListings(
   userId: string,
@@ -29,8 +22,7 @@ export async function loadMatchedListings(
 ): Promise<MatchedListingsResult> {
   const db = getDb();
 
-  // Build the WHERE list once and reuse for both COUNT and SELECT so the
-  // total stays consistent with the page contents.
+  // Reused for both COUNT and SELECT so total can never disagree with page.
   const whereClauses = [eq(sentAlerts.userId, userId)];
   if (query.priceMin !== null) {
     whereClauses.push(sql`${apartments.priceNisLatest} >= ${query.priceMin}`);
@@ -39,7 +31,6 @@ export async function loadMatchedListings(
     whereClauses.push(sql`${apartments.priceNisLatest} <= ${query.priceMax}`);
   }
   if (query.rooms !== null) {
-    // Exact match per ticket — half-room tolerance is a follow-up.
     whereClauses.push(sql`${apartments.rooms} = ${query.rooms}`);
   }
   if (query.neighborhood.length > 0) {
@@ -48,8 +39,6 @@ export async function loadMatchedListings(
 
   const baseWhere = and(...whereClauses);
 
-  // ORDER BY: default = MAX(sentAt) DESC; price-sorts use the canonical
-  // `priceNisLatest` and tie-break on alert-recency for stability.
   const orderBy = (() => {
     switch (query.sort) {
       case "priceAsc":
@@ -62,8 +51,6 @@ export async function loadMatchedListings(
     }
   })();
 
-  // COUNT — distinct matched apartments. Uses the same JOIN + WHERE as the
-  // SELECT so totals can never disagree with the page contents.
   const totalRows = await db
     .select({
       total: sql<number>`COUNT(DISTINCT ${apartments.id})::int`,
@@ -74,9 +61,8 @@ export async function loadMatchedListings(
 
   const total = totalRows[0]?.total ?? 0;
 
-  // SELECT — left-join the primary listing for the source URL. We GROUP BY
-  // every non-aggregated column from `apartments` so Postgres' strict
-  // GROUP BY rule is satisfied even though `apartments.id` is the PK.
+  // GROUP BY every non-aggregated column we select; Postgres' strict mode
+  // requires it even though apartments.id is the PK.
   const offset = (query.page - 1) * PAGE_SIZE;
   const rows = await db
     .select({

@@ -19,7 +19,6 @@ export default async function ListingsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  // Auth + onboarding already enforced by (onboarded)/layout.tsx.
   const user = (await getCurrentUser())!;
   const sp = await searchParams;
   const query = parseListingsQuery(sp);
@@ -37,8 +36,6 @@ export default async function ListingsPage({
       <ListingsHeader />
 
       <Suspense fallback={<ListingsSkeleton />}>
-        {/* Awaited inside a child server component so the Suspense boundary
-            actually streams. */}
         <ListingsResultSlot userId={user.id} query={query} />
       </Suspense>
     </main>

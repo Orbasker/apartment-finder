@@ -12,7 +12,7 @@ import {
 type Patch = Partial<ListingsQuery>;
 
 type UpdateOptions = {
-  /** Use push (history entry) vs replace (no history). Default: replace. */
+  /** push (history entry) vs replace (no history). Default: replace. */
   history?: "push" | "replace";
   /** Reset page to 1 on this update. Default: true unless caller passed page. */
   resetPage?: boolean;
@@ -29,7 +29,6 @@ export function useListingsQuery(): {
   const [isPending, startTransition] = useTransition();
 
   const query = useMemo<ListingsQuery>(() => {
-    // searchParams.getAll("neighborhood") returns the array form.
     const record: Record<string, string | string[]> = {};
     for (const key of searchParams.keys()) {
       const all = searchParams.getAll(key);

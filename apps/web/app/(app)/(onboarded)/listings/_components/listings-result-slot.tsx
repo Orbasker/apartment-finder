@@ -3,11 +3,6 @@ import { isQueryEmpty, type ListingsQuery } from "@/listings/url-state";
 import { ListingsEmpty } from "./listings-empty";
 import { ListingsError } from "./listings-error";
 
-/**
- * Server component that fetches data and decides which view to render.
- * APA-30 will replace the inline `<ul>` with the table/map components;
- * we keep the data shape stable so they can drop in.
- */
 export async function ListingsResultSlot({
   userId,
   query,
@@ -26,7 +21,6 @@ export async function ListingsResultSlot({
     return <ListingsEmpty hasActiveFilters={!isQueryEmpty(query)} />;
   }
 
-  // Phase-1-of-APA-30: render a debug list. APA-30 sub-issues replace this.
   return (
     <ul
       className="divide-y rounded-md border bg-background text-sm"

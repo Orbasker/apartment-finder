@@ -1,12 +1,3 @@
-// Pure URL-query module for the /listings page.
-//
-// Parser/serializer must round-trip and never throw on bad input. Defaults
-// are omitted from the serialized form so URLs stay clean. Multi-value
-// `neighborhood` uses standard repeated-key encoding (`?neighborhood=a&neighborhood=b`).
-//
-// Per APA-31 OD-3 the free-text `q` param is intentionally not in this PR.
-// Per APA-31 OD-4 pagination is offset-only (no `cursor`).
-
 export type ListingsView = "table" | "map";
 export type ListingsSort = "newest" | "priceAsc" | "priceDesc";
 
@@ -71,13 +62,8 @@ function parseEnum<T extends string>(
 }
 
 /**
- * Parse a `searchParams` payload into a fully-typed `ListingsQuery`.
- *
- * Accepts both shapes:
- *  - Next 15's awaited `searchParams` object: `Record<string, string | string[] | undefined>`
- *  - A `URLSearchParams` instance (used by the client hook + tests).
- *
- * Invalid values fall back to defaults; never throws.
+ * Invalid values fall back to defaults; never throws. Accepts both Next 15's
+ * awaited searchParams object and a URLSearchParams instance.
  */
 export function parseListingsQuery(input: ListingsQueryInput): ListingsQuery {
   const get = (key: string): string | undefined =>
@@ -97,10 +83,7 @@ export function parseListingsQuery(input: ListingsQueryInput): ListingsQuery {
   return { view, priceMin, priceMax, rooms, neighborhood, sort, page };
 }
 
-/**
- * Serialize a query into a `URLSearchParams`. Default values are omitted so
- * the canonical empty state is `""`.
- */
+/** Default values are omitted so the canonical empty state is "". */
 export function serializeListingsQuery(q: ListingsQuery): URLSearchParams {
   const sp = new URLSearchParams();
   if (q.view !== DEFAULT_QUERY.view) sp.set("view", q.view);
@@ -113,10 +96,6 @@ export function serializeListingsQuery(q: ListingsQuery): URLSearchParams {
   return sp;
 }
 
-/**
- * Returns true when the query is the default empty state (no filters, default sort).
- * Used by the future header bar to decide whether to show the "Clear all" affordance.
- */
 export function isQueryEmpty(q: ListingsQuery): boolean {
   return (
     q.priceMin === null &&

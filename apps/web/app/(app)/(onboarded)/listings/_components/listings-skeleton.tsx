@@ -1,6 +1,3 @@
-// Server-safe skeleton (no hooks). The sr-only Hebrew text is intentional —
-// it only flashes during Suspense; not worth a translation key for an RTL
-// screen-reader-only string.
 export function ListingsSkeleton() {
   return (
     <div className="space-y-3" role="status" aria-live="polite">
