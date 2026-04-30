@@ -19,10 +19,7 @@ async function processIngestRaw(job: Job<IngestRawJob>): Promise<void> {
   log.info("ingest-raw started", { runId: data.runId, source: data.source });
 
   try {
-    // Download raw payload from Vercel Blob (private — requires token)
-    const res = await fetch(data.blobUrl, {
-      headers: { Authorization: `Bearer ${env().BLOB_READ_WRITE_TOKEN}` },
-    });
+    const res = await fetch(data.blobUrl);
     if (!res.ok) {
       throw new Error(`Failed to download blob: ${res.status}`);
     }
