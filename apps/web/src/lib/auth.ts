@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, emailOTP } from "better-auth/plugins";
+import { admin, emailOTP, oneTap } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { render } from "@react-email/render";
 import { eq } from "drizzle-orm";
@@ -134,6 +134,7 @@ export const auth = betterAuth({
       },
     }),
     admin(),
+    ...(isGoogleConfigured() ? [oneTap()] : []),
     nextCookies(),
   ],
 });
