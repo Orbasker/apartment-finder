@@ -80,6 +80,7 @@
       "name": "@apartment-finder/shared",
       "version": "0.1.0",
       "dependencies": {
+        "@ai-sdk/gateway": "^1.0.0",
         "zod": "^3.23.8",
       },
       "devDependencies": {
