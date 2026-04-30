@@ -1,5 +1,5 @@
 {
-  "id": "cb6008e0-072a-456a-9030-2bd2a9e59f9a",
+  "id": "adb00fc2-529c-4ecf-b4be-22f240339645",
   "prevId": "154cbb67-c3ec-4a94-b173-f89f9657bbcf",
   "version": "7",
   "dialect": "postgresql",
@@ -334,12 +334,6 @@
           "primaryKey": true,
           "notNull": true
         },
-        "city_id": {
-          "name": "city_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "place_id": {
           "name": "place_id",
           "type": "text",
@@ -449,21 +443,6 @@
           "method": "btree",
           "with": {}
         },
-        "apartments_city_idx": {
-          "name": "apartments_city_idx",
-          "columns": [
-            {
-              "expression": "city_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "apartments_geo_idx": {
           "name": "apartments_geo_idx",
           "columns": [
@@ -486,21 +465,7 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "apartments_city_id_cities_id_fk": {
-          "name": "apartments_city_id_cities_id_fk",
-          "tableFrom": "apartments",
-          "tableTo": "cities",
-          "columnsFrom": [
-            "city_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -539,163 +504,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.cities": {
-      "name": "cities",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name_he": {
-          "name": "name_he",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name_en": {
-          "name": "name_en",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "place_id": {
-          "name": "place_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "center_lat": {
-          "name": "center_lat",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "center_lon": {
-          "name": "center_lon",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bbox_north": {
-          "name": "bbox_north",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bbox_east": {
-          "name": "bbox_east",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bbox_south": {
-          "name": "bbox_south",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bbox_west": {
-          "name": "bbox_west",
-          "type": "double precision",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "is_launch_ready": {
-          "name": "is_launch_ready",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "yad2_feed_url": {
-          "name": "yad2_feed_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "facebook_group_urls": {
-          "name": "facebook_group_urls",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::text[]"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "cities_slug_unique": {
-          "name": "cities_slug_unique",
-          "columns": [
-            {
-              "expression": "slug",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "cities_active_launch_ready_idx": {
-          "name": "cities_active_launch_ready_idx",
-          "columns": [
-            {
-              "expression": "is_active",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "is_launch_ready",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.collection_runs": {
       "name": "collection_runs",
       "schema": "",
@@ -718,12 +526,6 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
-        },
-        "city_id": {
-          "name": "city_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "status": {
           "name": "status",
@@ -829,44 +631,9 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "collection_runs_city_idx": {
-          "name": "collection_runs_city_idx",
-          "columns": [
-            {
-              "expression": "city_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "enqueued_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
-      "foreignKeys": {
-        "collection_runs_city_id_cities_id_fk": {
-          "name": "collection_runs_city_id_cities_id_fk",
-          "tableFrom": "collection_runs",
-          "tableTo": "cities",
-          "columnsFrom": [
-            "city_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1321,12 +1088,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "city_id": {
-          "name": "city_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "source_id": {
           "name": "source_id",
           "type": "text",
@@ -1463,21 +1224,7 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "listings_city_id_cities_id_fk": {
-          "name": "listings_city_id_cities_id_fk",
-          "tableFrom": "listings",
-          "tableTo": "cities",
-          "columnsFrom": [
-            "city_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1934,12 +1681,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "city_id": {
-          "name": "city_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "place_id": {
           "name": "place_id",
           "type": "text",
@@ -1948,12 +1689,6 @@
         },
         "name_he": {
           "name": "name_he",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name_en": {
-          "name": "name_en",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -1980,27 +1715,14 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "user_filter_cities_city_id_cities_id_fk": {
-          "name": "user_filter_cities_city_id_cities_id_fk",
-          "tableFrom": "user_filter_cities",
-          "tableTo": "cities",
-          "columnsFrom": [
-            "city_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "user_filter_cities_user_id_city_id_pk": {
-          "name": "user_filter_cities_user_id_city_id_pk",
+        "user_filter_cities_user_id_place_id_pk": {
+          "name": "user_filter_cities_user_id_place_id_pk",
           "columns": [
             "user_id",
-            "city_id"
+            "place_id"
           ]
         }
       },
@@ -2016,12 +1738,6 @@
         "user_id": {
           "name": "user_id",
           "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "city_id": {
-          "name": "city_id",
-          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -2107,11 +1823,11 @@
           "tableTo": "user_filter_cities",
           "columnsFrom": [
             "user_id",
-            "city_id"
+            "city_place_id"
           ],
           "columnsTo": [
             "user_id",
-            "city_id"
+            "place_id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
@@ -2262,6 +1978,24 @@
         "sqm_max": {
           "name": "sqm_max",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "center_lat": {
+          "name": "center_lat",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "center_lon": {
+          "name": "center_lon",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radius_km": {
+          "name": "radius_km",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
