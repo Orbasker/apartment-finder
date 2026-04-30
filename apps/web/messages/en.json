@@ -71,6 +71,14 @@
       "description": "If enabled: get alerts even when it's unclear if an apartment meets your requirements. If disabled: skip listings you're unsure about."
     }
   },
+  "FilterSettings": {
+    "unknownsTitle": "When info is missing",
+    "unknownsQuestion": "If a listing doesn't say whether it has, say, an elevator or parking that you marked as a must-have — what should we do?",
+    "unknownsNotifyLabel": "Send me the alert anyway — I'll decide for myself",
+    "unknownsNotifyHelp": "Recommended if you'd rather see more listings and filter manually. We'll mark which field we couldn't verify.",
+    "unknownsStrictLabel": "Skip it — only alert me when every must-have is confirmed",
+    "unknownsStrictHelp": "You'll get fewer alerts, but each one will definitely meet all your hard requirements."
+  },
   "Onboarding": {
     "unknownMustHaveQuestion": "When we can't tell whether a listing meets one of your must-haves, what would you prefer?",
     "notifyOnUnknown": "Notify me anyway — I'd rather see it and decide myself",

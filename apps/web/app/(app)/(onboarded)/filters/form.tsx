@@ -30,6 +30,7 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
     filters.attributes.map((a) => [a.key, a.requirement]),
   );
   const tCities = useTranslations("Cities");
+  const tUnknowns = useTranslations("FilterSettings");
 
   return (
     <form action={saveFiltersAction} className="space-y-4 pb-24 sm:space-y-6">
@@ -113,6 +114,16 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
           defaultValue={filters.dealbreakers.join("\n")}
           rows={4}
           placeholder="ליד תחנת רכבת רועשת&#10;קרוב לבר"
+        />
+      </Section>
+
+      <Section title={tUnknowns("unknownsTitle")} description={tUnknowns("unknownsQuestion")}>
+        <UnknownsChoice
+          defaultStrict={filters.strictUnknowns}
+          notifyLabel={tUnknowns("unknownsNotifyLabel")}
+          notifyHelp={tUnknowns("unknownsNotifyHelp")}
+          strictLabel={tUnknowns("unknownsStrictLabel")}
+          strictHelp={tUnknowns("unknownsStrictHelp")}
         />
       </Section>
 
@@ -226,6 +237,47 @@ function RequirementRadios({
             className="sr-only"
           />
           {REQUIREMENT_LABELS[opt]}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function UnknownsChoice({
+  defaultStrict,
+  notifyLabel,
+  notifyHelp,
+  strictLabel,
+  strictHelp,
+}: {
+  defaultStrict: boolean;
+  notifyLabel: string;
+  notifyHelp: string;
+  strictLabel: string;
+  strictHelp: string;
+}) {
+  const options = [
+    { value: "notify", label: notifyLabel, help: notifyHelp, checked: !defaultStrict },
+    { value: "strict", label: strictLabel, help: strictHelp, checked: defaultStrict },
+  ];
+  return (
+    <div className="grid gap-2">
+      {options.map((opt) => (
+        <label
+          key={opt.value}
+          className="flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+        >
+          <input
+            type="radio"
+            name="unknownsBehavior"
+            value={opt.value}
+            defaultChecked={opt.checked}
+            className="mt-1 h-4 w-4 cursor-pointer accent-primary"
+          />
+          <div className="flex-1 space-y-0.5">
+            <div className="text-sm font-medium">{opt.label}</div>
+            <p className="text-xs text-muted-foreground">{opt.help}</p>
+          </div>
         </label>
       ))}
     </div>

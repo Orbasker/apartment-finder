@@ -80,7 +80,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
       wishes: [],
       dealbreakers: [],
       attributes: [],
-      strictUnknowns: true,
+      strictUnknowns: false,
       notifyOnUnknownMustHave: true,
       dailyAlertCap: 20,
       maxAgeHours: 48,

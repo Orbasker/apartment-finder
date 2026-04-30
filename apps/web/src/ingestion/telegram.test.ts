@@ -11,6 +11,7 @@ const baseProps: TelegramAlertProps = {
   priceNis: 7500,
   sourceUrl: "https://example.com/x",
   matchedAttributes: [],
+  unverifiedAttributes: [],
   pricePerSqm: 125,
   arnonaNis: 350,
   vaadBayitNis: null,
@@ -83,5 +84,20 @@ describe("buildMessageHtml", () => {
   test("hides the matched-attributes section when none matched", () => {
     const html = buildMessageHtml({ ...baseProps, matchedAttributes: [] });
     expect(html).not.toContain("תואם לסינונים שלך:");
+  });
+
+  test("includes the unverified-must-haves section with Hebrew labels", () => {
+    const html = buildMessageHtml({
+      ...baseProps,
+      unverifiedAttributes: ["elevator", "parking"],
+    });
+    expect(html).toContain("לא הצלחנו לאמת מהמודעה");
+    expect(html).toContain("מעלית");
+    expect(html).toContain("חניה");
+  });
+
+  test("hides the unverified-must-haves section when empty", () => {
+    const html = buildMessageHtml({ ...baseProps, unverifiedAttributes: [] });
+    expect(html).not.toContain("לא הצלחנו לאמת מהמודעה");
   });
 });

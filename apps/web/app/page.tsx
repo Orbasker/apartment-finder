@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { GoogleOneTap } from "@/components/auth/google-one-tap";
+import { isGoogleConfigured } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/auth-server";
+import { env } from "@/lib/env";
 import { FlowDiagram } from "./_landing/flow-diagram";
 import { AiExtractor } from "./_landing/ai-extractor";
 import { ChatPreview } from "./_landing/chat-preview";
@@ -21,8 +24,12 @@ export default async function HomePage() {
   const primaryLabel = authed ? "לדירות" : "התחל בחינם";
   const secondaryChatHref = authed ? "/onboarding" : "/login";
 
+  const oneTapClientId = env().NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-12 pt-4 sm:px-6 sm:pt-6">
+      {!authed && isGoogleConfigured() && oneTapClientId && (
+        <GoogleOneTap clientId={oneTapClientId} redirectTo="/matches" />
+      )}
       <header className="mb-8 flex items-center justify-between sm:mb-12">
         <span className="text-base font-semibold tracking-tight sm:text-lg">Apartment Finder</span>
         <div className="flex items-center gap-2">
