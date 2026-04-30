@@ -60,10 +60,7 @@ export async function POST(req: Request): Promise<Response> {
     try {
       payload = JSON.parse(body);
     } catch {
-      return NextResponse.json(
-        { ok: false, error: "Invalid JSON payload" },
-        { status: 400 },
-      );
+      return NextResponse.json({ ok: false, error: "Invalid JSON payload" }, { status: 400 });
     }
     const parsed = WebhookBody.safeParse(payload);
     if (!parsed.success) {

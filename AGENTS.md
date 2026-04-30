@@ -137,7 +137,6 @@ apps/
         telegram-tokens.ts      mintLinkToken / consumeLinkToken (15-min TTL)
       jobs/cron.ts              runYad2PollJob() / runApifyPollJob()
       scrapers/yad2.ts          Yad2 fetch + normalize
-      integrations/apify.ts     Apify run + dataset fetch
       lib/
         auth.ts                 better-auth setup
         auth-server.ts          getCurrentUser, isAdmin
@@ -147,7 +146,6 @@ apps/
         log.ts                  createLogger, withApiLog
         schedule.ts             cron schedule helpers (Asia/Jerusalem)
         cronAuth.ts             verifyCronRequest
-        appOrigin.ts            resolveAppPublicOrigin
         utils.ts                cn() helper
         contentHash.ts          sha256 helper
         aiUsage.ts              recordAiUsage + cost estimate

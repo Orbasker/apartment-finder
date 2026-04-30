@@ -145,8 +145,7 @@ export async function runApifyPollJob(options: {
     status: 500,
     payload: {
       ok: false,
-      error:
-        "Apify legacy path removed; set USE_BULLMQ_COLLECTORS=true to use the async pipeline.",
+      error: "Apify legacy path removed; set USE_BULLMQ_COLLECTORS=true to use the async pipeline.",
     },
   };
 }

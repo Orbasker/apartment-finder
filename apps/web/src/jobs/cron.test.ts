@@ -2,13 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockState = vi.hoisted(() => ({
   useBullmqCollectors: "true",
-  apifyWebhookSecret: "test-secret",
 }));
 
 vi.mock("@/lib/env", () => ({
   env: vi.fn(() => ({
     USE_BULLMQ_COLLECTORS: mockState.useBullmqCollectors,
-    APIFY_WEBHOOK_SECRET: mockState.apifyWebhookSecret,
   })),
 }));
 
@@ -44,11 +42,6 @@ vi.mock("@/scrapers/yad2", () => ({
   Yad2UpstreamUnavailableError: class extends Error {},
 }));
 
-vi.mock("@/integrations/apify", () => ({
-  isApifyConfigured: vi.fn(() => false),
-  startFacebookGroupsRun: vi.fn(),
-}));
-
 vi.mock("@/ingestion/insert", () => ({
   bulkInsertListings: vi.fn(),
 }));
@@ -59,11 +52,6 @@ vi.mock("@/ingestion/pipeline", () => ({
 
 vi.mock("@/lib/contentHash", () => ({
   contentHash: vi.fn(),
-}));
-
-vi.mock("@/lib/appOrigin", () => ({
-  isLoopbackOrigin: vi.fn(() => false),
-  resolveAppPublicOrigin: vi.fn((origin: string) => origin),
 }));
 
 import { getDb } from "@/db";
@@ -80,7 +68,6 @@ function makeMockDb() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockState.useBullmqCollectors = "true";
-  mockState.apifyWebhookSecret = "test-secret";
 });
 
 describe("runYad2PollJob", () => {
