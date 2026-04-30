@@ -1,6 +1,6 @@
 {
-  "id": "3795447d-49d8-45b7-9507-5982dcc8483a",
-  "prevId": "5f86a03c-647d-4336-9a7c-7a2c84abcea4",
+  "id": "c42aa223-583b-4940-bf78-df950080224f",
+  "prevId": "3795447d-49d8-45b7-9507-5982dcc8483a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1864,7 +1864,7 @@
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": true
+          "default": false
         },
         "notify_on_unknown_must_have": {
           "name": "notify_on_unknown_must_have",

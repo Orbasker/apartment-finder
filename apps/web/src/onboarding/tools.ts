@@ -150,6 +150,18 @@ export function buildOnboardingTools(userId: string) {
       },
     }),
 
+    setNotifyOnUnknownMustHave: tool({
+      description:
+        "Set whether to notify the user when a listing's must-have criteria cannot be verified. true = send notification (user decides), false = skip listing.",
+      inputSchema: z.object({
+        notify: z.boolean().describe("true to notify when must-haves are unknown, false to skip"),
+      }),
+      execute: async ({ notify }) => {
+        await upsertFilters(userId, { notifyOnUnknownMustHave: notify });
+        return { ok: true, notifyOnUnknownMustHave: notify };
+      },
+    }),
+
     addWish: tool({
       description:
         "Add a free-text wish (advisory only, surfaced in alert emails). Hebrew preferred.",
