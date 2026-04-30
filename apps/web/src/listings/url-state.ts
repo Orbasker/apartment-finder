@@ -15,6 +15,9 @@ export type ListingsQuery = {
   neighborhood: string[];
   sort: ListingsSort;
   page: number;
+  lat: number | null;
+  lng: number | null;
+  zoom: number | null;
 };
 
 export const DEFAULT_QUERY: ListingsQuery = {
@@ -25,6 +28,9 @@ export const DEFAULT_QUERY: ListingsQuery = {
   neighborhood: [],
   sort: "newest",
   page: 1,
+  lat: null,
+  lng: null,
+  zoom: null,
 };
 
 export const PAGE_SIZE = 20;
@@ -66,6 +72,12 @@ function parsePositiveFloat(s: string | undefined): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function parseRangeFloat(s: string | undefined, min: number, max: number): number | null {
+  if (typeof s !== "string") return null;
+  const n = Number.parseFloat(s);
+  return Number.isFinite(n) && n >= min && n <= max ? n : null;
+}
+
 function parseEnum<T extends string>(s: string | undefined, allowed: readonly T[], fallback: T): T {
   return s !== undefined && (allowed as readonly string[]).includes(s) ? (s as T) : fallback;
 }
@@ -88,8 +100,11 @@ export function parseListingsQuery(input: ListingsQueryInput): ListingsQuery {
   const rooms = parsePositiveFloat(get("rooms"));
   const page = parsePositiveInt(get("page")) ?? DEFAULT_QUERY.page;
   const neighborhood = getAll("neighborhood").filter((s) => s.length > 0);
+  const lat = parseRangeFloat(get("lat"), -90, 90);
+  const lng = parseRangeFloat(get("lng"), -180, 180);
+  const zoom = parseRangeFloat(get("zoom"), 0, 22);
 
-  return { view, priceMin, priceMax, rooms, neighborhood, sort, page };
+  return { view, priceMin, priceMax, rooms, neighborhood, sort, page, lat, lng, zoom };
 }
 
 /** Default values are omitted so the canonical empty state is "". */
@@ -101,6 +116,9 @@ export function serializeListingsQuery(q: ListingsQuery): URLSearchParams {
   if (q.priceMax !== null) sp.set("priceMax", String(q.priceMax));
   if (q.rooms !== null) sp.set("rooms", String(q.rooms));
   if (q.page !== DEFAULT_QUERY.page) sp.set("page", String(q.page));
+  if (q.lat !== null) sp.set("lat", String(q.lat));
+  if (q.lng !== null) sp.set("lng", String(q.lng));
+  if (q.zoom !== null) sp.set("zoom", String(q.zoom));
   for (const id of q.neighborhood) sp.append("neighborhood", id);
   return sp;
 }

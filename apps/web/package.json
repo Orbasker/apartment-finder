@@ -36,6 +36,7 @@
     "drizzle-orm": "^0.36.4",
     "grammy": "^1.42.0",
     "lucide-react": "1.8.0",
+    "maplibre-gl": "^5.24.0",
     "next": "^15.5.0",
     "next-intl": "^4.11.0",
     "postgres": "^3.4.5",
