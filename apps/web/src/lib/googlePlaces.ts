@@ -21,6 +21,14 @@ export type NeighborhoodCandidate = {
   cityNameHe: string;
 };
 
+export type RadiusPointCandidate = {
+  placeId: string;
+  nameHe: string;
+  addressHe: string | null;
+  lat: number;
+  lon: number;
+};
+
 class PlacesError extends Error {
   constructor(
     message: string,
@@ -29,6 +37,42 @@ class PlacesError extends Error {
     super(message);
     this.name = "PlacesError";
   }
+}
+
+async function placeDetails(placeId: string): Promise<RadiusPointCandidate | null> {
+  const params = new URLSearchParams({ languageCode: "iw", regionCode: "IL" });
+  const res = await fetch(`${PLACES_BASE}/places/${encodeURIComponent(placeId)}?${params}`, {
+    method: "GET",
+    headers: {
+      "X-Goog-Api-Key": env().GOOGLE_GEOCODING_API_KEY ?? "",
+      "X-Goog-FieldMask": "id,displayName,formattedAddress,location",
+    },
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new PlacesError(`Places details ${res.status}: ${text.slice(0, 200)}`, res.status);
+  }
+  const data = JSON.parse(text) as {
+    id?: string;
+    displayName?: { text?: string };
+    formattedAddress?: string;
+    location?: { latitude?: number; longitude?: number };
+  };
+  if (
+    !data.id ||
+    !data.displayName?.text ||
+    typeof data.location?.latitude !== "number" ||
+    typeof data.location.longitude !== "number"
+  ) {
+    return null;
+  }
+  return {
+    placeId: data.id,
+    nameHe: data.displayName.text,
+    addressHe: data.formattedAddress ?? null,
+    lat: data.location.latitude,
+    lon: data.location.longitude,
+  };
 }
 
 async function placesFetch<T>(
@@ -50,6 +94,49 @@ async function placesFetch<T>(
     throw new PlacesError(`Places ${path} ${res.status}: ${text.slice(0, 200)}`, res.status);
   }
   return JSON.parse(text) as T;
+}
+
+/** Autocomplete addresses and landmarks in Israel for radius-center filters. */
+export async function searchRadiusPoints(query: string): Promise<RadiusPointCandidate[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  try {
+    const data = await placesFetch<{
+      suggestions?: Array<{
+        placePrediction?: {
+          placeId: string;
+          structuredFormat?: { mainText?: { text?: string } };
+          text?: { text?: string };
+        };
+      }>;
+    }>(
+      "/places:autocomplete",
+      {
+        input: trimmed,
+        languageCode: "iw",
+        regionCode: "IL",
+      },
+      "suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat",
+    );
+    const predictions = (data.suggestions ?? [])
+      .map((s) => s.placePrediction)
+      .filter((p): p is NonNullable<typeof p> => Boolean(p?.placeId))
+      .slice(0, 5);
+    const withLocations = await Promise.all(
+      predictions.map(async (p) => {
+        try {
+          return await placeDetails(p.placeId);
+        } catch (err) {
+          log.warn("placeDetails failed", { error: errorMessage(err) });
+          return null;
+        }
+      }),
+    );
+    return withLocations.filter((p): p is RadiusPointCandidate => p != null);
+  } catch (err) {
+    log.warn("searchRadiusPoints failed", { error: errorMessage(err) });
+    return [];
+  }
 }
 
 /** Autocomplete cities in Israel for typed input. Returns up to 5. */

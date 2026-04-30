@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { checkAttributeRequirements } from "./match";
+import { checkAttributeRequirements, isWithinRadiusKm } from "./match";
 import type { ApartmentAttributeKey } from "@apartment-finder/shared";
 
 const known = (entries: Array<[ApartmentAttributeKey, boolean]>) => new Map(entries);
@@ -224,5 +224,45 @@ describe("checkAttributeRequirements", () => {
     );
     expect(r.pass).toBe(false);
     expect(r.unverifiedAttributes).toEqual([]);
+  });
+});
+
+describe("isWithinRadiusKm", () => {
+  const center = {
+    centerLat: 32.0853,
+    centerLon: 34.7818,
+  };
+
+  test("passes when apartment is inside the configured radius", () => {
+    expect(
+      isWithinRadiusKm({
+        apartmentLat: 32.087,
+        apartmentLon: 34.789,
+        ...center,
+        radiusKm: 1,
+      }),
+    ).toBe(true);
+  });
+
+  test("fails when apartment is outside the configured radius", () => {
+    expect(
+      isWithinRadiusKm({
+        apartmentLat: 32.05,
+        apartmentLon: 34.75,
+        ...center,
+        radiusKm: 1,
+      }),
+    ).toBe(false);
+  });
+
+  test("fails gracefully when apartment coordinates are missing", () => {
+    expect(
+      isWithinRadiusKm({
+        apartmentLat: null,
+        apartmentLon: 34.789,
+        ...center,
+        radiusKm: 1,
+      }),
+    ).toBe(false);
   });
 });

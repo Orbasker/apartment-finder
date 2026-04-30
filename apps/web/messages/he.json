@@ -56,6 +56,19 @@
     "loading": "טוען…",
     "noResults": "לא נמצאה עיר"
   },
+  "RadiusSearch": {
+    "sectionTitle": "רדיוס מנקודה",
+    "sectionDescription": "אפשר לסנן דירות לפי מרחק מנקודת עניין, כמו עבודה, תחנה או בית ספר.",
+    "emptyState": "אין כרגע סינון לפי רדיוס.",
+    "searchButton": "בחירת נקודה",
+    "searchPlaceholder": "חפש/י כתובת או מקום",
+    "typeToSearch": "התחל/י להקליד כדי לחפש",
+    "loading": "טוען…",
+    "noResults": "לא נמצאו תוצאות",
+    "radiusLabel": "רדיוס בק״מ",
+    "savedPointLabel": "נקודה שנבחרה",
+    "clear": "הסרת רדיוס"
+  },
   "Email": {
     "SignInCode": {
       "subject": "קוד הכניסה שלך: {otp}",
