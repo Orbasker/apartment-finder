@@ -1,5 +1,9 @@
-CREATE TYPE "public"."collection_run_status" AS ENUM('queued', 'collecting', 'collected', 'ingesting', 'completed', 'failed');--> statement-breakpoint
-CREATE TABLE "collection_runs" (
+DO $$ BEGIN
+	CREATE TYPE "public"."collection_run_status" AS ENUM('queued', 'collecting', 'collected', 'ingesting', 'completed', 'failed');
+EXCEPTION
+	WHEN duplicate_object THEN null;
+END $$;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "collection_runs" (
 	"id" bigserial PRIMARY KEY NOT NULL,
 	"run_id" text NOT NULL,
 	"source" "listing_source" NOT NULL,
@@ -15,5 +19,5 @@ CREATE TABLE "collection_runs" (
 	"error" text
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX "collection_runs_run_id_unique" ON "collection_runs" USING btree ("run_id");--> statement-breakpoint
-CREATE INDEX "collection_runs_source_idx" ON "collection_runs" USING btree ("source","enqueued_at");
+CREATE UNIQUE INDEX IF NOT EXISTS "collection_runs_run_id_unique" ON "collection_runs" USING btree ("run_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "collection_runs_source_idx" ON "collection_runs" USING btree ("source","enqueued_at");
