@@ -76,6 +76,36 @@
   "Onboarding": {},
   "Listings": {
     "title": "Listings",
-    "subtitle": "All apartments that matched your filters."
+    "subtitle": "All apartments that matched your filters.",
+    "header": {
+      "view": {
+        "table": "Table",
+        "map": "Map"
+      },
+      "sort": {
+        "label": "Sort",
+        "newest": "Newest",
+        "priceAsc": "Price: low to high",
+        "priceDesc": "Price: high to low"
+      },
+      "chips": {
+        "label": "Active filters",
+        "priceMin": "Min price {value} ₪",
+        "priceMax": "Max price {value} ₪",
+        "rooms": "{value} rooms",
+        "removeAria": "Remove {label}"
+      },
+      "clearAll": "Clear all"
+    },
+    "empty": {
+      "title": "No listings yet",
+      "body": "When matching alerts arrive, they'll show up here.",
+      "filteredTitle": "No results match these filters",
+      "filteredBody": "Try removing some filters or clearing them all."
+    },
+    "error": {
+      "title": "Failed to load listings",
+      "body": "Something went wrong loading the list. Try refreshing the page."
+    }
   }
 }

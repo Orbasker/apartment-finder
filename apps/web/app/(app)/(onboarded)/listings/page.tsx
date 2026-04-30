@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth-server";
 import { getTranslations } from "next-intl/server";
+import { parseListingsQuery } from "@/listings/url-state";
+import { ListingsHeader } from "./_components/listings-header";
+import { ListingsSkeleton } from "./_components/listings-skeleton";
+import { ListingsResultSlot } from "./_components/listings-result-slot";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +20,9 @@ export default async function ListingsPage({
   searchParams: SearchParams;
 }) {
   // Auth + onboarding already enforced by (onboarded)/layout.tsx.
-  // Awaiting these here keeps the route dynamic and ready for Phase 2 wiring.
-  await getCurrentUser();
-  await searchParams;
+  const user = (await getCurrentUser())!;
+  const sp = await searchParams;
+  const query = parseListingsQuery(sp);
   const t = await getTranslations("Listings");
 
   return (
@@ -28,10 +33,14 @@ export default async function ListingsPage({
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("subtitle")}</p>
       </header>
-      <div className="text-sm text-muted-foreground">
-        {/* Phase 3 replaces this with the real header + view */}
-        טוען…
-      </div>
+
+      <ListingsHeader />
+
+      <Suspense fallback={<ListingsSkeleton />}>
+        {/* Awaited inside a child server component so the Suspense boundary
+            actually streams. */}
+        <ListingsResultSlot userId={user.id} query={query} />
+      </Suspense>
     </main>
   );
 }
