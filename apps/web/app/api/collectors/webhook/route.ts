@@ -14,6 +14,7 @@ export const maxDuration = 30;
 const WebhookBodyBase = z.object({
   runId: z.string().min(1),
   source: z.enum(["yad2", "facebook"]),
+  cityId: z.string().min(1).optional(),
 });
 
 const WebhookBody = z.discriminatedUnion("status", [
@@ -70,7 +71,12 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
     const data = parsed.data;
-    log.info("webhook received", { runId: data.runId, source: data.source, status: data.status });
+    log.info("webhook received", {
+      runId: data.runId,
+      source: data.source,
+      cityId: data.cityId,
+      status: data.status,
+    });
 
     const db = getDb();
 
@@ -107,7 +113,7 @@ export async function POST(req: Request): Promise<Response> {
     try {
       await ingestRawQueue.add(
         "ingest-raw",
-        { runId: data.runId, source: data.source, blobUrl: data.blobUrl },
+        { runId: data.runId, source: data.source, cityId: data.cityId, blobUrl: data.blobUrl },
         { attempts: 5, backoff: { type: "exponential", delay: 10_000 } },
       );
     } catch (err) {

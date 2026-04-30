@@ -39,6 +39,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
   const [apt] = await db
     .select({
       id: apartments.id,
+      cityId: apartments.cityId,
       neighborhood: apartments.neighborhood,
       city: apartments.city,
       lat: apartments.lat,
@@ -59,6 +60,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
   const rooms = apt.rooms;
   const sqm = apt.sqm;
   const neighborhood = apt.neighborhood;
+  const cityId = apt.cityId;
   const city = apt.city;
   const lat = apt.lat;
   const lon = apt.lon;
@@ -74,6 +76,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
     .where(
       and(
         eq(userFilters.isActive, true),
+        cityPredicate(cityId, city),
         price == null
           ? sql`true`
           : and(
@@ -92,7 +95,6 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
               or(isNull(userFilters.sqmMax), gte(userFilters.sqmMax, sqm)),
               or(isNull(userFilters.sqmMin), lte(userFilters.sqmMin, sqm)),
             ),
-        cityPredicate(city),
         locationPredicate(neighborhood, city, lat, lon),
       ),
     );
@@ -161,19 +163,28 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
  * Empty allowlist → pass everything. Non-empty → apartment.city must match
  * one of the user's selected city names (case/whitespace-normalized).
  */
-function cityPredicate(apartmentCity: string | null) {
+function cityPredicate(apartmentCityId: string | null, apartmentCity: string | null) {
   const noCitySelections = sql`NOT EXISTS (
     SELECT 1 FROM ${userFilterCities}
     WHERE ${userFilterCities.userId} = ${userFilters.userId}
   )`;
+  // Prefer the catalog id when the apartment has one. Fall back to Hebrew name
+  // match ONLY when no city_id is set; otherwise apartments.city drift could let
+  // a wrong-city listing satisfy the predicate.
   const cityMatches =
-    apartmentCity != null
+    apartmentCityId != null
       ? sql`EXISTS (
           SELECT 1 FROM ${userFilterCities}
           WHERE ${userFilterCities.userId} = ${userFilters.userId}
-            AND lower(trim(${userFilterCities.nameHe})) = lower(trim(${apartmentCity}))
+            AND ${userFilterCities.cityId} = ${apartmentCityId}
         )`
-      : sql`false`;
+      : apartmentCity != null
+        ? sql`EXISTS (
+            SELECT 1 FROM ${userFilterCities}
+            WHERE ${userFilterCities.userId} = ${userFilters.userId}
+              AND lower(trim(${userFilterCities.nameHe})) = lower(trim(${apartmentCity}))
+          )`
+        : sql`false`;
   return or(noCitySelections, cityMatches);
 }
 

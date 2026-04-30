@@ -3,6 +3,7 @@ import { listings } from "../db/schema.js";
 
 export type CollectedListing = {
   source: "yad2" | "facebook";
+  cityId?: string | null;
   sourceId: string;
   url: string;
   rawText: string | null;
@@ -28,6 +29,7 @@ export async function bulkInsertListings(input: CollectedListing[]): Promise<Ins
     .values(
       input.map((row) => ({
         source: row.source,
+        cityId: row.cityId ?? null,
         sourceId: row.sourceId,
         url: row.url,
         rawText: row.rawText,

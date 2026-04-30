@@ -32,6 +32,7 @@
   --color-brand-email: #0a66c2;
   --color-brand-whatsapp: #25d366;
   --color-brand-telegram: #229ed9;
+  --color-brand-telegram-foreground: oklch(0.99 0 0);
   --color-brand-google-blue: #4285f4;
   --color-brand-google-green: #34a853;
   --color-brand-google-yellow: #fbbc05;

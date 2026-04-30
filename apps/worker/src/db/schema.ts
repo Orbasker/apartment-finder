@@ -86,12 +86,43 @@ export const collectionRunStatusEnum = pgEnum("collection_run_status", [
   "failed",
 ]);
 
+export const cities = pgTable(
+  "cities",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    nameHe: text("name_he").notNull(),
+    nameEn: text("name_en").notNull(),
+    placeId: text("place_id").notNull(),
+    centerLat: doublePrecision("center_lat").notNull(),
+    centerLon: doublePrecision("center_lon").notNull(),
+    bboxNorth: doublePrecision("bbox_north").notNull(),
+    bboxEast: doublePrecision("bbox_east").notNull(),
+    bboxSouth: doublePrecision("bbox_south").notNull(),
+    bboxWest: doublePrecision("bbox_west").notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    isLaunchReady: boolean("is_launch_ready").default(false).notNull(),
+    yad2FeedUrl: text("yad2_feed_url"),
+    facebookGroupUrls: text("facebook_group_urls")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    slugUnique: uniqueIndex("cities_slug_unique").on(t.slug),
+    activeIdx: index("cities_active_launch_ready_idx").on(t.isActive, t.isLaunchReady),
+  }),
+);
+
 export const collectionRuns = pgTable(
   "collection_runs",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     runId: text("run_id").notNull(),
     source: listingSourceEnum("source").notNull(),
+    cityId: text("city_id").references(() => cities.id, { onDelete: "set null" }),
     status: collectionRunStatusEnum("status").notNull().default("queued"),
     enqueuedAt: timestamp("enqueued_at", { withTimezone: true }).notNull().defaultNow(),
     collectedAt: timestamp("collected_at", { withTimezone: true }),
@@ -106,6 +137,7 @@ export const collectionRuns = pgTable(
   (t) => ({
     runIdUnique: uniqueIndex("collection_runs_run_id_unique").on(t.runId),
     sourceIdx: index("collection_runs_source_idx").on(t.source, t.enqueuedAt),
+    cityIdx: index("collection_runs_city_idx").on(t.cityId, t.enqueuedAt),
   }),
 );
 // ---------------------------------------------------------------------------
@@ -117,6 +149,7 @@ export const listings = pgTable(
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     source: listingSourceEnum("source").notNull(),
+    cityId: text("city_id").references(() => cities.id, { onDelete: "set null" }),
     sourceId: text("source_id").notNull(),
     url: text("url").notNull(),
     rawText: text("raw_text"),
@@ -225,6 +258,7 @@ export const apartments = pgTable(
   "apartments",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
+    cityId: text("city_id").references(() => cities.id, { onDelete: "set null" }),
     placeId: text("place_id"),
     lat: doublePrecision("lat"),
     lon: doublePrecision("lon"),
@@ -243,6 +277,7 @@ export const apartments = pgTable(
   },
   (t) => ({
     placeIdIdx: index("apartments_place_id_idx").on(t.placeId),
+    cityIdx: index("apartments_city_idx").on(t.cityId),
     geoIdx: index("apartments_geo_idx").on(t.lat, t.lon),
   }),
 );
@@ -297,6 +332,7 @@ export const userFilters = pgTable("user_filters", {
   // When a must-have attribute is unknown on a listing, false = notify (default,
   // user would rather over-see than miss); true = drop until confirmed.
   strictUnknowns: boolean("strict_unknowns").default(false).notNull(),
+  notifyOnUnknownMustHave: boolean("notify_on_unknown_must_have").default(true).notNull(),
   dailyAlertCap: integer("daily_alert_cap").default(20).notNull(),
   maxAgeHours: integer("max_age_hours").default(48).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
@@ -331,12 +367,16 @@ export const userFilterCities = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    cityId: text("city_id")
+      .notNull()
+      .references(() => cities.id, { onDelete: "cascade" }),
     placeId: text("place_id").notNull(),
     nameHe: text("name_he").notNull(),
+    nameEn: text("name_en").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
-    pk: primaryKey({ columns: [t.userId, t.placeId] }),
+    pk: primaryKey({ columns: [t.userId, t.cityId] }),
   }),
 );
 
@@ -353,6 +393,7 @@ export const userFilterNeighborhoods = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    cityId: text("city_id").notNull(),
     cityPlaceId: text("city_place_id").notNull(),
     placeId: text("place_id").notNull(),
     nameHe: text("name_he").notNull(),
@@ -366,8 +407,8 @@ export const userFilterNeighborhoods = pgTable(
     pk: primaryKey({ columns: [t.userId, t.placeId, t.kind] }),
     userKindIdx: index("user_filter_neighborhoods_user_kind_idx").on(t.userId, t.kind),
     cityFk: foreignKey({
-      columns: [t.userId, t.cityPlaceId],
-      foreignColumns: [userFilterCities.userId, userFilterCities.placeId],
+      columns: [t.userId, t.cityId],
+      foreignColumns: [userFilterCities.userId, userFilterCities.cityId],
       name: "user_filter_neighborhoods_city_fk",
     }).onDelete("cascade"),
   }),
@@ -610,3 +651,5 @@ export type UserFilterNeighborhood = typeof userFilterNeighborhoods.$inferSelect
 export type NewUserFilterNeighborhood = typeof userFilterNeighborhoods.$inferInsert;
 export type AiUsageRow = typeof aiUsage.$inferSelect;
 export type NewAiUsageRow = typeof aiUsage.$inferInsert;
+export type City = typeof cities.$inferSelect;
+export type NewCity = typeof cities.$inferInsert;

@@ -49,12 +49,21 @@ function parseCitySelections(formData: FormData, name: string): CitySelection[] 
     try {
       const parsed = JSON.parse(raw) as Partial<CitySelection>;
       if (
+        typeof parsed.cityId === "string" &&
         typeof parsed.placeId === "string" &&
         typeof parsed.nameHe === "string" &&
+        typeof parsed.nameEn === "string" &&
+        parsed.cityId &&
         parsed.placeId &&
-        parsed.nameHe
+        parsed.nameHe &&
+        parsed.nameEn
       ) {
-        out.push({ placeId: parsed.placeId, nameHe: parsed.nameHe });
+        out.push({
+          cityId: parsed.cityId,
+          placeId: parsed.placeId,
+          nameHe: parsed.nameHe,
+          nameEn: parsed.nameEn,
+        });
       }
     } catch {
       // Skip malformed entries.
@@ -72,16 +81,19 @@ function parseNeighborhoodSelections(formData: FormData, name: string): Neighbor
       if (
         typeof parsed.placeId === "string" &&
         typeof parsed.nameHe === "string" &&
+        typeof parsed.cityId === "string" &&
         typeof parsed.cityPlaceId === "string" &&
         typeof parsed.cityNameHe === "string" &&
         parsed.placeId &&
         parsed.nameHe &&
+        parsed.cityId &&
         parsed.cityPlaceId &&
         parsed.cityNameHe
       ) {
         out.push({
           placeId: parsed.placeId,
           nameHe: parsed.nameHe,
+          cityId: parsed.cityId,
           cityPlaceId: parsed.cityPlaceId,
           cityNameHe: parsed.cityNameHe,
         });
@@ -131,18 +143,18 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
     maxAgeHours: parseOptionalInt(formData.get("maxAgeHours")) ?? 48,
   });
 
-  // Cities must land first so the FK on user_filter_neighborhoods.city_place_id
+  // Cities must land first so the FK on user_filter_neighborhoods.city_id
   // is satisfied. Drop neighborhoods whose city wasn't submitted (e.g. left
   // over after a city was removed in the UI but the form somehow still has
-  // them — shouldn't happen, but be defensive).
+  // them - shouldn't happen, but be defensive).
   const cities = parseCitySelections(formData, "cities");
   await replaceCities(user.id, cities);
-  const cityIds = new Set(cities.map((c) => c.placeId));
+  const cityIds = new Set(cities.map((c) => c.cityId));
   const allowed = parseNeighborhoodSelections(formData, "allowedNeighborhoods").filter((n) =>
-    cityIds.has(n.cityPlaceId),
+    cityIds.has(n.cityId),
   );
   const blocked = parseNeighborhoodSelections(formData, "blockedNeighborhoods").filter((n) =>
-    cityIds.has(n.cityPlaceId),
+    cityIds.has(n.cityId),
   );
   await replaceNeighborhoods(user.id, "allowed", allowed);
   await replaceNeighborhoods(user.id, "blocked", blocked);

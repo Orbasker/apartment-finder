@@ -62,7 +62,21 @@ function makeMockDb() {
   const mockInsert = {
     values: vi.fn().mockResolvedValue(undefined),
   };
-  return { insert: vi.fn().mockReturnValue(mockInsert) };
+  const mockSelect = {
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue([
+        {
+          id: "tel-aviv",
+          yad2FeedUrl: "https://example.com/yad2",
+          facebookGroupUrls: ["https://facebook.com/groups/tel-aviv-rentals"],
+        },
+      ]),
+    }),
+  };
+  return {
+    insert: vi.fn().mockReturnValue(mockInsert),
+    select: vi.fn().mockReturnValue(mockSelect),
+  };
 }
 
 beforeEach(() => {
@@ -80,14 +94,18 @@ describe("runYad2PollJob", () => {
     expect(result.status).toBe(200);
     expect(result.payload.ok).toBe(true);
     expect(result.payload.queued).toBe(true);
-    expect(result.payload.runId).toBe("test-run-id-123");
+    expect(result.payload.batchId).toBe("test-run-id-123");
     expect(mockDb.insert).toHaveBeenCalledTimes(1);
     expect(mockDb.insert().values).toHaveBeenCalledWith(
-      expect.objectContaining({ source: "yad2", status: "queued" }),
+      expect.objectContaining({ source: "yad2", cityId: "tel-aviv", status: "queued" }),
     );
     expect(collectQueue.add).toHaveBeenCalledWith(
       "collect",
-      expect.objectContaining({ source: "yad2", runId: "test-run-id-123" }),
+      expect.objectContaining({
+        source: "yad2",
+        cityId: "tel-aviv",
+        runId: "test-run-id-123-tel-aviv-yad2",
+      }),
       expect.any(Object),
     );
   });
@@ -108,11 +126,15 @@ describe("runApifyPollJob", () => {
     expect(result.payload.queued).toBe(true);
     expect(mockDb.insert).toHaveBeenCalledTimes(1);
     expect(mockDb.insert().values).toHaveBeenCalledWith(
-      expect.objectContaining({ source: "facebook", status: "queued" }),
+      expect.objectContaining({ source: "facebook", cityId: "tel-aviv", status: "queued" }),
     );
     expect(collectQueue.add).toHaveBeenCalledWith(
       "collect",
-      expect.objectContaining({ source: "facebook", runId: "test-run-id-123" }),
+      expect.objectContaining({
+        source: "facebook",
+        cityId: "tel-aviv",
+        runId: "test-run-id-123-tel-aviv-facebook",
+      }),
       expect.any(Object),
     );
   });

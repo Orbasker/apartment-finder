@@ -40,17 +40,17 @@ export function CityNeighborhoodsWizard({ defaultCities, defaultAllowed, default
   const [allowed, setAllowed] = useState<NeighborhoodSelection[]>(defaultAllowed);
   const [blocked, setBlocked] = useState<NeighborhoodSelection[]>(defaultBlocked);
 
-  const cityIds = useMemo(() => new Set(cities.map((c) => c.placeId)), [cities]);
+  const cityIds = useMemo(() => new Set(cities.map((c) => c.cityId)), [cities]);
 
   function addCity(c: CityCandidate) {
-    if (cityIds.has(c.placeId)) return;
+    if (cityIds.has(c.cityId)) return;
     setCities((prev) => [...prev, c]);
   }
 
-  function removeCity(placeId: string) {
-    setCities((prev) => prev.filter((c) => c.placeId !== placeId));
-    setAllowed((prev) => prev.filter((n) => n.cityPlaceId !== placeId));
-    setBlocked((prev) => prev.filter((n) => n.cityPlaceId !== placeId));
+  function removeCity(cityId: string) {
+    setCities((prev) => prev.filter((c) => c.cityId !== cityId));
+    setAllowed((prev) => prev.filter((n) => n.cityId !== cityId));
+    setBlocked((prev) => prev.filter((n) => n.cityId !== cityId));
   }
 
   function addNeighborhood(
@@ -61,6 +61,7 @@ export function CityNeighborhoodsWizard({ defaultCities, defaultAllowed, default
     const selection: NeighborhoodSelection = {
       placeId: candidate.placeId,
       nameHe: candidate.nameHe,
+      cityId: city.cityId,
       cityPlaceId: city.placeId,
       cityNameHe: city.nameHe,
     };
@@ -79,7 +80,7 @@ export function CityNeighborhoodsWizard({ defaultCities, defaultAllowed, default
     <div className="space-y-4">
       {/* Hidden inputs the action parses */}
       {cities.map((c) => (
-        <input key={`city-${c.placeId}`} type="hidden" name="cities" value={JSON.stringify(c)} />
+        <input key={`city-${c.cityId}`} type="hidden" name="cities" value={JSON.stringify(c)} />
       ))}
       {allowed.map((n) => (
         <input
@@ -103,12 +104,12 @@ export function CityNeighborhoodsWizard({ defaultCities, defaultAllowed, default
       ) : (
         <ul className="space-y-3">
           {cities.map((city) => (
-            <li key={city.placeId} className="rounded-lg border bg-background p-3 sm:p-4">
+            <li key={city.cityId} className="rounded-lg border bg-background p-3 sm:p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold">{city.nameHe}</span>
                 <button
                   type="button"
-                  onClick={() => removeCity(city.placeId)}
+                  onClick={() => removeCity(city.cityId)}
                   className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                   aria-label={tCity("removeCity")}
                 >
@@ -118,14 +119,14 @@ export function CityNeighborhoodsWizard({ defaultCities, defaultAllowed, default
               <NeighborhoodScopedPicker
                 kind="allowed"
                 city={city}
-                selections={allowed.filter((n) => n.cityPlaceId === city.placeId)}
+                selections={allowed.filter((n) => n.cityId === city.cityId)}
                 onAdd={(c) => addNeighborhood("allowed", city, c)}
                 onRemove={(id) => removeNeighborhood("allowed", id)}
               />
               <NeighborhoodScopedPicker
                 kind="blocked"
                 city={city}
-                selections={blocked.filter((n) => n.cityPlaceId === city.placeId)}
+                selections={blocked.filter((n) => n.cityId === city.cityId)}
                 onAdd={(c) => addNeighborhood("blocked", city, c)}
                 onRemove={(id) => removeNeighborhood("blocked", id)}
               />
@@ -199,22 +200,26 @@ function CityAddPopover({
             ) : (
               <CommandGroup>
                 {results.map((r) => {
-                  const already = existingIds.has(r.placeId);
+                  const already = existingIds.has(r.cityId);
+                  const disabled = already || !r.isLaunchReady;
                   return (
                     <CommandItem
                       key={r.placeId}
                       value={`${r.nameHe} ${r.placeId}`}
                       onSelect={() => {
-                        if (!already) {
+                        if (!disabled) {
                           onAdd(r);
                           setOpen(false);
                           setQuery("");
                           setResults([]);
                         }
                       }}
-                      disabled={already}
+                      disabled={disabled}
                     >
                       <span className="flex-1 font-medium">{r.nameHe}</span>
+                      {!r.isLaunchReady ? (
+                        <span className="text-xs text-muted-foreground">{t("comingSoon")}</span>
+                      ) : null}
                     </CommandItem>
                   );
                 })}

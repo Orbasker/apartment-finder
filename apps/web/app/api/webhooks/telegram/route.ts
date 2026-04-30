@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-// Minimal subset of the Telegram Update payload — we only react to text
+// Minimal subset of the Telegram Update payload - we only react to text
 // messages whose contents start with "/start". Everything else is ignored.
 const TelegramUpdate = z
   .object({
@@ -88,7 +88,7 @@ export async function POST(req: Request): Promise<Response> {
 
     // If a different user is already linked to this chat, clear them out first
     // so the unique index doesn't fire. This handles the rare "two accounts on
-    // one Telegram" case — last-write-wins.
+    // one Telegram" case - last-write-wins.
     await db
       .update(userNotificationDestinations)
       .set({ telegramChatId: null, telegramLinkedAt: null, telegramEnabled: false, updatedAt: now })

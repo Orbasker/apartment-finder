@@ -10,6 +10,7 @@ import {
 } from "@apartment-finder/shared";
 import { getDb } from "@/db";
 import {
+  cities,
   userFilterAttributes,
   userFilterCities,
   userFilterNeighborhoods,
@@ -39,6 +40,7 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     .select({
       placeId: userFilterNeighborhoods.placeId,
       nameHe: userFilterNeighborhoods.nameHe,
+      cityId: userFilterNeighborhoods.cityId,
       cityPlaceId: userFilterNeighborhoods.cityPlaceId,
       cityNameHe: userFilterNeighborhoods.cityNameHe,
       kind: userFilterNeighborhoods.kind,
@@ -47,25 +49,37 @@ export async function loadFilters(userId: string): Promise<StoredFilters> {
     .where(eq(userFilterNeighborhoods.userId, userId));
   const allowedNeighborhoods: NeighborhoodSelection[] = neighborhoodRows
     .filter((n) => n.kind === "allowed")
-    .map(({ placeId, nameHe, cityPlaceId, cityNameHe }) => ({
+    .map(({ placeId, nameHe, cityId, cityPlaceId, cityNameHe }) => ({
       placeId,
       nameHe,
+      cityId,
       cityPlaceId,
       cityNameHe,
     }));
   const blockedNeighborhoods: NeighborhoodSelection[] = neighborhoodRows
     .filter((n) => n.kind === "blocked")
-    .map(({ placeId, nameHe, cityPlaceId, cityNameHe }) => ({
+    .map(({ placeId, nameHe, cityId, cityPlaceId, cityNameHe }) => ({
       placeId,
       nameHe,
+      cityId,
       cityPlaceId,
       cityNameHe,
     }));
   const cityRows = await db
-    .select({ placeId: userFilterCities.placeId, nameHe: userFilterCities.nameHe })
+    .select({
+      cityId: userFilterCities.cityId,
+      placeId: userFilterCities.placeId,
+      nameHe: userFilterCities.nameHe,
+      nameEn: userFilterCities.nameEn,
+    })
     .from(userFilterCities)
     .where(eq(userFilterCities.userId, userId));
-  const cities: CitySelection[] = cityRows.map(({ placeId, nameHe }) => ({ placeId, nameHe }));
+  const cities: CitySelection[] = cityRows.map(({ cityId, placeId, nameHe, nameEn }) => ({
+    cityId,
+    placeId,
+    nameHe,
+    nameEn,
+  }));
   const radius: RadiusSelection | null =
     row?.centerLat != null && row.centerLon != null && row.radiusKm != null
       ? {
@@ -288,7 +302,9 @@ export async function replaceCities(userId: string, selections: CitySelection[])
   const db = getDb();
   const seen = new Map<string, CitySelection>();
   for (const s of selections) {
-    if (s.placeId.trim() && s.nameHe.trim()) seen.set(s.placeId, s);
+    if (s.cityId.trim() && s.placeId.trim() && s.nameHe.trim() && s.nameEn.trim()) {
+      seen.set(s.cityId, s);
+    }
   }
   await db.delete(userFilterCities).where(eq(userFilterCities.userId, userId));
   if (seen.size === 0) return;
@@ -297,8 +313,10 @@ export async function replaceCities(userId: string, selections: CitySelection[])
     .values(
       Array.from(seen.values()).map((s) => ({
         userId,
+        cityId: s.cityId,
         placeId: s.placeId,
         nameHe: s.nameHe,
+        nameEn: s.nameEn,
       })),
     )
     .onConflictDoNothing();
@@ -309,20 +327,26 @@ export async function addCity(userId: string, city: CitySelection): Promise<void
   const db = getDb();
   await db
     .insert(userFilterCities)
-    .values({ userId, placeId: city.placeId, nameHe: city.nameHe })
+    .values({
+      userId,
+      cityId: city.cityId,
+      placeId: city.placeId,
+      nameHe: city.nameHe,
+      nameEn: city.nameEn,
+    })
     .onConflictDoNothing();
 }
 
 /** Remove a single city from the user's allowlist. */
-export async function removeCity(userId: string, placeId: string): Promise<void> {
+export async function removeCity(userId: string, cityId: string): Promise<void> {
   const db = getDb();
   await db
     .delete(userFilterCities)
-    .where(and(eq(userFilterCities.userId, userId), eq(userFilterCities.placeId, placeId)));
+    .where(and(eq(userFilterCities.userId, userId), eq(userFilterCities.cityId, cityId)));
 }
 
 /** Replace the user's neighborhood selections of a given kind. The caller is
- *  responsible for ensuring each selection's cityPlaceId already exists in
+ *  responsible for ensuring each selection's cityId already exists in
  *  user_filter_cities (the FK will reject otherwise). */
 export async function replaceNeighborhoods(
   userId: string,
@@ -332,7 +356,13 @@ export async function replaceNeighborhoods(
   const db = getDb();
   const seen = new Map<string, NeighborhoodSelection>();
   for (const s of selections) {
-    if (s.placeId.trim() && s.nameHe.trim() && s.cityPlaceId.trim() && s.cityNameHe.trim()) {
+    if (
+      s.placeId.trim() &&
+      s.nameHe.trim() &&
+      s.cityId.trim() &&
+      s.cityPlaceId.trim() &&
+      s.cityNameHe.trim()
+    ) {
       seen.set(s.placeId, s);
     }
   }
@@ -347,6 +377,7 @@ export async function replaceNeighborhoods(
         userId,
         placeId: s.placeId,
         nameHe: s.nameHe,
+        cityId: s.cityId,
         cityPlaceId: s.cityPlaceId,
         cityNameHe: s.cityNameHe,
         kind,
@@ -363,11 +394,29 @@ export async function addNeighborhoodFilter(
   selection: NeighborhoodSelection,
 ): Promise<void> {
   const db = getDb();
-  // Insert the parent city first (no-op if already present) so the composite
-  // FK on (user_id, city_place_id) is satisfied.
+  // Resolve the parent city from the catalog so we can never persist
+  // mismatched name_en (previously copied cityNameHe — Hebrew into the
+  // English column) when this code path inserts the parent row itself.
+  const [parentCity] = await db
+    .select({
+      id: cities.id,
+      placeId: cities.placeId,
+      nameHe: cities.nameHe,
+      nameEn: cities.nameEn,
+    })
+    .from(cities)
+    .where(eq(cities.id, selection.cityId))
+    .limit(1);
+  if (!parentCity) return;
   await db
     .insert(userFilterCities)
-    .values({ userId, placeId: selection.cityPlaceId, nameHe: selection.cityNameHe })
+    .values({
+      userId,
+      cityId: parentCity.id,
+      placeId: parentCity.placeId,
+      nameHe: parentCity.nameHe,
+      nameEn: parentCity.nameEn,
+    })
     .onConflictDoNothing();
   await db
     .insert(userFilterNeighborhoods)
@@ -375,8 +424,9 @@ export async function addNeighborhoodFilter(
       userId,
       placeId: selection.placeId,
       nameHe: selection.nameHe,
-      cityPlaceId: selection.cityPlaceId,
-      cityNameHe: selection.cityNameHe,
+      cityId: parentCity.id,
+      cityPlaceId: parentCity.placeId,
+      cityNameHe: parentCity.nameHe,
       kind,
     })
     .onConflictDoNothing();

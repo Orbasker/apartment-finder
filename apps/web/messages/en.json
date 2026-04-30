@@ -1,16 +1,16 @@
 {
   "Layout": {
     "metadata": {
-      "description": "Find an apartment in Tel Aviv — instant alerts based on your filters."
+      "description": "Find an apartment in Israel - instant alerts based on your filters."
     },
     "skipToContent": "Skip to content"
   },
   "Login": {
     "metadata": {
-      "title": "Sign in — Apartment Finder",
+      "title": "Sign in - Apartment Finder",
       "description": "Sign in to Apartment Finder."
     },
-    "subtitle": "Instant alerts about new apartments in Tel Aviv, based on your filters.",
+    "subtitle": "Instant alerts about new apartments in Israel, based on your filters.",
     "cardTitle": "Sign in",
     "google": {
       "continueWith": "Continue with Google",
@@ -54,7 +54,8 @@
     "searchPlaceholder": "Search city",
     "typeToSearch": "Start typing to search",
     "loading": "Loading…",
-    "noResults": "No city found"
+    "noResults": "No city found",
+    "comingSoon": "Coming soon"
   },
   "RadiusSearch": {
     "sectionTitle": "Radius from point",
@@ -80,13 +81,47 @@
   },
   "FilterSettings": {
     "unknownsTitle": "When info is missing",
-    "unknownsQuestion": "If a listing doesn't say whether it has, say, an elevator or parking that you marked as a must-have — what should we do?",
-    "unknownsNotifyLabel": "Send me the alert anyway — I'll decide for myself",
+    "unknownsQuestion": "If a listing doesn't say whether it has, say, an elevator or parking that you marked as a must-have - what should we do?",
+    "unknownsNotifyLabel": "Send me the alert anyway - I'll decide for myself",
     "unknownsNotifyHelp": "Recommended if you'd rather see more listings and filter manually. We'll mark which field we couldn't verify.",
-    "unknownsStrictLabel": "Skip it — only alert me when every must-have is confirmed",
+    "unknownsStrictLabel": "Skip it - only alert me when every must-have is confirmed",
     "unknownsStrictHelp": "You'll get fewer alerts, but each one will definitely meet all your hard requirements."
   },
-  "Onboarding": {},
+  "Matches": {
+    "title": "Apartments",
+    "description": "The apartments we find for you will appear here, based on your filters.",
+    "searchTitle": "Your search",
+    "citiesLabel": "Cities",
+    "anyCity": "Any city",
+    "editCity": "Edit city and neighborhoods",
+    "comingSoonTitle": "Coming soon",
+    "comingSoonBody": "Matching apartments will appear here in an organized inbox. For now, alerts are sent to the destinations you configured."
+  },
+  "Onboarding": {
+    "firstPrompt": "Hi. In a few questions we will set up accurate apartment alerts. You can add several cities, each with its own neighborhoods. First, which city should we start with?",
+    "chatLogLabel": "Onboarding chat",
+    "alreadyOnboardedPrefix": "You already completed onboarding. You can continue here and update your preferences, or edit them directly in",
+    "filtersLink": "the filters page",
+    "alreadyOnboardedSuffix": ".",
+    "cityChoicesLabel": "Choose a city",
+    "cityChoicesAria": "City choices",
+    "comingSoon": "Coming soon",
+    "citySelectedMessage": "I chose {city}. You can show neighborhoods in this city.",
+    "neighborhoodChoicesAria": "Neighborhood choices",
+    "neighborhoodSelectedVerb": "I chose",
+    "neighborhoodBlockedVerb": "Block",
+    "confirmNeighborhoods": "Confirm neighborhoods",
+    "confirmBlockedNeighborhoods": "Confirm blocked areas",
+    "sending": "Sending…",
+    "savedStep": "Saved",
+    "savedStepAria": "Step saved",
+    "errorFallback": "Something went wrong. Try again in a moment.",
+    "completed": "Done. Alerts are active.",
+    "continueToDashboard": "Continue to dashboard",
+    "inputPlaceholder": "Write an answer…",
+    "send": "Send",
+    "connectTelegram": "Connect Telegram"
+  },
   "Listings": {
     "title": "Listings",
     "subtitle": "All apartments that matched your filters.",
