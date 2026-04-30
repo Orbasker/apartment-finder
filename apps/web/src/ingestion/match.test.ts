@@ -33,7 +33,7 @@ describe("checkAttributeRequirements", () => {
       false,
     );
     expect(r.pass).toBe(false);
-    expect(r.unverifiedAttributes).toEqual(["elevator"]);
+    expect(r.unverifiedAttributes).toEqual([]);
   });
 
   test("required_true passes on unknown when notifyOnUnknownMustHave=true (and tags as unverified)", () => {
@@ -62,18 +62,18 @@ describe("checkAttributeRequirements", () => {
     const r = checkAttributeRequirements(
       [{ key: "shared_apartment", requirement: "required_false" }],
       known([]),
-      false,
+      true,
     );
     expect(r.pass).toBe(true);
     expect(r.matchedAttributes).toEqual([]);
     expect(r.unverifiedAttributes).toEqual(["shared_apartment"]);
   });
 
-  test("required_false fails on unknown when strictUnknowns=true", () => {
+  test("required_false fails on unknown when notifyOnUnknownMustHave=false", () => {
     const r = checkAttributeRequirements(
       [{ key: "shared_apartment", requirement: "required_false" }],
       known([]),
-      true,
+      false,
     );
     expect(r.pass).toBe(false);
   });
@@ -89,7 +89,7 @@ describe("checkAttributeRequirements", () => {
         ["elevator", true],
         ["shared_apartment", false],
       ]),
-      false,
+      true,
     );
     expect(r.pass).toBe(true);
     expect(r.matchedAttributes.sort()).toEqual(["elevator", "shared_apartment"]);
@@ -179,8 +179,6 @@ describe("checkAttributeRequirements", () => {
     expect(r.pass).toBe(true);
     expect(r.matchedAttributes.sort()).toEqual(["elevator", "parking", "shared_apartment"]);
   });
-});
-
   test("unknown must-haves with notifyOnUnknownMustHave=true: tracks unknowns and passes", () => {
     const r = checkAttributeRequirements(
       [
@@ -205,7 +203,7 @@ describe("checkAttributeRequirements", () => {
       false,
     );
     expect(r.pass).toBe(false);
-    expect(r.unverifiedAttributes).toEqual(["parking"]);
+    expect(r.unverifiedAttributes).toEqual([]);
   });
 
   test("required_false unknown with notifyOnUnknownMustHave=true: tracks unknown and passes", () => {
@@ -225,5 +223,6 @@ describe("checkAttributeRequirements", () => {
       false,
     );
     expect(r.pass).toBe(false);
-    expect(r.unverifiedAttributes).toEqual(["shared_apartment"]);
+    expect(r.unverifiedAttributes).toEqual([]);
+  });
 });

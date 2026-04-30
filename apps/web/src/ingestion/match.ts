@@ -127,11 +127,7 @@ export async function findMatchingUsers(apartmentId: number): Promise<MatchedUse
       .from(userFilterAttributes)
       .where(eq(userFilterAttributes.userId, c.userId));
 
-    const attrPass = checkAttributeRequirements(
-      userAttrs,
-      knownAttrs,
-      c.notifyOnUnknownMustHave,
-    );
+    const attrPass = checkAttributeRequirements(userAttrs, knownAttrs, c.notifyOnUnknownMustHave);
     if (!attrPass.pass) continue;
 
     if (apartmentEmbedding) {
