@@ -1,12 +1,12 @@
 ---
 name: debug
-description: Debug runtime issues in the apartment-finder app by correlating Vercel logs, .env credentials, and live database records. Use when the user asks "why is X broken", "why didn't Y happen", "investigate this bug", "debug this in prod/staging", or describes unexpected behavior in a deployed environment that the source code alone can't explain.
+description: Debug runtime issues in the apartment-finder app by correlating Vercel logs, Cloud Run logs (worker pool + Yad2 proxy), .env credentials, and live database records. Use when the user asks "why is X broken", "why didn't Y happen", "investigate this bug", "debug this in prod/staging", or describes unexpected behavior in a deployed environment that the source code alone can't explain.
 allowed-tools: Read, Bash, Grep, Glob
 ---
 
 # Debug — apartment-finder
 
-The user has asked a question about live behavior. The source code may not be enough — you need **evidence** from Vercel logs and the production database. Follow this flow.
+The user has asked a question about live behavior. The source code may not be enough — you need **evidence** from Vercel logs, Cloud Run logs (worker pool / Yad2 proxy), and the production database. Follow this flow.
 
 ## 0. Restate and form a hypothesis
 
@@ -21,12 +21,13 @@ If the symptom is vague ("it's broken"), ask one clarifying question first — e
 
 For each hypothesis, pick the minimal evidence that proves or disproves it.
 
-| Source          | When to use                                                                                                        |
-| --------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Vercel logs** | Runtime errors, 4xx/5xx, cron job output, webhook handlers, function timeouts.                                     |
-| **.env**        | You need a credential to query a managed service (DB, Resend, Apify). Never use it to "test" — just to read state. |
-| **Database**    | Verify a row exists / has expected state, check timestamps, joins, FKs, embeddings.                                |
-| **Source code** | Always read the handler before blaming infra — bug is usually in code, not platform.                               |
+| Source             | When to use                                                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vercel logs**    | Runtime errors, 4xx/5xx, cron job output (the _enqueue_ side), webhook handlers, function timeouts. Anything that runs in `apps/web`.           |
+| **Cloud Run logs** | The BullMQ worker (`apartment-finder-worker` worker pool, `europe-west1`) and the Yad2 proxy (`me-west1`). Anything past the `collect` enqueue. |
+| **.env**           | You need a credential to query a managed service (DB, Resend, Apify). Never use it to "test" — just to read state.                              |
+| **Database**       | Verify a row exists / has expected state, check timestamps, joins, FKs, embeddings.                                                             |
+| **Source code**    | Always read the handler before blaming infra — bug is usually in code, not platform.                                                            |
 
 Read code **first** for the suspect path, then confirm with logs/DB.
 
@@ -68,8 +69,84 @@ Notes:
 
 - `vercel logs` only retains the last ~hour of runtime logs by default. If the symptom is older, ask the user for a deployment URL near the incident time.
 - Cron logs appear under the cron path (e.g. `/api/cron/scrape`). Always check `CRON_SECRET` 401s if a cron is "silently not running".
+- Vercel only sees the cron _enqueue_ (`collectQueue.add(...)`) and the completion webhook (`/api/collectors/webhook`). The actual collect → ingest pipeline runs in Cloud Run (next section).
 
-## 3. Reading .env safely
+## 3. Cloud Run logs
+
+The BullMQ worker (`apps/worker`) runs as a **Cloud Run Worker Pool** named `apartment-finder-worker` in `europe-west1`. It drains 6 queues: `collect → ingest-raw → ingest-normalized → ingest-enrich → ingest-persist → ingest-notify`. There is also a separate **Cloud Run service** for the Yad2 egress proxy in `me-west1`.
+
+Use these logs whenever the symptom is "cron fired but nothing happened", "listing didn't get ingested / normalized / enriched / notified", or "collect run is stuck mid-pipeline".
+
+### 3a. Confirm gcloud is set up
+
+```bash
+gcloud auth list                       # at least one ACTIVE account
+gcloud config get-value project        # confirm the right GCP project
+```
+
+If `gcloud` is missing or unauthenticated, **stop and ask the user** — don't run `gcloud auth login` from the agent (it needs a browser).
+
+### 3b. Worker pool — pipeline logs
+
+```bash
+# Tail live (Ctrl-C to stop):
+gcloud beta run worker-pools logs tail apartment-finder-worker \
+  --region=europe-west1
+
+# Recent logs without following:
+gcloud beta run worker-pools logs read apartment-finder-worker \
+  --region=europe-west1 --limit=200
+```
+
+For time-bounded or severity-filtered queries, go through Cloud Logging directly:
+
+```bash
+# Errors in the last hour:
+gcloud logging read \
+  'resource.type="cloud_run_worker_pool"
+   AND resource.labels.service_name="apartment-finder-worker"
+   AND severity>=ERROR
+   AND timestamp>="'"$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)"'"' \
+  --limit=100 \
+  --format='value(timestamp,severity,textPayload)'
+
+# All logs for a specific runId (correlate with collection_runs.id):
+gcloud logging read \
+  'resource.type="cloud_run_worker_pool"
+   AND resource.labels.service_name="apartment-finder-worker"
+   AND textPayload:"runId=<UUID>"' \
+  --limit=200 --format='value(timestamp,textPayload)'
+```
+
+Patterns to scan for:
+
+- `[af:worker:main] [ready] queues=collect,ingest-raw,...` — worker booted cleanly.
+- `[af:worker:collect] collect started runId=… source=yad2 cityId=…` / `collect completed runId=… receivedCount=…` — end-to-end collect run. The `runId` matches `collection_runs.id`.
+- `[af:worker:ingest-*]` — pipeline stage. If a run is stuck, find the last stage that logged for its `runId`.
+- `BLPOP` errors / `ECONNRESET` against Upstash → Redis connectivity (check `REDIS_URL` secret in Secret Manager — same paste-bug as Vercel: literal `"` quotes break it).
+- `PERMISSION_DENIED accessing secret` → runtime SA lost `roles/secretmanager.secretAccessor` (see `apps/worker/DEPLOY.md` step 5).
+- Env validation failures on boot → check `apps/worker/src/env.ts` against the 10 secrets in Secret Manager.
+
+### 3c. Yad2 proxy service
+
+```bash
+# Find the service name (it's a regular Cloud Run service, not a worker pool):
+gcloud run services list --region=me-west1
+
+# Read recent logs:
+gcloud run services logs read <yad2-proxy-service> \
+  --region=me-west1 --limit=200
+```
+
+Use this when Yad2 collect runs fail with proxy/network errors, or `YAD2_PROXY_URL` requests time out from Vercel/the worker.
+
+### 3d. Hard rules for Cloud Run
+
+- **Read-only.** Never run `gcloud run … deploy`, `gcloud beta run worker-pools update`, `gcloud secrets versions add`, or any IAM mutation from this skill. Diagnosis only.
+- Don't tail logs in the background and forget about them — `logs tail` runs forever. Bound it with a time filter or Ctrl-C.
+- Logs may contain raw scraped HTML / listing payloads — treat them as PII when quoting back to the user (mask phone numbers, addresses, emails).
+
+## 4. Reading .env safely
 
 ```bash
 # Never cat the whole file to chat. Read only the keys you need:
@@ -84,7 +161,7 @@ Rules:
 
 If `.env` is missing, ask the user — they may have it in 1Password or a different workspace.
 
-## 4. Database queries
+## 5. Database queries
 
 Use Drizzle as the source of truth for schema. Inspect first:
 
@@ -115,7 +192,7 @@ If the schema file references a table you can't find, run:
 psql "$DATABASE_URL" -c "\dt"
 ```
 
-## 5. Correlate
+## 6. Correlate
 
 Lay the evidence side by side:
 
@@ -125,7 +202,7 @@ Lay the evidence side by side:
 
 The bug lives at the first divergence. State the root cause as one sentence, citing the specific evidence (`apps/web/.../alerts.ts:142` + log line + DB row).
 
-## 6. Report
+## 7. Report
 
 Reply to the user with:
 

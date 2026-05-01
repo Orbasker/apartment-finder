@@ -49,6 +49,7 @@ const EnvSchema = z.object({
   COLLECTOR_WEBHOOK_SECRET: z.string().min(32).optional(),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
   USE_BULLMQ_COLLECTORS: z.string().optional(), // "true" to enable
+  CRON_SCHEDULE_BYPASS: z.string().optional(), // "true" to ignore the local-time schedule gate (admin/manual triggers)
 });
 
 export type Env = z.infer<typeof EnvSchema>;

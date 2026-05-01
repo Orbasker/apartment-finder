@@ -1,5 +1,6 @@
 import { verifyCronRequest } from "@/lib/cronAuth";
 import { runYad2PollJob } from "@/jobs/cron";
+import { env } from "@/lib/env";
 import { withApiLog } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -13,7 +14,8 @@ export async function GET(req: Request): Promise<Response> {
       log.warn("cron auth failed", { status: authFail.status });
       return authFail;
     }
-    const result = await runYad2PollJob({ enforceSchedule: true });
+    const enforceSchedule = env().CRON_SCHEDULE_BYPASS !== "true";
+    const result = await runYad2PollJob({ enforceSchedule });
     return Response.json(result.payload, { status: result.status });
   });
 }

@@ -1,0 +1,73 @@
+name: Deploy worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/worker/**"
+      - "packages/queue/**"
+      - "packages/shared/**"
+      - "package.json"
+      - "bun.lock"
+      - "tsconfig.base.json"
+      - "turbo.json"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy to Cloud Run Worker Pool
+    runs-on: ubuntu-latest
+    env:
+      GCP_REGION: europe-west1
+      AR_REPO: apartment-finder
+      WORKER_POOL: apartment-finder-worker
+      # Tier-1 region. Worker Pool floor is 1 vCPU + 512 MiB (always-allocated
+      # CPU); below that, Cloud Run rejects with "not supported with gen2
+      # execution environment with cpu always allocated". Cost ~$18/mo.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: beta
+
+      - name: Resolve image URI
+        run: |
+          BASE="$GCP_REGION-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$AR_REPO/$WORKER_POOL"
+          echo "IMAGE=$BASE:$GITHUB_SHA"   >> "$GITHUB_ENV"
+          echo "IMAGE_LATEST=$BASE:latest" >> "$GITHUB_ENV"
+
+      - name: Build & push image (Cloud Build)
+        run: |
+          gcloud builds submit \
+            --config=apps/worker/cloudbuild.yaml \
+            --substitutions=_IMAGE=$IMAGE,_IMAGE_LATEST=$IMAGE_LATEST \
+            .
+
+      - name: Deploy worker pool
+        env:
+          RESEND_FROM_EMAIL: ${{ vars.RESEND_FROM_EMAIL }}
+          APP_PUBLIC_ORIGIN: ${{ vars.APP_PUBLIC_ORIGIN }}
+          YAD2_PROXY_URL: ${{ vars.YAD2_PROXY_URL }}
+        run: |
+          SECRETS="REDIS_URL=REDIS_URL:latest,DATABASE_URL=DATABASE_URL:latest,AI_GATEWAY_API_KEY=AI_GATEWAY_API_KEY:latest,GOOGLE_GEOCODING_API_KEY=GOOGLE_GEOCODING_API_KEY:latest,RESEND_API_KEY=RESEND_API_KEY:latest,COLLECTOR_WEBHOOK_SECRET=COLLECTOR_WEBHOOK_SECRET:latest,BLOB_READ_WRITE_TOKEN=BLOB_READ_WRITE_TOKEN:latest,APIFY_TOKEN=APIFY_TOKEN:latest,YAD2_PROXY_SECRET=YAD2_PROXY_SECRET:latest,TELEGRAM_BOT_TOKEN=TELEGRAM_BOT_TOKEN:latest"
+          ENV_VARS="RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL},APP_PUBLIC_ORIGIN=${APP_PUBLIC_ORIGIN},YAD2_PROXY_URL=${YAD2_PROXY_URL},NODE_ENV=production"
+          gcloud beta run worker-pools deploy "$WORKER_POOL" \
+            --image="$IMAGE" \
+            --region="$GCP_REGION" \
+            --instances=1 \
+            --cpu=1 \
+            --memory=512Mi \
+            --quiet \
+            --update-secrets="$SECRETS" \
+            --set-env-vars="$ENV_VARS"

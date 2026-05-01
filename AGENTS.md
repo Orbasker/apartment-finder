@@ -321,7 +321,7 @@ All planned MVP PRs (#56 demolition → #62 schema → #63 ingestion → #64 onb
 ### Architecture
 
 - Vercel crons enqueue a `collect` job via `collectQueue.add()` (gated by `USE_BULLMQ_COLLECTORS=true`).
-- `apps/worker` (VPS, Docker Compose) drains 6 BullMQ queues: `collect -> ingest-raw -> ingest-normalized -> ingest-enrich -> ingest-persist -> ingest-notify`.
+- `apps/worker` runs as a **Cloud Run Worker Pool** (`europe-west1`, 1 vCPU + 512 MiB, instances=1, ~$18/mo — Worker Pool floor; Cloud Run rejects smaller). Drains 6 BullMQ queues: `collect -> ingest-raw -> ingest-normalized -> ingest-enrich -> ingest-persist -> ingest-notify`.
 - The collect worker archives raw payload to Vercel Blob, then POSTs a signed completion to `/api/collectors/webhook`.
 - The webhook verifies HMAC-SHA256 (5-min replay window), idempotently records `collection_runs.webhookReceivedAt`, and enqueues `ingest-raw`.
 
@@ -332,10 +332,11 @@ All planned MVP PRs (#56 demolition → #62 schema → #63 ingestion → #64 onb
 
 ### Worker Deployment
 
-1. Set all env vars in `apps/worker/.env` on the VPS (see `apps/worker/.env.example`).
-2. `docker compose -f apps/worker/docker-compose.yml up -d` from the repo root.
-3. Monitor: `curl http://vps-host:8080/health` - should return `{ ok: true, uptime, queues: {...} }`.
-4. **IMPORTANT**: Single-process worker only (1 replica). Running >= 2 replicas would double-deliver jobs without an external lock. HA tracked as future work.
+Production: Cloud Run Worker Pool, auto-deployed via `.github/workflows/deploy-worker.yml` on push to `main` (paths: `apps/worker/**`, `packages/queue/**`, `packages/shared/**`). One-time setup steps live in `apps/worker/DEPLOY.md` (Artifact Registry repo, 10 secrets in Secret Manager, IAM bindings).
+
+Local dev: `docker compose -f apps/worker/docker-compose.yml up -d` or `cd apps/worker && bun run start`.
+
+**IMPORTANT**: Single-process worker only (`min=max=1`). Running ≥ 2 replicas double-delivers jobs without an external lock; HA tracked as future work. The `--no-cpu-throttling` Worker Pool model means the BullMQ `BLPOP` long-poll never gets paused.
 
 ### Cutover Procedure
 

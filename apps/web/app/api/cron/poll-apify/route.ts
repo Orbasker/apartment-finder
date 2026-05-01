@@ -1,5 +1,6 @@
 import { verifyCronRequest } from "@/lib/cronAuth";
 import { runApifyPollJob } from "@/jobs/cron";
+import { env } from "@/lib/env";
 import { withApiLog } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -14,7 +15,8 @@ export async function GET(req: Request): Promise<Response> {
       return authFail;
     }
     const origin = new URL(req.url).origin;
-    const result = await runApifyPollJob({ origin, enforceSchedule: true });
+    const enforceSchedule = env().CRON_SCHEDULE_BYPASS !== "true";
+    const result = await runApifyPollJob({ origin, enforceSchedule });
     return Response.json(result.payload, { status: result.status });
   });
 }
