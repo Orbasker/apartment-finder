@@ -1,0 +1,22 @@
+# Build the worker image. The Dockerfile copies from the monorepo root
+# (package.json, bun.lock, packages/queue, packages/shared) so the build context
+# must be the repo root, not apps/worker. Submit this config from repo root:
+#   gcloud builds submit --config=apps/worker/cloudbuild.yaml \
+#     --substitutions=_IMAGE=<image-uri> .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --file=apps/worker/Dockerfile
+      - --tag=${_IMAGE}
+      - --tag=${_IMAGE_LATEST}
+      - .
+images:
+  - ${_IMAGE}
+  - ${_IMAGE_LATEST}
+substitutions:
+  _IMAGE: ""
+  _IMAGE_LATEST: ""
+options:
+  # Required when Cloud Build runs as a user-managed service account.
+  logging: CLOUD_LOGGING_ONLY
