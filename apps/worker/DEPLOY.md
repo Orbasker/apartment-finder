@@ -123,7 +123,7 @@ When a Vercel cron tick arrives:
 
 ## Why a Worker Pool, not a Cloud Run Service
 
-The worker is a long-running BullMQ consumer (BLPOP loop). Cloud Run *Services*
+The worker is a long-running BullMQ consumer (BLPOP loop). Cloud Run _Services_
 are HTTP-driven and would charge request-based always-allocated rates (~$30+/mo
 for the same hardware). Worker Pools are billed per vCPU/memory-second of
 runtime regardless of HTTP traffic — the right product for this workload. See

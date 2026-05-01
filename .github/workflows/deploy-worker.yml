@@ -55,7 +55,13 @@ jobs:
             .
 
       - name: Deploy worker pool
+        env:
+          RESEND_FROM_EMAIL: ${{ vars.RESEND_FROM_EMAIL }}
+          APP_PUBLIC_ORIGIN: ${{ vars.APP_PUBLIC_ORIGIN }}
+          YAD2_PROXY_URL: ${{ vars.YAD2_PROXY_URL }}
         run: |
+          SECRETS="REDIS_URL=REDIS_URL:latest,DATABASE_URL=DATABASE_URL:latest,AI_GATEWAY_API_KEY=AI_GATEWAY_API_KEY:latest,GOOGLE_GEOCODING_API_KEY=GOOGLE_GEOCODING_API_KEY:latest,RESEND_API_KEY=RESEND_API_KEY:latest,COLLECTOR_WEBHOOK_SECRET=COLLECTOR_WEBHOOK_SECRET:latest,BLOB_READ_WRITE_TOKEN=BLOB_READ_WRITE_TOKEN:latest,APIFY_TOKEN=APIFY_TOKEN:latest,YAD2_PROXY_SECRET=YAD2_PROXY_SECRET:latest,TELEGRAM_BOT_TOKEN=TELEGRAM_BOT_TOKEN:latest"
+          ENV_VARS="RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL},APP_PUBLIC_ORIGIN=${APP_PUBLIC_ORIGIN},YAD2_PROXY_URL=${YAD2_PROXY_URL},NODE_ENV=production"
           gcloud beta run worker-pools deploy "$WORKER_POOL" \
             --image="$IMAGE" \
             --region="$GCP_REGION" \
@@ -63,19 +69,5 @@ jobs:
             --cpu=1 \
             --memory=512Mi \
             --quiet \
-            --update-secrets="\
-REDIS_URL=REDIS_URL:latest,\
-DATABASE_URL=DATABASE_URL:latest,\
-AI_GATEWAY_API_KEY=AI_GATEWAY_API_KEY:latest,\
-GOOGLE_GEOCODING_API_KEY=GOOGLE_GEOCODING_API_KEY:latest,\
-RESEND_API_KEY=RESEND_API_KEY:latest,\
-COLLECTOR_WEBHOOK_SECRET=COLLECTOR_WEBHOOK_SECRET:latest,\
-BLOB_READ_WRITE_TOKEN=BLOB_READ_WRITE_TOKEN:latest,\
-APIFY_TOKEN=APIFY_TOKEN:latest,\
-YAD2_PROXY_SECRET=YAD2_PROXY_SECRET:latest,\
-TELEGRAM_BOT_TOKEN=TELEGRAM_BOT_TOKEN:latest" \
-            --set-env-vars="\
-RESEND_FROM_EMAIL=${{ vars.RESEND_FROM_EMAIL }},\
-APP_PUBLIC_ORIGIN=${{ vars.APP_PUBLIC_ORIGIN }},\
-YAD2_PROXY_URL=${{ vars.YAD2_PROXY_URL }},\
-NODE_ENV=production"
+            --update-secrets="$SECRETS" \
+            --set-env-vars="$ENV_VARS"

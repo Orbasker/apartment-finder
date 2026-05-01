@@ -21,13 +21,13 @@ If the symptom is vague ("it's broken"), ask one clarifying question first — e
 
 For each hypothesis, pick the minimal evidence that proves or disproves it.
 
-| Source              | When to use                                                                                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Vercel logs**     | Runtime errors, 4xx/5xx, cron job output (the *enqueue* side), webhook handlers, function timeouts. Anything that runs in `apps/web`.            |
-| **Cloud Run logs**  | The BullMQ worker (`apartment-finder-worker` worker pool, `europe-west1`) and the Yad2 proxy (`me-west1`). Anything past the `collect` enqueue.  |
-| **.env**            | You need a credential to query a managed service (DB, Resend, Apify). Never use it to "test" — just to read state.                               |
-| **Database**        | Verify a row exists / has expected state, check timestamps, joins, FKs, embeddings.                                                              |
-| **Source code**     | Always read the handler before blaming infra — bug is usually in code, not platform.                                                             |
+| Source             | When to use                                                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vercel logs**    | Runtime errors, 4xx/5xx, cron job output (the _enqueue_ side), webhook handlers, function timeouts. Anything that runs in `apps/web`.           |
+| **Cloud Run logs** | The BullMQ worker (`apartment-finder-worker` worker pool, `europe-west1`) and the Yad2 proxy (`me-west1`). Anything past the `collect` enqueue. |
+| **.env**           | You need a credential to query a managed service (DB, Resend, Apify). Never use it to "test" — just to read state.                              |
+| **Database**       | Verify a row exists / has expected state, check timestamps, joins, FKs, embeddings.                                                             |
+| **Source code**    | Always read the handler before blaming infra — bug is usually in code, not platform.                                                            |
 
 Read code **first** for the suspect path, then confirm with logs/DB.
 
@@ -69,7 +69,7 @@ Notes:
 
 - `vercel logs` only retains the last ~hour of runtime logs by default. If the symptom is older, ask the user for a deployment URL near the incident time.
 - Cron logs appear under the cron path (e.g. `/api/cron/scrape`). Always check `CRON_SECRET` 401s if a cron is "silently not running".
-- Vercel only sees the cron *enqueue* (`collectQueue.add(...)`) and the completion webhook (`/api/collectors/webhook`). The actual collect → ingest pipeline runs in Cloud Run (next section).
+- Vercel only sees the cron _enqueue_ (`collectQueue.add(...)`) and the completion webhook (`/api/collectors/webhook`). The actual collect → ingest pipeline runs in Cloud Run (next section).
 
 ## 3. Cloud Run logs
 
