@@ -35,8 +35,9 @@ export function MapTile({ lat, lon, neighborhood, city, alt }: MapTileProps) {
         defaultCenter={{ lat, lng: lon }}
         defaultZoom={DEFAULT_ZOOM}
         mapId={MAP_ID}
-        gestureHandling="none"
+        gestureHandling="cooperative"
         disableDefaultUI
+        zoomControl
         clickableIcons={false}
         className="h-full w-full"
       >
