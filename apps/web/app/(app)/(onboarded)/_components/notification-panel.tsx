@@ -82,7 +82,8 @@ export function NotificationPanel({ unreadCount: initialUnread, items }: Props) 
   }
 
   const badgeLabel = unreadCount > 9 ? "9+" : String(unreadCount);
-  const ariaLabel = unreadCount > 0 ? t("ariaLabelWithCount", { count: unreadCount }) : t("ariaLabel");
+  const ariaLabel =
+    unreadCount > 0 ? t("ariaLabelWithCount", { count: unreadCount }) : t("ariaLabel");
 
   return (
     <>
@@ -185,6 +186,13 @@ function NotificationList({
     week: false,
     older: false,
   });
+  const bucketLabels: Record<Bucket, string> = {
+    lastHour: t("buckets.lastHour"),
+    today: t("buckets.today"),
+    yesterday: t("buckets.yesterday"),
+    week: t("buckets.week"),
+    older: t("buckets.older"),
+  };
   return (
     <ul className="divide-y">
       {groups.map((group) => {
@@ -198,7 +206,7 @@ function NotificationList({
               className="flex w-full items-center justify-between gap-2 bg-muted/40 px-4 py-1.5 text-start text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
             >
               <span className="flex items-center gap-2">
-                <span>{t(`buckets.${group.bucket}`)}</span>
+                <span>{bucketLabels[group.bucket]}</span>
                 <span className="rounded-full bg-background px-1.5 py-0.5 text-[10px] tabular-nums">
                   {group.items.length}
                 </span>
@@ -222,13 +230,7 @@ function NotificationList({
   );
 }
 
-function NotificationRow({
-  item,
-  onNavigate,
-}: {
-  item: SerializedItem;
-  onNavigate: () => void;
-}) {
+function NotificationRow({ item, onNavigate }: { item: SerializedItem; onNavigate: () => void }) {
   const t = useTranslations("Notifications");
   const isUnread = item.seenAt == null;
   const title = item.formattedAddress ?? formatPlace(item.neighborhood, item.city) ?? t("untitled");
