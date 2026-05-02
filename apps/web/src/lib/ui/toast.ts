@@ -30,7 +30,8 @@ export function toastFromResult(result: ActionResult, opts: ToastFromResultOptio
     return;
   }
   const code = result.error ?? result.reason;
-  const description = code && opts.resolveErrorDescription ? opts.resolveErrorDescription(code) : undefined;
+  const description =
+    code && opts.resolveErrorDescription ? opts.resolveErrorDescription(code) : undefined;
   toastError(opts.errorMessage, description);
 }
 
