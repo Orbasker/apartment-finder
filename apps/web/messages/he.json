@@ -167,8 +167,26 @@
       "rejected": "פסלתי"
     },
     "board": {
-      "comingSoonTitle": "בקרוב",
-      "comingSoonBody": "תצוגת לוח (כרטיסיות לפי סטטוס) תהיה זמינה בעדכון הבא."
+      "columns": {
+        "new": "חדשות",
+        "interested": "מעניינות",
+        "contacted": "פניתי",
+        "visited": "צפיתי",
+        "rejected": "פסלתי"
+      },
+      "emptyColumn": "אין דירות במצב הזה",
+      "emptyAllTitle": "עדיין אין התאמות",
+      "emptyAllBody": "ברגע שנמצא דירות שתואמות לסינונים שלך, הן יופיעו כאן.",
+      "editFilters": "עריכת סינונים",
+      "errorStatus": "לא הצלחנו לשמור את הפעולה. נסה שוב.",
+      "dragRoleDescription": "ניתן לגרור",
+      "moveTo": "העבר ל...",
+      "moveToTitle": "העבר את הכרטיס ל",
+      "cancel": "ביטול",
+      "openCard": "פתח כרטיס",
+      "announceMoved": "הכרטיס הועבר לעמודה {column}",
+      "prevColumn": "עמודה קודמת",
+      "nextColumn": "עמודה הבאה"
     }
   },
   "Onboarding": {

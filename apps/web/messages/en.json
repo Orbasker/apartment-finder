@@ -167,8 +167,26 @@
       "rejected": "Rejected"
     },
     "board": {
-      "comingSoonTitle": "Coming soon",
-      "comingSoonBody": "The kanban board (cards grouped by status) lands in the next update."
+      "columns": {
+        "new": "New",
+        "interested": "Interested",
+        "contacted": "Contacted",
+        "visited": "Visited",
+        "rejected": "Rejected"
+      },
+      "emptyColumn": "No apartments in this state",
+      "emptyAllTitle": "No matches yet",
+      "emptyAllBody": "As soon as we find apartments that match your filters, they will show up here.",
+      "editFilters": "Edit filters",
+      "errorStatus": "We couldn't save your action. Try again.",
+      "dragRoleDescription": "draggable",
+      "moveTo": "Move to...",
+      "moveToTitle": "Move card to",
+      "cancel": "Cancel",
+      "openCard": "Open card",
+      "announceMoved": "Card moved to column {column}",
+      "prevColumn": "Previous column",
+      "nextColumn": "Next column"
     }
   },
   "Onboarding": {
