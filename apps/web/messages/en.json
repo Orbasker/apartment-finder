@@ -126,7 +126,6 @@
       "errorStatus": "We couldn't save your action. Try again."
     },
     "card": {
-      "openDetails": "Open listing details",
       "mapAlt": "Map of the apartment location",
       "pass": "Pass",
       "save": "Save",
