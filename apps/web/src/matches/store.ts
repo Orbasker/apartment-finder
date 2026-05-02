@@ -478,9 +478,7 @@ async function loadAttributeContext(
  * Median is computed via Postgres' `percentile_cont(0.5)` so half-integer
  * room counts (e.g. 3.5) get their own bucket — matching how Yad2 lists them.
  */
-export async function loadMedianContext(
-  cityIds: string[],
-): Promise<{
+export async function loadMedianContext(cityIds: string[]): Promise<{
   byNeighborhoodAndRooms: (neighborhood: string | null, rooms: number | null) => number | null;
 }> {
   if (cityIds.length === 0) {
