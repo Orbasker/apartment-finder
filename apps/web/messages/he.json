@@ -5,6 +5,26 @@
     },
     "skipToContent": "דלג לתוכן"
   },
+  "Notifications": {
+    "ariaLabel": "התראות",
+    "ariaLabelWithCount": "התראות, {count} חדשות",
+    "dialogLabel": "תיבת ההתראות",
+    "title": "התראות",
+    "close": "סגור",
+    "empty": "אין התראות עדיין.",
+    "viewAll": "ראה הכול ב/matches",
+    "openListing": "פתח את המודעה המקורית",
+    "untitled": "כתובת לא ידועה",
+    "rooms": "{value} חדרים",
+    "sqm": "{value} מ\"ר",
+    "buckets": {
+      "lastHour": "השעה האחרונה",
+      "today": "היום",
+      "yesterday": "אתמול",
+      "week": "השבוע",
+      "older": "ישן יותר"
+    }
+  },
   "Login": {
     "metadata": {
       "title": "כניסה - Apartment Finder",

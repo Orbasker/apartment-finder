@@ -5,6 +5,26 @@
     },
     "skipToContent": "Skip to content"
   },
+  "Notifications": {
+    "ariaLabel": "Notifications",
+    "ariaLabelWithCount": "Notifications, {count} new",
+    "dialogLabel": "Notifications inbox",
+    "title": "Notifications",
+    "close": "Close",
+    "empty": "No notifications yet.",
+    "viewAll": "View all in /matches",
+    "openListing": "Open original listing",
+    "untitled": "Unknown address",
+    "rooms": "{value} rooms",
+    "sqm": "{value} sqm",
+    "buckets": {
+      "lastHour": "Last hour",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "week": "This week",
+      "older": "Older"
+    }
+  },
   "Login": {
     "metadata": {
       "title": "Sign in - Apartment Finder",
