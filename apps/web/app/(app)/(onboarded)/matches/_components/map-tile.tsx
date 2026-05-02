@@ -36,8 +36,10 @@ export function MapTile({ lat, lon, neighborhood, city, alt }: MapTileProps) {
         defaultZoom={DEFAULT_ZOOM}
         mapId={MAP_ID}
         gestureHandling="cooperative"
-        disableDefaultUI
         zoomControl
+        mapTypeControl={false}
+        streetViewControl={false}
+        fullscreenControl={false}
         clickableIcons={false}
         className="h-full w-full"
       >
