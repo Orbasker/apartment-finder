@@ -2,6 +2,7 @@
 
 import { Map, AdvancedMarker } from "@vis.gl/react-google-maps";
 import { MapPin } from "lucide-react";
+import { useMapsApiAvailable } from "../../../_components/maps-provider";
 
 const DEFAULT_ZOOM = 14;
 const MAP_HEIGHT_PX = 240;
@@ -18,7 +19,8 @@ type MapTileProps = {
 };
 
 export function MapTile({ lat, lon, neighborhood, city, alt }: MapTileProps) {
-  if (lat == null || lon == null) {
+  const mapsAvailable = useMapsApiAvailable();
+  if (lat == null || lon == null || !mapsAvailable) {
     return <NeighborhoodPlate neighborhood={neighborhood} city={city} />;
   }
 

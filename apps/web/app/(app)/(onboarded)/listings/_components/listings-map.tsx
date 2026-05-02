@@ -9,6 +9,7 @@ import type { MatchedListing } from "@/listings/types";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "../_lib/format";
 import { useListingsQuery } from "../_hooks/use-listings-query";
+import { useMapsApiAvailable } from "../../../_components/maps-provider";
 
 const TEL_AVIV_CENTER = { lat: 32.0853, lng: 34.7818 };
 const TEL_AVIV_ZOOM = 12;
@@ -37,6 +38,15 @@ export function ListingsMap({
   useEffect(() => {
     queryRef.current = query;
   }, [query]);
+
+  useEffect(() => {
+    if (!selected) return;
+    if (!rows.some((row) => row.id === selected.id)) {
+      setSelected(null);
+    }
+  }, [rows, selected]);
+
+  const mapsAvailable = useMapsApiAvailable();
 
   const formatSummary = useCallback(
     (row: MatchedListing): string => {
@@ -116,35 +126,49 @@ export function ListingsMap({
       ) : null}
 
       <div className="h-[calc(100dvh-14rem)] sm:h-[34rem]">
-        <Map
-          defaultCenter={initialCenter}
-          defaultZoom={initialZoom}
-          mapId={MAP_ID}
-          gestureHandling="greedy"
-          mapTypeControl={false}
-          streetViewControl={false}
-          fullscreenControl={false}
-          clickableIcons={false}
-          onCameraChanged={handleCameraChanged}
-          style={{ width: "100%", height: "100%" }}
-        >
-          {rows.map((row) => {
-            if (row.lat === null || row.lon === null) return null;
-            return (
-              <ListingMarker
-                key={row.id}
-                row={row}
-                locale={locale}
-                summary={formatSummary(row)}
-                source={sourceLabel(row)}
-                untitledTitle={untitledTitle}
-                unknownLabel={t("unknown")}
-                onSelect={setSelected}
-              />
-            );
-          })}
-          {shouldFitBoundsOnLoad ? <FitBoundsOnLoad rows={rows} /> : null}
-        </Map>
+        {mapsAvailable ? (
+          <Map
+            defaultCenter={initialCenter}
+            defaultZoom={initialZoom}
+            mapId={MAP_ID}
+            gestureHandling="greedy"
+            mapTypeControl={false}
+            streetViewControl={false}
+            fullscreenControl={false}
+            clickableIcons={false}
+            onCameraChanged={handleCameraChanged}
+            style={{ width: "100%", height: "100%" }}
+          >
+            {rows.map((row) => {
+              if (row.lat === null || row.lon === null) return null;
+              return (
+                <ListingMarker
+                  key={row.id}
+                  row={row}
+                  locale={locale}
+                  summary={formatSummary(row)}
+                  source={sourceLabel(row)}
+                  untitledTitle={untitledTitle}
+                  unknownLabel={t("unknown")}
+                  onSelect={setSelected}
+                />
+              );
+            })}
+            {shouldFitBoundsOnLoad ? <FitBoundsOnLoad rows={rows} /> : null}
+          </Map>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
+            <p>{t("unavailable")}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setQuery({ view: "table" }, { history: "push", resetPage: false })}
+            >
+              {t("switchToTable")}
+            </Button>
+          </div>
+        )}
       </div>
 
       {selected ? (

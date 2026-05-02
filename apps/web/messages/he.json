@@ -281,7 +281,8 @@
       "close": "סגירה",
       "unknown": "לא ידוע",
       "missingLocation": "<countTag>{count}</countTag> דירות בלי מיקום מדויק לא מוצגות במפה.",
-      "switchToTable": "מעבר לטבלה"
+      "switchToTable": "מעבר לטבלה",
+      "unavailable": "המפה אינה זמינה כרגע."
     }
   }
 }
