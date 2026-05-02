@@ -35,6 +35,9 @@ const EnvSchema = z.object({
   RESEND_FROM_EMAIL: z.string().optional(),
 
   GOOGLE_GEOCODING_API_KEY: z.string().optional(),
+  /** Browser-exposed Google Maps JS key. Restrict by HTTP referrer in GCP — do
+   *  NOT reuse the server-only GOOGLE_GEOCODING_API_KEY here. */
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: z.string().optional(),
 
   YAD2_PROXY_URL: z.string().url().optional(),
   YAD2_PROXY_SECRET: z.string().optional(),

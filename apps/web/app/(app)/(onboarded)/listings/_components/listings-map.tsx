@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import maplibregl, { type LngLatBoundsLike } from "maplibre-gl";
+import {
+  Map,
+  AdvancedMarker,
+  useMap,
+  type MapCameraChangedEvent,
+} from "@vis.gl/react-google-maps";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { MatchedListing } from "@/listings/types";
@@ -10,9 +15,13 @@ import { cn } from "@/lib/utils";
 import { formatPrice } from "../_lib/format";
 import { useListingsQuery } from "../_hooks/use-listings-query";
 
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
-const TEL_AVIV_CENTER: [number, number] = [34.7818, 32.0853];
+const TEL_AVIV_CENTER = { lat: 32.0853, lng: 34.7818 };
 const TEL_AVIV_ZOOM = 12;
+// Demo Map ID enables AdvancedMarker without a Cloud-styled custom Map ID.
+// Swap for a project-owned Map ID once we add branded styling.
+const MAP_ID = "DEMO_MAP_ID";
+const FIT_BOUNDS_PADDING = 56;
+const VIEWPORT_DEBOUNCE_MS = 250;
 
 export function ListingsMap({
   rows,
@@ -26,22 +35,13 @@ export function ListingsMap({
   const sourceT = useTranslations("Listings.source");
   const locale = useLocale();
   const { query, setQuery } = useListingsQuery();
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
-  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selected, setSelected] = useState<MatchedListing | null>(null);
   const untitledTitle = tableT("cell.untitled");
-  const queryRef = useRef(query);
-  const rowsRef = useRef(rows);
 
+  const queryRef = useRef(query);
   useEffect(() => {
     queryRef.current = query;
   }, [query]);
-
-  useEffect(() => {
-    rowsRef.current = rows;
-  }, [rows]);
 
   const formatSummary = useCallback(
     (row: MatchedListing): string => {
@@ -64,96 +64,37 @@ export function ListingsMap({
     [sourceT],
   );
 
-  const openListing = useCallback((row: MatchedListing) => {
-    setSelected(row);
-  }, []);
-  const openListingRef = useRef(openListing);
-
-  useEffect(() => {
-    openListingRef.current = openListing;
-  }, [openListing]);
-
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-
-    const initialQuery = queryRef.current;
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: MAP_STYLE,
-      center:
-        initialQuery.lat !== null && initialQuery.lng !== null
-          ? [initialQuery.lng, initialQuery.lat]
-          : TEL_AVIV_CENTER,
-      zoom: initialQuery.zoom ?? TEL_AVIV_ZOOM,
-      attributionControl: { compact: true },
-    });
-    mapRef.current = map;
-
-    map.addControl(
-      new maplibregl.NavigationControl({
-        showCompass: false,
-        visualizePitch: false,
-      }),
-      "top-left",
-    );
-
-    const syncViewport = () => {
-      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-      syncTimerRef.current = setTimeout(() => {
-        const center = map.getCenter();
-        const zoom = map.getZoom();
-        const lat = Number(center.lat.toFixed(5));
-        const lng = Number(center.lng.toFixed(5));
-        const roundedZoom = Number(zoom.toFixed(2));
-        const currentQuery = queryRef.current;
-        const latChanged = currentQuery.lat === null || Math.abs(currentQuery.lat - lat) > 0.00001;
-        const lngChanged = currentQuery.lng === null || Math.abs(currentQuery.lng - lng) > 0.00001;
-        const zoomChanged =
-          currentQuery.zoom === null || Math.abs(currentQuery.zoom - roundedZoom) > 0.01;
-
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleCameraChanged = useCallback(
+    (ev: MapCameraChangedEvent) => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        const lat = Number(ev.detail.center.lat.toFixed(5));
+        const lng = Number(ev.detail.center.lng.toFixed(5));
+        const zoom = Number(ev.detail.zoom.toFixed(2));
+        const current = queryRef.current;
+        const latChanged = current.lat === null || Math.abs(current.lat - lat) > 0.00001;
+        const lngChanged = current.lng === null || Math.abs(current.lng - lng) > 0.00001;
+        const zoomChanged = current.zoom === null || Math.abs(current.zoom - zoom) > 0.01;
         if (latChanged || lngChanged || zoomChanged) {
-          setQuery({ lat, lng, zoom: roundedZoom }, { history: "replace", resetPage: false });
+          setQuery({ lat, lng, zoom }, { history: "replace", resetPage: false });
         }
-      }, 250);
-    };
-
-    map.on("moveend", syncViewport);
-
-    map.on("load", () => {
-      replaceMarkers(map, rowsRef.current, markersRef, {
-        locale,
-        untitledTitle,
-        unknownLabel: t("unknown"),
-        sourceLabel,
-        summaryLabel: formatSummary,
-        openListingRef,
-      });
-
-      if (initialQuery.lat === null || initialQuery.lng === null || initialQuery.zoom === null) {
-        fitRows(map, rowsRef.current);
-      }
-    });
-
-    return () => {
-      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
-      clearMarkers(markersRef);
-      map.remove();
-      mapRef.current = null;
-    };
-  }, [formatSummary, locale, setQuery, sourceLabel, t, untitledTitle]);
+      }, VIEWPORT_DEBOUNCE_MS);
+    },
+    [setQuery],
+  );
 
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !map.isStyleLoaded()) return;
-    replaceMarkers(map, rows, markersRef, {
-      locale,
-      untitledTitle,
-      unknownLabel: t("unknown"),
-      sourceLabel,
-      summaryLabel: formatSummary,
-      openListingRef,
-    });
-  }, [formatSummary, locale, rows, sourceLabel, t, untitledTitle]);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
+
+  const initialCenter =
+    query.lat !== null && query.lng !== null ? { lat: query.lat, lng: query.lng } : TEL_AVIV_CENTER;
+  const initialZoom = query.zoom ?? TEL_AVIV_ZOOM;
+  const shouldFitBoundsOnLoad =
+    query.lat === null || query.lng === null || query.zoom === null;
 
   const selectedSummary = selected ? formatSummary(selected) : null;
   const selectedSource = selected ? sourceLabel(selected) : null;
@@ -180,7 +121,37 @@ export function ListingsMap({
         </div>
       ) : null}
 
-      <div ref={mapContainerRef} className="min-h-[calc(100dvh-14rem)] flex-1 sm:min-h-[34rem]" />
+      <div className="h-[calc(100dvh-14rem)] sm:h-[34rem]">
+        <Map
+          defaultCenter={initialCenter}
+          defaultZoom={initialZoom}
+          mapId={MAP_ID}
+          gestureHandling="greedy"
+          mapTypeControl={false}
+          streetViewControl={false}
+          fullscreenControl={false}
+          clickableIcons={false}
+          onCameraChanged={handleCameraChanged}
+          style={{ width: "100%", height: "100%" }}
+        >
+          {rows.map((row) => {
+            if (row.lat === null || row.lon === null) return null;
+            return (
+              <ListingMarker
+                key={row.id}
+                row={row}
+                locale={locale}
+                summary={formatSummary(row)}
+                source={sourceLabel(row)}
+                untitledTitle={untitledTitle}
+                unknownLabel={t("unknown")}
+                onSelect={setSelected}
+              />
+            );
+          })}
+          {shouldFitBoundsOnLoad ? <FitBoundsOnLoad rows={rows} /> : null}
+        </Map>
+      </div>
 
       {selected ? (
         <div className="absolute inset-x-0 bottom-0 z-20 rounded-t-md border-t bg-card p-4 shadow-lg sm:inset-x-auto sm:bottom-3 sm:start-3 sm:w-80 sm:rounded-md sm:border">
@@ -223,101 +194,79 @@ export function ListingsMap({
   );
 }
 
-function clearMarkers(markersRef: MutableRefObject<maplibregl.Marker[]>) {
-  for (const marker of markersRef.current) marker.remove();
-  markersRef.current = [];
+function ListingMarker({
+  row,
+  locale,
+  summary,
+  source,
+  untitledTitle,
+  unknownLabel,
+  onSelect,
+}: {
+  row: MatchedListing;
+  locale: string;
+  summary: string;
+  source: string | null;
+  untitledTitle: string;
+  unknownLabel: string;
+  onSelect: (row: MatchedListing) => void;
+}) {
+  const lat = row.lat;
+  const lng = row.lon;
+  if (lat === null || lng === null) return null;
+
+  return (
+    <AdvancedMarker
+      position={{ lat, lng }}
+      onClick={() => onSelect(row)}
+      className="group relative flex flex-col items-center"
+    >
+      <div className="pointer-events-none absolute bottom-full z-30 mb-2 hidden w-64 rounded-md border bg-card p-3 text-start text-sm text-foreground shadow-lg group-focus-within:block group-hover:block">
+        <p className="font-medium" dir="rtl">
+          {row.formattedAddress ?? untitledTitle}
+        </p>
+        <p className="mt-1 font-semibold tabular-nums">{formatPrice(row.priceNis, locale)}</p>
+        <p className="mt-1 text-xs text-muted-foreground" dir="rtl">
+          {summary}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">{source ?? unknownLabel}</p>
+      </div>
+      <div
+        className="flex min-h-11 min-w-20 items-center justify-center rounded-full border-2 border-background bg-success px-3 text-sm font-semibold tabular-nums text-success-foreground shadow-lg ring-2 ring-background transition-transform hover:scale-105"
+        aria-label={row.formattedAddress ?? untitledTitle}
+      >
+        {formatPrice(row.priceNis, locale)}
+      </div>
+    </AdvancedMarker>
+  );
 }
 
-function replaceMarkers(
-  map: maplibregl.Map,
-  rows: MatchedListing[],
-  markersRef: MutableRefObject<maplibregl.Marker[]>,
-  options: {
-    locale: string;
-    untitledTitle: string;
-    unknownLabel: string;
-    sourceLabel: (row: MatchedListing) => string | null;
-    summaryLabel: (row: MatchedListing) => string;
-    openListingRef: MutableRefObject<(row: MatchedListing) => void>;
-  },
-) {
-  clearMarkers(markersRef);
+function FitBoundsOnLoad({ rows }: { rows: MatchedListing[] }) {
+  const map = useMap();
+  const ranRef = useRef(false);
 
-  markersRef.current = rows
-    .map((row) => {
-      if (row.lat === null || row.lon === null) return null;
-
-      const wrap = document.createElement("div");
-      wrap.dir = "rtl";
-      wrap.className = "group relative flex flex-col items-center";
-
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className =
-        "flex min-h-11 min-w-20 items-center justify-center rounded-full border-2 border-background bg-success px-3 text-sm font-semibold tabular-nums text-success-foreground shadow-lg ring-2 ring-background transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-      button.setAttribute("aria-label", row.formattedAddress ?? options.untitledTitle);
-      button.textContent = formatPrice(row.priceNis, options.locale);
-
-      const card = document.createElement("div");
-      card.className =
-        "pointer-events-none absolute bottom-full z-30 mb-2 hidden w-64 rounded-md border bg-card p-3 text-start text-sm text-foreground shadow-lg group-focus-within:block group-hover:block";
-
-      const title = document.createElement("p");
-      title.className = "font-medium";
-      title.textContent = row.formattedAddress ?? options.untitledTitle;
-
-      const price = document.createElement("p");
-      price.className = "mt-1 font-semibold tabular-nums";
-      price.textContent = formatPrice(row.priceNis, options.locale);
-
-      const summary = document.createElement("p");
-      summary.className = "mt-1 text-xs text-muted-foreground";
-      summary.textContent = options.summaryLabel(row);
-
-      const source = document.createElement("p");
-      source.className = "mt-1 text-xs text-muted-foreground";
-      source.textContent = options.sourceLabel(row) ?? options.unknownLabel;
-
-      card.append(title, price, summary, source);
-      wrap.append(card, button);
-
-      const lngLat = new maplibregl.LngLat(row.lon, row.lat);
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        options.openListingRef.current(row);
-      });
-
-      return new maplibregl.Marker({ element: wrap, anchor: "bottom" })
-        .setLngLat(lngLat)
-        .addTo(map);
-    })
-    .filter((marker): marker is maplibregl.Marker => marker !== null);
-}
-
-function fitRows(map: maplibregl.Map, rows: MatchedListing[]) {
-  if (rows.length === 0) {
-    map.setCenter(TEL_AVIV_CENTER);
-    map.setZoom(TEL_AVIV_ZOOM);
-    return;
-  }
-
-  const bounds = new maplibregl.LngLatBounds();
-  for (const row of rows) {
-    if (row.lat !== null && row.lon !== null) {
-      bounds.extend([row.lon, row.lat]);
+  useEffect(() => {
+    if (!map || ranRef.current) return;
+    let north = -Infinity;
+    let south = Infinity;
+    let east = -Infinity;
+    let west = Infinity;
+    let any = false;
+    for (const row of rows) {
+      if (row.lat === null || row.lon === null) continue;
+      any = true;
+      north = Math.max(north, row.lat);
+      south = Math.min(south, row.lat);
+      east = Math.max(east, row.lon);
+      west = Math.min(west, row.lon);
     }
-  }
+    if (!any) {
+      ranRef.current = true;
+      return;
+    }
+    map.fitBounds({ north, south, east, west }, FIT_BOUNDS_PADDING);
+    ranRef.current = true;
+  }, [map, rows]);
 
-  if (bounds.isEmpty()) {
-    map.setCenter(TEL_AVIV_CENTER);
-    map.setZoom(TEL_AVIV_ZOOM);
-    return;
-  }
-
-  map.fitBounds(bounds as LngLatBoundsLike, {
-    padding: 56,
-    maxZoom: 15,
-    duration: 0,
-  });
+  return null;
 }

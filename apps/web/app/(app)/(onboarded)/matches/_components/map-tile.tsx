@@ -1,26 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import maplibregl from "maplibre-gl";
+import { Map, AdvancedMarker } from "@vis.gl/react-google-maps";
 import { MapPin } from "lucide-react";
 
-/**
- * Same vector-tile stack as `/listings` (maplibre-gl + OpenFreeMap "liberty"),
- * locked to a non-interactive single-marker view so the surrounding card stays
- * draggable. No API token needed.
- *
- * Design notes that matter for "why isn't the map rendering":
- *   - Fixed pixel height (not aspect-ratio). aspect-ratio derives height from
- *     resolved width, which is unreliable inside a transformed framer-motion
- *     container during the entry animation — maplibre measures 0 then bails.
- *   - The map is created inside requestAnimationFrame so the initial mount has
- *     committed layout before WebGL reads the container size.
- *   - ResizeObserver tracks the container so the canvas keeps up with viewport
- *     changes and the framer-motion exit animation.
- */
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const DEFAULT_ZOOM = 14;
 const MAP_HEIGHT_PX = 240;
+// Demo Map ID enables AdvancedMarker without requiring a custom Cloud-styled
+// Map ID. Swap for a project-owned Map ID when we add custom styling.
+const MAP_ID = "DEMO_MAP_ID";
 
 type MapTileProps = {
   lat: number | null;
@@ -31,69 +18,6 @@ type MapTileProps = {
 };
 
 export function MapTile({ lat, lon, neighborhood, city, alt }: MapTileProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const markerRef = useRef<maplibregl.Marker | null>(null);
-
-  useEffect(() => {
-    if (lat == null || lon == null) return;
-    const container = containerRef.current;
-    if (!container || mapRef.current) return;
-
-    let cancelled = false;
-    let map: maplibregl.Map | null = null;
-    let ro: ResizeObserver | null = null;
-
-    const raf = requestAnimationFrame(() => {
-      if (cancelled) return;
-      try {
-        map = new maplibregl.Map({
-          container,
-          style: MAP_STYLE,
-          center: [lon, lat],
-          zoom: DEFAULT_ZOOM,
-          interactive: false,
-          attributionControl: { compact: true },
-        });
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("[matches:map-tile] failed to create maplibre map", err);
-        return;
-      }
-      mapRef.current = map;
-
-      map.on("error", (e) => {
-        // eslint-disable-next-line no-console
-        console.warn("[matches:map-tile] maplibre runtime error", e?.error ?? e);
-      });
-
-      map.on("load", () => {
-        if (!map) return;
-        const el = document.createElement("div");
-        el.className =
-          "h-3.5 w-3.5 rounded-full border-2 border-white bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.25)]";
-        el.setAttribute("aria-hidden", "true");
-        markerRef.current = new maplibregl.Marker({ element: el }).setLngLat([lon, lat]).addTo(map);
-        map.resize();
-      });
-
-      ro = new ResizeObserver(() => {
-        mapRef.current?.resize();
-      });
-      ro.observe(container);
-    });
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(raf);
-      ro?.disconnect();
-      markerRef.current?.remove();
-      markerRef.current = null;
-      mapRef.current?.remove();
-      mapRef.current = null;
-    };
-  }, [lat, lon]);
-
   if (lat == null || lon == null) {
     return <NeighborhoodPlate neighborhood={neighborhood} city={city} />;
   }
@@ -105,7 +29,22 @@ export function MapTile({ lat, lon, neighborhood, city, alt }: MapTileProps) {
       role="img"
       aria-label={alt}
     >
-      <div ref={containerRef} className="h-full w-full" />
+      <Map
+        defaultCenter={{ lat, lng: lon }}
+        defaultZoom={DEFAULT_ZOOM}
+        mapId={MAP_ID}
+        gestureHandling="none"
+        disableDefaultUI
+        clickableIcons={false}
+        className="h-full w-full"
+      >
+        <AdvancedMarker position={{ lat, lng: lon }}>
+          <div
+            className="h-3.5 w-3.5 rounded-full border-2 border-white bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.25)]"
+            aria-hidden
+          />
+        </AdvancedMarker>
+      </Map>
     </div>
   );
 }
