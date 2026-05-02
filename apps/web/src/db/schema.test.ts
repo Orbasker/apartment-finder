@@ -365,6 +365,61 @@ describe("schema: sent_alerts", () => {
     expect(cols.destination.notNull).toBe(true);
     expect((cols.destination as unknown as { default: unknown }).default).toBe("email");
   });
+
+  test("seen_at column exists, nullable (null = unread)", () => {
+    const cols = getTableColumns(schema.sentAlerts);
+    expect(cols.seenAt).toBeDefined();
+    expect(cols.seenAt.notNull).toBe(false);
+  });
+
+  test("partial index on (user_id) WHERE seen_at IS NULL exists for cheap unread counts", () => {
+    const cfg = getTableConfig(schema.sentAlerts);
+    const unreadIdx = cfg.indexes.find((i) => i.config.name === "sent_alerts_user_unseen_idx");
+    expect(unreadIdx).toBeDefined();
+    expect(unreadIdx!.config.where).toBeDefined();
+  });
+});
+
+describe("schema: user_apartment_status", () => {
+  test("table exists with composite PK on (user_id, apartment_id)", () => {
+    expect(schema.userApartmentStatus).toBeDefined();
+    const cfg = getTableConfig(schema.userApartmentStatus);
+    expect(cfg.primaryKeys).toHaveLength(1);
+    const pk = cfg.primaryKeys[0]!.columns.map((c) => c.name).sort();
+    expect(pk).toEqual(["apartment_id", "user_id"]);
+  });
+
+  test("status column defaults to 'new' and is NOT NULL", () => {
+    const cols = getTableColumns(schema.userApartmentStatus);
+    expect(cols.status.notNull).toBe(true);
+    expect((cols.status as unknown as { default: unknown }).default).toBe("new");
+  });
+
+  test("both FKs cascade so deleting a user/apartment cleans up status rows", () => {
+    const cfg = getTableConfig(schema.userApartmentStatus);
+    expect(cfg.foreignKeys).toHaveLength(2);
+    for (const fk of cfg.foreignKeys) {
+      expect(fk.onDelete).toBe("cascade");
+    }
+  });
+
+  test("user_status_idx supports per-column kanban queries", () => {
+    const cfg = getTableConfig(schema.userApartmentStatus);
+    const idx = cfg.indexes.find((i) => i.config.name === "user_apartment_status_user_status_idx");
+    expect(idx).toBeDefined();
+    const cols = (idx!.config.columns as IndexedColumn[]).map((c) => c.name);
+    expect(cols).toEqual(["user_id", "status"]);
+  });
+
+  test("status enum exposes the 5 supported kinds in order", () => {
+    expect(schema.userApartmentStatusEnum.enumValues).toEqual([
+      "new",
+      "interested",
+      "contacted",
+      "visited",
+      "rejected",
+    ]);
+  });
 });
 
 describe("schema: user_notification_destinations", () => {
