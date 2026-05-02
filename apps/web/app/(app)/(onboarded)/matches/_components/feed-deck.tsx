@@ -1,11 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion, useMotionValue, useTransform, type PanInfo } from "framer-motion";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import type { Annotation } from "@/matches/annotations";
 import type { MatchFeedItem, UserApartmentStatusKind } from "@/matches/types";
+import { toastError, toastInfo } from "@/lib/ui/toast";
 import { setApartmentStatusAction } from "../actions";
 import { decideSwipe, EXIT_OFFSET_PX, type SwipeDirection } from "../_lib/swipe";
 import { MatchCard } from "./match-card";
@@ -37,9 +38,9 @@ export function FeedDeck({ initialEntries }: FeedDeckProps) {
   const t = useTranslations("Matches.feed");
   const [entries, setEntries] = useState<FeedDeckEntry[]>(initialEntries);
   const [history, setHistory] = useState<ActedItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [modalEntry, setModalEntry] = useState<FeedDeckEntry | null>(null);
   const [exitDirection, setExitDirection] = useState<SwipeDirection | null>(null);
+  const [modalPending, startModalTransition] = useTransition();
 
   const top = entries[0];
   const peek1 = entries[1];
@@ -47,7 +48,6 @@ export function FeedDeck({ initialEntries }: FeedDeckProps) {
 
   const commitStatus = useCallback(
     async (entry: FeedDeckEntry, status: UserApartmentStatusKind, direction: SwipeDirection) => {
-      setError(null);
       setExitDirection(direction);
       const acted: ActedItem = {
         apartmentId: entry.item.apartmentId,
@@ -63,7 +63,7 @@ export function FeedDeck({ initialEntries }: FeedDeckProps) {
       });
 
       if (!result.ok) {
-        setError(t("errorStatus"));
+        toastError(t("errorStatus"));
         setEntries((prev) => [
           { item: { ...entry.item, status: acted.prevStatus }, annotations: entry.annotations },
           ...prev,
@@ -88,7 +88,6 @@ export function FeedDeck({ initialEntries }: FeedDeckProps) {
   }, [top]);
 
   const onUndo = useCallback(async () => {
-    setError(null);
     const last = history[history.length - 1];
     if (!last) return;
     const result = await setApartmentStatusAction({
@@ -96,20 +95,16 @@ export function FeedDeck({ initialEntries }: FeedDeckProps) {
       status: last.prevStatus,
     });
     if (!result.ok) {
-      setError(t("errorStatus"));
+      toastError(t("errorStatus"));
       return;
     }
-    // The full MatchFeedItem isn't kept after a successful commit, so we
-    // can't visually re-insert without a refetch. Surface a hint instead;
-    // the next page load shows the apartment back in the deck.
     setHistory((prev) => prev.slice(0, -1));
-    setError(t("undoSuccess"));
+    toastInfo(t("undoSuccess"));
   }, [history, t]);
 
   const onModalChangeStatus = useCallback(
-    async (status: UserApartmentStatusKind) => {
+    (status: UserApartmentStatusKind) => {
       if (!modalEntry) return;
-      setError(null);
       const prev = modalEntry.item.status;
       const updated: FeedDeckEntry = {
         item: { ...modalEntry.item, status },
@@ -119,21 +114,23 @@ export function FeedDeck({ initialEntries }: FeedDeckProps) {
       setEntries((arr) =>
         arr.map((e) => (e.item.apartmentId === modalEntry.item.apartmentId ? updated : e)),
       );
-      const result = await setApartmentStatusAction({
-        apartmentId: modalEntry.item.apartmentId,
-        status,
+      startModalTransition(async () => {
+        const result = await setApartmentStatusAction({
+          apartmentId: modalEntry.item.apartmentId,
+          status,
+        });
+        if (!result.ok) {
+          toastError(t("errorStatus"));
+          const reverted: FeedDeckEntry = {
+            item: { ...modalEntry.item, status: prev },
+            annotations: modalEntry.annotations,
+          };
+          setModalEntry(reverted);
+          setEntries((arr) =>
+            arr.map((e) => (e.item.apartmentId === modalEntry.item.apartmentId ? reverted : e)),
+          );
+        }
       });
-      if (!result.ok) {
-        setError(t("errorStatus"));
-        const reverted: FeedDeckEntry = {
-          item: { ...modalEntry.item, status: prev },
-          annotations: modalEntry.annotations,
-        };
-        setModalEntry(reverted);
-        setEntries((arr) =>
-          arr.map((e) => (e.item.apartmentId === modalEntry.item.apartmentId ? reverted : e)),
-        );
-      }
     },
     [modalEntry, t],
   );
@@ -176,15 +173,6 @@ export function FeedDeck({ initialEntries }: FeedDeckProps) {
         </AnimatePresence>
       </div>
 
-      {error ? (
-        <div
-          role="status"
-          className="mx-auto w-full max-w-[480px] rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200"
-        >
-          {error}
-        </div>
-      ) : null}
-
       {modalEntry ? (
         <MatchModal
           open={modalEntry !== null}
@@ -192,7 +180,8 @@ export function FeedDeck({ initialEntries }: FeedDeckProps) {
           item={modalEntry.item}
           listingUrl={modalEntry.item.sourceUrl}
           sourceUrl={modalEntry.item.sourceUrl}
-          onChangeStatus={(s) => void onModalChangeStatus(s)}
+          onChangeStatus={onModalChangeStatus}
+          statusPending={modalPending}
         />
       ) : null}
     </div>

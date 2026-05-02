@@ -10,6 +10,7 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { toastError } from "@/lib/ui/toast";
 import { pickCityAction } from "./city-pick.action";
 import { pickNeighborhoodsAction } from "./neighborhood-pick.action";
 
@@ -42,15 +43,23 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
 
   const onSelectCity = useCallback(
     async (city: CityCandidate) => {
-      const result = await pickCityAction({ cityId: city.cityId });
-      if (!result.ok) return { ok: false as const };
-      setSubmittedCityIds((prev) => {
-        const next = new Set(prev);
-        next.add(city.cityId);
-        return next;
-      });
-      sendMessage({ text: t("citySelectedMessage", { city: city.nameHe }) });
-      return { ok: true as const };
+      try {
+        const result = await pickCityAction({ cityId: city.cityId });
+        if (!result.ok) {
+          toastError(t("citySelectError"));
+          return { ok: false as const };
+        }
+        setSubmittedCityIds((prev) => {
+          const next = new Set(prev);
+          next.add(city.cityId);
+          return next;
+        });
+        sendMessage({ text: t("citySelectedMessage", { city: city.nameHe }) });
+        return { ok: true as const };
+      } catch {
+        toastError(t("citySelectError"));
+        return { ok: false as const };
+      }
     },
     [sendMessage, t],
   );
@@ -58,18 +67,26 @@ export function OnboardingChat({ alreadyOnboarded }: { alreadyOnboarded: boolean
   const onSubmitNeighborhoods = useCallback(
     async (selections: NeighborhoodCandidate[], kind: ChipKind) => {
       if (selections.length === 0) return { ok: false as const };
-      const result = await pickNeighborhoodsAction(selections, kind);
-      if (!result.ok) return { ok: false as const };
-      setSubmittedNeighborhoodIds((prev) => {
-        const next = new Set(prev);
-        for (const s of selections) next.add(s.placeId);
-        return next;
-      });
-      const verb =
-        kind === "allowed" ? t("neighborhoodSelectedVerb") : t("neighborhoodBlockedVerb");
-      const list = selections.map((s) => `${s.nameHe} (${s.cityNameHe})`).join(", ");
-      sendMessage({ text: `${verb} ${list}` });
-      return { ok: true as const };
+      try {
+        const result = await pickNeighborhoodsAction(selections, kind);
+        if (!result.ok) {
+          toastError(t("neighborhoodSelectError"));
+          return { ok: false as const };
+        }
+        setSubmittedNeighborhoodIds((prev) => {
+          const next = new Set(prev);
+          for (const s of selections) next.add(s.placeId);
+          return next;
+        });
+        const verb =
+          kind === "allowed" ? t("neighborhoodSelectedVerb") : t("neighborhoodBlockedVerb");
+        const list = selections.map((s) => `${s.nameHe} (${s.cityNameHe})`).join(", ");
+        sendMessage({ text: `${verb} ${list}` });
+        return { ok: true as const };
+      } catch {
+        toastError(t("neighborhoodSelectError"));
+        return { ok: false as const };
+      }
     },
     [sendMessage, t],
   );

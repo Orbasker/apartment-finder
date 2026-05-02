@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { LinkPendingIndicator } from "@/components/ui/link-pending-indicator";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { GoogleOneTap } from "@/components/auth/google-one-tap";
 import { isGoogleConfigured } from "@/lib/auth";
@@ -36,17 +37,24 @@ export default async function HomePage() {
           <ThemeToggle />
           {authed ? (
             <Link href="/matches">
-              <Button size="sm">לדירות</Button>
+              <Button size="sm">
+                <LinkPendingIndicator />
+                לדירות
+              </Button>
             </Link>
           ) : (
             <>
               <Link href="/login">
                 <Button size="sm" variant="ghost">
+                  <LinkPendingIndicator />
                   כניסה
                 </Button>
               </Link>
               <Link href="/login">
-                <Button size="sm">התחלה</Button>
+                <Button size="sm">
+                  <LinkPendingIndicator />
+                  התחלה
+                </Button>
               </Link>
             </>
           )}
@@ -68,7 +76,10 @@ export default async function HomePage() {
           </p>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             <Link href={primaryHref} className="block">
-              <Button className="h-11 w-full px-5 text-base sm:w-auto">{primaryLabel}</Button>
+              <Button className="h-11 w-full px-5 text-base sm:w-auto">
+                <LinkPendingIndicator className="h-4 w-4" />
+                {primaryLabel}
+              </Button>
             </Link>
             <Link href="#how-it-works" className="block">
               <Button variant="outline" className="h-11 w-full px-5 text-base sm:w-auto">

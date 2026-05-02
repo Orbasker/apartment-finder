@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { cn } from "@/lib/utils";
+import { LinkPendingIndicator } from "@/components/ui/link-pending-indicator";
 
 type Tab = "feed" | "board";
 
@@ -25,13 +26,14 @@ export async function MatchesTabs({ active }: { active: Tab }) {
             href={tab.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "relative -mb-px inline-flex h-10 items-center justify-center rounded-t-md px-4 text-sm font-medium transition-colors",
+              "relative -mb-px inline-flex h-10 items-center justify-center gap-2 rounded-t-md px-4 text-sm font-medium transition-colors",
               isActive
                 ? "border-b-2 border-foreground text-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
             {tab.label}
+            <LinkPendingIndicator />
           </Link>
         );
       })}

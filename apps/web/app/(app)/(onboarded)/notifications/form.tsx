@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
 import {
   connectTelegramAction,
   disconnectTelegramAction,
@@ -123,10 +122,9 @@ export function NotificationsForm(props: Props) {
               type="button"
               variant="outline"
               onClick={handleDisconnect}
-              disabled={pendingDisconnect}
+              loading={pendingDisconnect}
               className="h-11 w-full sm:w-auto"
             >
-              {pendingDisconnect ? <Spinner className="h-4 w-4" /> : null}
               {pendingDisconnect ? "מנתק…" : "נתק את Telegram"}
             </Button>
           ) : connectUrl ? (
@@ -142,10 +140,9 @@ export function NotificationsForm(props: Props) {
             <Button
               type="button"
               onClick={handleConnect}
-              disabled={pendingConnect}
+              loading={pendingConnect}
               className="h-11 w-full sm:w-auto"
             >
-              {pendingConnect ? <Spinner className="h-4 w-4" /> : null}
               {pendingConnect ? "מכין קישור…" : "התחבר ל־Telegram"}
             </Button>
           )}
@@ -167,10 +164,10 @@ export function NotificationsForm(props: Props) {
         <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-1 sm:px-0">
           <Button
             type="submit"
-            disabled={pendingSave || noChannel || telegramOnButUnlinked}
+            loading={pendingSave}
+            disabled={noChannel || telegramOnButUnlinked}
             className="h-11 flex-1 text-base sm:flex-initial"
           >
-            {pendingSave ? <Spinner className="h-4 w-4" /> : null}
             {pendingSave ? "שומר…" : "שמירה"}
           </Button>
         </div>

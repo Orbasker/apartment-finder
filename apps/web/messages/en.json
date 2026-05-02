@@ -14,6 +14,7 @@
     "empty": "No notifications yet.",
     "viewAll": "View all in /matches",
     "openListing": "Open original listing",
+    "markAllError": "Couldn't mark notifications as read. Try again.",
     "untitled": "Unknown address",
     "rooms": "{value} rooms",
     "sqm": "{value} sqm",
@@ -105,7 +106,9 @@
     "unknownsNotifyLabel": "Send me the alert anyway - I'll decide for myself",
     "unknownsNotifyHelp": "Recommended if you'd rather see more listings and filter manually. We'll mark which field we couldn't verify.",
     "unknownsStrictLabel": "Skip it - only alert me when every must-have is confirmed",
-    "unknownsStrictHelp": "You'll get fewer alerts, but each one will definitely meet all your hard requirements."
+    "unknownsStrictHelp": "You'll get fewer alerts, but each one will definitely meet all your hard requirements.",
+    "saveSuccess": "Filters saved.",
+    "saveError": "Couldn't save your filters. Try again."
   },
   "Matches": {
     "title": "Apartments",
@@ -207,6 +210,8 @@
     "savedStep": "Saved",
     "savedStepAria": "Step saved",
     "errorFallback": "Something went wrong. Try again in a moment.",
+    "citySelectError": "Couldn't save the city. Try again.",
+    "neighborhoodSelectError": "Couldn't save those neighborhoods. Try again.",
     "completed": "Done. Alerts are active.",
     "continueToDashboard": "Continue to dashboard",
     "inputPlaceholder": "Write an answer…",

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Bell, ChevronDown, ExternalLink, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toastError } from "@/lib/ui/toast";
 import type { NotifyChannel } from "@/matches/types";
 import { markAllAlertsSeenAction } from "./notification-actions";
 
@@ -73,10 +74,21 @@ export function NotificationPanel({ unreadCount: initialUnread, items }: Props) 
   function handleOpen() {
     setOpen(true);
     if (unreadCount > 0) {
+      const previous = unreadCount;
       setUnreadCount(0);
       startTransition(async () => {
-        await markAllAlertsSeenAction();
-        router.refresh();
+        try {
+          const result = await markAllAlertsSeenAction();
+          if (!result.ok) {
+            setUnreadCount(previous);
+            toastError(t("markAllError"));
+            return;
+          }
+          router.refresh();
+        } catch {
+          setUnreadCount(previous);
+          toastError(t("markAllError"));
+        }
       });
     }
   }

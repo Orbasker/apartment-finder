@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth-server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { FormSubmitButton } from "@/components/ui/form-submit-button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { loadDestinations } from "@/notifications/destinations";
 import { env } from "@/lib/env";
@@ -40,9 +40,9 @@ export default async function SettingsPage() {
               </span>
             </div>
             <form action={signOutAction}>
-              <Button type="submit" variant="outline" size="sm">
+              <FormSubmitButton variant="outline" size="sm">
                 התנתקות
-              </Button>
+              </FormSubmitButton>
             </form>
           </CardContent>
         </Card>
@@ -84,9 +84,9 @@ export default async function SettingsPage() {
             התנאים הנוכחיים יישמרו ואפשר לערוך אותם משם.
           </p>
           <form action={restartOnboardingAction}>
-            <Button type="submit" variant="outline" size="sm">
+            <FormSubmitButton variant="outline" size="sm">
               התחל מחדש בצ׳אט
-            </Button>
+            </FormSubmitButton>
           </form>
         </CardContent>
       </Card>

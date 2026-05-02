@@ -19,6 +19,7 @@ type MatchModalProps = {
   /** Source URL (post URL inside Yad2/FB). */
   sourceUrl: string | null;
   onChangeStatus: (status: MatchFeedItem["status"]) => void;
+  statusPending?: boolean;
 };
 
 /**
@@ -33,6 +34,7 @@ export function MatchModal({
   listingUrl,
   sourceUrl,
   onChangeStatus,
+  statusPending = false,
 }: MatchModalProps) {
   const t = useTranslations("Matches.modal");
   const tStatus = useTranslations("Matches.statusLabels");
@@ -74,7 +76,11 @@ export function MatchModal({
           </section>
         ) : null}
 
-        <fieldset className="rounded-md border p-3">
+        <fieldset
+          className="rounded-md border p-3"
+          disabled={statusPending}
+          aria-busy={statusPending || undefined}
+        >
           <legend className="px-1 text-sm font-medium">{t("statusLegend")}</legend>
           <div className="flex flex-wrap gap-2 pt-1">
             {USER_APARTMENT_STATUS_KINDS.map((kind) => {
@@ -83,7 +89,8 @@ export function MatchModal({
                 <label
                   key={kind}
                   className={cn(
-                    "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1 text-sm transition-colors",
+                    "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition-colors",
+                    statusPending ? "cursor-default opacity-60" : "cursor-pointer",
                     checked ? "border-foreground bg-foreground text-background" : "hover:bg-muted",
                   )}
                 >
@@ -92,6 +99,7 @@ export function MatchModal({
                     name="status"
                     value={kind}
                     checked={checked}
+                    disabled={statusPending}
                     onChange={() => onChangeStatus(kind)}
                     className="sr-only"
                   />
