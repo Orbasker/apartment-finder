@@ -19,6 +19,9 @@ export async function GET() {
       source: schema.collectionRuns.source,
       cityId: schema.collectionRuns.cityId,
       cityNameHe: schema.cities.nameHe,
+      regionId: schema.collectionRuns.regionId,
+      regionNameHe: schema.yad2Regions.nameHe,
+      regionSlug: schema.yad2Regions.slug,
       status: schema.collectionRuns.status,
       enqueuedAt: schema.collectionRuns.enqueuedAt,
       collectedAt: schema.collectionRuns.collectedAt,
@@ -30,6 +33,7 @@ export async function GET() {
     })
     .from(schema.collectionRuns)
     .leftJoin(schema.cities, eq(schema.cities.id, schema.collectionRuns.cityId))
+    .leftJoin(schema.yad2Regions, eq(schema.yad2Regions.id, schema.collectionRuns.regionId))
     .orderBy(desc(schema.collectionRuns.enqueuedAt))
     .limit(20);
 
