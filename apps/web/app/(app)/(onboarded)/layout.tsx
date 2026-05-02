@@ -5,6 +5,7 @@ import { loadFilters } from "@/filters/store";
 import { HeaderBrandLink, SidebarNav } from "../nav-links";
 import { UserMenu } from "../user-menu";
 import { MobileNav } from "../mobile-nav";
+import { NotificationBell } from "./_components/notification-bell";
 
 export default async function OnboardedLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
@@ -19,6 +20,9 @@ export default async function OnboardedLayout({ children }: { children: ReactNod
       <header className="flex items-center gap-3 border-b bg-card px-4 py-3 md:hidden">
         <MobileNav email={email} />
         <HeaderBrandLink />
+        <div className="ms-auto">
+          <NotificationBell />
+        </div>
       </header>
 
       <aside
@@ -29,8 +33,11 @@ export default async function OnboardedLayout({ children }: { children: ReactNod
           <HeaderBrandLink />
         </div>
         <SidebarNav />
-        <div className="mt-auto border-t pt-4">
-          <UserMenu email={email} />
+        <div className="mt-auto flex items-center gap-2 border-t pt-4">
+          <NotificationBell />
+          <div className="min-w-0 flex-1">
+            <UserMenu email={email} />
+          </div>
         </div>
       </aside>
 
