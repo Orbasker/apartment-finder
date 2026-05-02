@@ -76,5 +76,6 @@ export function createIngestEnrichWorker() {
   return new Worker<IngestEnrichJob>("ingest-enrich", processIngestEnrich, {
     connection: getConnection(),
     concurrency: 2,
+    stalledInterval: 300_000,
   });
 }

@@ -25,5 +25,6 @@ export function createIngestPersistWorker() {
   return new Worker<IngestPersistJob>("ingest-persist", processIngestPersist, {
     connection: getConnection(),
     concurrency: 4,
+    stalledInterval: 300_000,
   });
 }

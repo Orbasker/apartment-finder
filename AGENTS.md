@@ -329,6 +329,8 @@ All planned MVP PRs (#56 demolition → #62 schema → #63 ingestion → #64 onb
 
 - Upstash Redis (TLS). Set `REDIS_URL=rediss://...` in both Vercel project env AND VPS docker-compose `.env`.
 - BullMQ requires `maxRetriesPerRequest: null` (handled in `packages/queue/src/connection.ts`).
+- **Job retention** (set in `packages/queue/src/queues.ts` as `defaultJobOptions`): `removeOnComplete: { count: 100, age: 24h }`, `removeOnFail: { count: 50, age: 3d }`. Without these BullMQ keeps every completed/failed job indefinitely and stalled-job checks ZRANGE an ever-growing set — the dominant Upstash command driver before APA-43.
+- **Stalled-job interval** is bumped to 5min (`stalledInterval: 300_000`) on every worker. Default 30s burns ~10 commands/sec/worker idle; we run a handful of jobs per cron tick, so tight stall detection is wasted budget.
 
 ### Worker Deployment
 

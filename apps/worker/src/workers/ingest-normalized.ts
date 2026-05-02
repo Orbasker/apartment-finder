@@ -60,5 +60,6 @@ export function createIngestNormalizedWorker() {
   return new Worker<IngestNormalizedJob>("ingest-normalized", processIngestNormalized, {
     connection: getConnection(),
     concurrency: 8,
+    stalledInterval: 300_000,
   });
 }

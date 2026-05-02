@@ -1,5 +1,13 @@
-import { Queue } from "bullmq";
+import { Queue, type DefaultJobOptions } from "bullmq";
 import { getConnection } from "./connection";
+
+// Without these caps BullMQ keeps every completed/failed job indefinitely in
+// the per-queue ZSET. Stalled-job checks then ZRANGE an ever-growing set every
+// few seconds — the dominant Upstash command driver before APA-43.
+const defaultJobOptions: DefaultJobOptions = {
+  removeOnComplete: { count: 100, age: 24 * 3600 },
+  removeOnFail: { count: 50, age: 3 * 24 * 3600 },
+};
 
 // Lazy queue accessor. The Queue instance is created on first access, not at
 // module import time. This defers the REDIS_URL requirement to the first actual
@@ -10,7 +18,10 @@ function makeLazyQueue(name: string) {
   return new Proxy({} as Queue, {
     get(_target, prop) {
       if (!instance) {
-        instance = new Queue(name, { connection: getConnection() });
+        instance = new Queue(name, {
+          connection: getConnection(),
+          defaultJobOptions,
+        });
       }
       const value = (instance as unknown as Record<string | symbol, unknown>)[prop];
       if (typeof value === "function") {
