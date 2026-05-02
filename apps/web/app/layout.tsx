@@ -5,7 +5,6 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { isLocale, LOCALE_DIRECTIONS, DEFAULT_LOCALE } from "@/i18n/locales";
 import { Toaster } from "@/components/ui/toaster";
-import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 import { Footer } from "./footer";
 

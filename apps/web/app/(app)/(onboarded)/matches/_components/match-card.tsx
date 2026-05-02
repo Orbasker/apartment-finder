@@ -30,27 +30,13 @@ export function MatchCard({ item, annotations, onPass, onSave, onLike, onOpen }:
       dir="rtl"
       className="flex h-full flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-lg"
     >
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpen();
-          }
-        }}
-        aria-label={t("openDetails")}
-        className="block w-full cursor-pointer text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <MapTile
-          lat={item.lat}
-          lon={item.lon}
-          neighborhood={item.neighborhood}
-          city={item.city}
-          alt={item.formattedAddress ?? item.neighborhood ?? t("mapAlt")}
-        />
-      </div>
+      <MapTile
+        lat={item.lat}
+        lon={item.lon}
+        neighborhood={item.neighborhood}
+        city={item.city}
+        alt={item.formattedAddress ?? item.neighborhood ?? t("mapAlt")}
+      />
 
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div

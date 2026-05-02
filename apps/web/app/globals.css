@@ -92,25 +92,4 @@
   summary {
     cursor: pointer;
   }
-
-  .maplibregl-popup-content {
-    border-radius: 0.5rem;
-    background: var(--color-card);
-    color: var(--color-foreground);
-    box-shadow: 0 12px 32px color-mix(in oklch, var(--color-foreground) 16%, transparent);
-  }
-
-  .maplibregl-popup-tip {
-    border-top-color: var(--color-card);
-    border-bottom-color: var(--color-card);
-  }
-
-  .maplibregl-ctrl-group {
-    background: var(--color-card);
-  }
-
-  .maplibregl-ctrl button {
-    min-height: 29px;
-    min-width: 29px;
-  }
 }
