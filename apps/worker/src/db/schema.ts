@@ -112,7 +112,6 @@ export const cities = pgTable(
     isActive: boolean("is_active").default(true).notNull(),
     isLaunchReady: boolean("is_launch_ready").default(false).notNull(),
     regionId: integer("region_id").references(() => yad2Regions.id, { onDelete: "set null" }),
-    yad2FeedUrl: text("yad2_feed_url"),
     facebookGroupUrls: text("facebook_group_urls")
       .array()
       .notNull()

@@ -248,7 +248,6 @@ describe("schema: cities", () => {
       "bbox_west",
       "is_active",
       "is_launch_ready",
-      "yad2_feed_url",
       "facebook_group_urls",
     ]) {
       expect(names).toContain(f);

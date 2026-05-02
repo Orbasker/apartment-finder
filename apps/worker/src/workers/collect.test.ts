@@ -21,7 +21,6 @@ vi.mock("../db/index.js", () => ({
       id: "cities.id",
       nameHe: "cities.nameHe",
       nameEn: "cities.nameEn",
-      yad2FeedUrl: "cities.yad2FeedUrl",
       facebookGroupUrls: "cities.facebookGroupUrls",
       regionId: "cities.regionId",
       isActive: "cities.isActive",
