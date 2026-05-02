@@ -170,5 +170,8 @@ export function createCollectWorker() {
   return new Worker<CollectJob>("collect", processCollect, {
     connection: getConnection(),
     concurrency: 2,
+    // Default 30s — for our cron-driven cadence the idle ZRANGE/EVALSHA tax is
+    // the dominant Upstash command driver. 5min is plenty (APA-43).
+    stalledInterval: 300_000,
   });
 }

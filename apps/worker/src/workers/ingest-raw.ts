@@ -86,5 +86,6 @@ export function createIngestRawWorker() {
   return new Worker<IngestRawJob>("ingest-raw", processIngestRaw, {
     connection: getConnection(),
     concurrency: 4,
+    stalledInterval: 300_000,
   });
 }

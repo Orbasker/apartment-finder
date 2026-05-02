@@ -25,5 +25,6 @@ export function createIngestNotifyWorker() {
   return new Worker<IngestNotifyJob>("ingest-notify", processIngestNotify, {
     connection: getConnection(),
     concurrency: 4,
+    stalledInterval: 300_000,
   });
 }
