@@ -9,6 +9,9 @@ type Run = {
   source: string;
   cityId: string | null;
   cityNameHe: string | null;
+  regionId: number | null;
+  regionNameHe: string | null;
+  regionSlug: string | null;
   status: string;
   enqueuedAt: string;
   collectedAt: string | null;
@@ -18,6 +21,14 @@ type Run = {
   skippedExisting: number;
   error: string | null;
 };
+
+function formatTarget(r: Run): string {
+  if (r.regionId !== null) {
+    const label = r.regionNameHe ?? r.regionSlug ?? `region ${r.regionId}`;
+    return `${label} (region)`;
+  }
+  return r.cityNameHe ?? r.cityId ?? "-";
+}
 
 const STATUS_COLOR: Record<string, string> = {
   queued: "text-yellow-600",
@@ -97,7 +108,7 @@ export default function CollectorsPage() {
             <tr>
               {[
                 "Source",
-                "City",
+                "Target",
                 "Status",
                 "Enqueued",
                 "Received",
@@ -122,7 +133,7 @@ export default function CollectorsPage() {
             {runs.map((r) => (
               <tr key={r.id} className="hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">{r.source}</td>
-                <td className="px-3 py-2">{r.cityNameHe ?? r.cityId ?? "-"}</td>
+                <td className="px-3 py-2">{formatTarget(r)}</td>
                 <td className={`px-3 py-2 font-semibold ${STATUS_COLOR[r.status] ?? ""}`}>
                   {r.status}
                 </td>

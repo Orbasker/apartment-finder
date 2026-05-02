@@ -23,6 +23,15 @@ vi.mock("../db/index.js", () => ({
       nameEn: "cities.nameEn",
       yad2FeedUrl: "cities.yad2FeedUrl",
       facebookGroupUrls: "cities.facebookGroupUrls",
+      regionId: "cities.regionId",
+      isActive: "cities.isActive",
+    },
+    yad2Regions: {
+      id: "yad2Regions.id",
+      slug: "yad2Regions.slug",
+      nameHe: "yad2Regions.nameHe",
+      nameEn: "yad2Regions.nameEn",
+      feedUrl: "yad2Regions.feedUrl",
     },
   },
 }));
@@ -78,21 +87,35 @@ describe("processCollect", () => {
     const mockWhere = vi.fn().mockResolvedValue([]);
     const mockSet = vi.fn().mockReturnValue({ where: mockWhere });
     mockUpdate.mockReturnValue({ set: mockSet });
-    mockSelect.mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue([
-            {
-              id: "tel-aviv",
-              nameHe: "תל אביב-יפו",
-              nameEn: "Tel Aviv-Yafo",
-              yad2FeedUrl: "https://example.com/yad2",
-              facebookGroupUrls: [],
-            },
+
+    // For yad2 jobs, processCollect makes two selects:
+    // 1. yad2_regions (with .limit) -> region row
+    // 2. cities (no .limit)         -> array of cities in region
+    // For facebook jobs, one select on cities (with .limit).
+    mockSelect
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                id: 3,
+                slug: "tel-aviv",
+                nameHe: "תל אביב והסביבה",
+                nameEn: "Tel Aviv & Surroundings",
+                feedUrl: "https://example.com/yad2?region=3",
+              },
+            ]),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([
+            { id: "tel-aviv", nameHe: "תל אביב-יפו" },
+            { id: "ramat-gan", nameHe: "רמת גן" },
           ]),
         }),
-      }),
-    });
+      });
 
     mockYad2Collect.mockResolvedValue({ rawPayload: [{ id: 1 }], receivedCount: 1 });
 
@@ -112,7 +135,7 @@ describe("processCollect", () => {
       data: {
         runId: "run-1",
         source: "yad2",
-        cityId: "tel-aviv",
+        regionId: 3,
         enqueuedAt: Date.now(),
       } satisfies CollectJob,
     } as Job<CollectJob>;
@@ -121,7 +144,15 @@ describe("processCollect", () => {
 
     expect(mockYad2Collect).toHaveBeenCalledTimes(1);
     expect(mockYad2Collect).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "tel-aviv", nameHe: "תל אביב-יפו" }),
+      expect.objectContaining({
+        id: 3,
+        slug: "tel-aviv",
+        feedUrl: expect.stringContaining("region=3"),
+        cities: expect.arrayContaining([
+          expect.objectContaining({ id: "tel-aviv" }),
+          expect.objectContaining({ id: "ramat-gan" }),
+        ]),
+      }),
     );
     expect(mockPut).toHaveBeenCalledWith(
       "collection-runs/run-1.json",
@@ -157,7 +188,7 @@ describe("processCollect", () => {
       data: {
         runId: "run-big",
         source: "yad2",
-        cityId: "tel-aviv",
+        regionId: 3,
         enqueuedAt: Date.now(),
       } satisfies CollectJob,
     } as Job<CollectJob>;
@@ -182,7 +213,7 @@ describe("processCollect", () => {
       data: {
         runId: "run-webhook-fail",
         source: "yad2",
-        cityId: "tel-aviv",
+        regionId: 3,
         enqueuedAt: Date.now(),
       } satisfies CollectJob,
     } as Job<CollectJob>;
