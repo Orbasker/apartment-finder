@@ -89,8 +89,7 @@ export const collectionRunStatusEnum = pgEnum("collection_run_status", [
 
 // Yad2's gateway accepts a single `region` parameter (1..7). Listings are
 // scraped per region and then routed to the right city by Hebrew name match
-// (see apps/worker/src/adapters/yad2.ts). `cities.yad2_feed_url` is kept for
-// now as a future per-city override hook (precise topArea+area+city filters).
+// (see apps/worker/src/adapters/yad2.ts).
 export const yad2Regions = pgTable("yad2_regions", {
   id: integer("id").primaryKey(),
   slug: text("slug").notNull().unique(),
@@ -125,7 +124,6 @@ export const cities = pgTable(
     isActive: boolean("is_active").default(true).notNull(),
     isLaunchReady: boolean("is_launch_ready").default(false).notNull(),
     regionId: integer("region_id").references(() => yad2Regions.id, { onDelete: "set null" }),
-    yad2FeedUrl: text("yad2_feed_url"),
     facebookGroupUrls: text("facebook_group_urls")
       .array()
       .notNull()

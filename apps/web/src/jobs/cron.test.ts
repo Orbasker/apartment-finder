@@ -37,23 +37,6 @@ vi.mock("@apartment-finder/queue", () => ({
   ingestRawQueue: { add: vi.fn() },
 }));
 
-vi.mock("@/scrapers/yad2", () => ({
-  fetchYad2Listings: vi.fn(),
-  Yad2UpstreamUnavailableError: class extends Error {},
-}));
-
-vi.mock("@/ingestion/insert", () => ({
-  bulkInsertListings: vi.fn(),
-}));
-
-vi.mock("@/ingestion/pipeline", () => ({
-  processListing: vi.fn(),
-}));
-
-vi.mock("@/lib/contentHash", () => ({
-  contentHash: vi.fn(),
-}));
-
 import { getDb } from "@/db";
 import { collectQueue } from "@apartment-finder/queue";
 import { runApifyPollJob, runYad2PollJob } from "./cron";
@@ -65,7 +48,6 @@ function makeFacebookCitiesDb() {
       where: vi.fn().mockResolvedValue([
         {
           id: "tel-aviv",
-          yad2FeedUrl: "https://example.com/yad2",
           facebookGroupUrls: ["https://facebook.com/groups/tel-aviv-rentals"],
         },
       ]),

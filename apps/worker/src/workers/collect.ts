@@ -54,7 +54,6 @@ export async function processCollect(job: Job<CollectJob>): Promise<void> {
           id: schema.cities.id,
           nameHe: schema.cities.nameHe,
           nameEn: schema.cities.nameEn,
-          yad2FeedUrl: schema.cities.yad2FeedUrl,
           facebookGroupUrls: schema.cities.facebookGroupUrls,
         })
         .from(schema.cities)

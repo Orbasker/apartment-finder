@@ -9,7 +9,6 @@ export interface CollectorCityConfig {
   id: string;
   nameHe: string;
   nameEn: string;
-  yad2FeedUrl: string | null;
   facebookGroupUrls: string[];
 }
 

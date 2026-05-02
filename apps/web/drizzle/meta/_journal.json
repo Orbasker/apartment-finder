@@ -57,6 +57,13 @@
       "when": 1777734719802,
       "tag": "0007_tense_carmella_unuscione",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777738024696,
+      "tag": "0008_drop_city_yad2_feed_url",
+      "breakpoints": true
     }
   ]
 }
