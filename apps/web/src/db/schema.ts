@@ -87,6 +87,19 @@ export const collectionRunStatusEnum = pgEnum("collection_run_status", [
   "failed",
 ]);
 
+// Yad2's gateway accepts a single `region` parameter (1..7). Listings are
+// scraped per region and then routed to the right city by Hebrew name match
+// (see apps/worker/src/adapters/yad2.ts). `cities.yad2_feed_url` is kept for
+// now as a future per-city override hook (precise topArea+area+city filters).
+export const yad2Regions = pgTable("yad2_regions", {
+  id: integer("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  nameHe: text("name_he").notNull(),
+  nameEn: text("name_en").notNull(),
+  feedUrl: text("feed_url").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
 export const cities = pgTable(
   "cities",
   {
@@ -103,6 +116,7 @@ export const cities = pgTable(
     bboxWest: doublePrecision("bbox_west").notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     isLaunchReady: boolean("is_launch_ready").default(false).notNull(),
+    regionId: integer("region_id").references(() => yad2Regions.id, { onDelete: "set null" }),
     yad2FeedUrl: text("yad2_feed_url"),
     facebookGroupUrls: text("facebook_group_urls")
       .array()
@@ -114,6 +128,7 @@ export const cities = pgTable(
   (t) => ({
     slugUnique: uniqueIndex("cities_slug_unique").on(t.slug),
     activeIdx: index("cities_active_launch_ready_idx").on(t.isActive, t.isLaunchReady),
+    regionIdx: index("cities_region_idx").on(t.regionId, t.isActive),
   }),
 );
 
@@ -124,6 +139,7 @@ export const collectionRuns = pgTable(
     runId: text("run_id").notNull(),
     source: listingSourceEnum("source").notNull(),
     cityId: text("city_id").references(() => cities.id, { onDelete: "set null" }),
+    regionId: integer("region_id").references(() => yad2Regions.id, { onDelete: "set null" }),
     status: collectionRunStatusEnum("status").notNull().default("queued"),
     enqueuedAt: timestamp("enqueued_at", { withTimezone: true }).notNull().defaultNow(),
     collectedAt: timestamp("collected_at", { withTimezone: true }),
@@ -139,6 +155,7 @@ export const collectionRuns = pgTable(
     runIdUnique: uniqueIndex("collection_runs_run_id_unique").on(t.runId),
     sourceIdx: index("collection_runs_source_idx").on(t.source, t.enqueuedAt),
     cityIdx: index("collection_runs_city_idx").on(t.cityId, t.enqueuedAt),
+    regionIdx: index("collection_runs_region_idx").on(t.regionId, t.enqueuedAt),
   }),
 );
 // ---------------------------------------------------------------------------
@@ -657,3 +674,5 @@ export type AiUsageRow = typeof aiUsage.$inferSelect;
 export type NewAiUsageRow = typeof aiUsage.$inferInsert;
 export type City = typeof cities.$inferSelect;
 export type NewCity = typeof cities.$inferInsert;
+export type Yad2Region = typeof yad2Regions.$inferSelect;
+export type NewYad2Region = typeof yad2Regions.$inferInsert;

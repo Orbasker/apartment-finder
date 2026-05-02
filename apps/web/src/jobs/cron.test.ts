@@ -58,10 +58,8 @@ import { getDb } from "@/db";
 import { collectQueue } from "@apartment-finder/queue";
 import { runApifyPollJob, runYad2PollJob } from "./cron";
 
-function makeMockDb() {
-  const mockInsert = {
-    values: vi.fn().mockResolvedValue(undefined),
-  };
+function makeFacebookCitiesDb() {
+  const mockInsert = { values: vi.fn().mockResolvedValue(undefined) };
   const mockSelect = {
     from: vi.fn().mockReturnValue({
       where: vi.fn().mockResolvedValue([
@@ -79,14 +77,31 @@ function makeMockDb() {
   };
 }
 
+function makeYad2RegionsDb(regionRows: Array<{ id: number; slug: string }>) {
+  const mockInsert = { values: vi.fn().mockResolvedValue(undefined) };
+  const mockSelect = {
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(regionRows),
+    }),
+  };
+  return {
+    insert: vi.fn().mockReturnValue(mockInsert),
+    select: vi.fn().mockReturnValue(mockSelect),
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockState.useBullmqCollectors = "true";
 });
 
 describe("runYad2PollJob", () => {
-  it("inserts a collection run and enqueues a collect job when BullMQ collectors are enabled", async () => {
-    const mockDb = makeMockDb();
+  it("enqueues one collect job per active region (not per city)", async () => {
+    const mockDb = makeYad2RegionsDb([
+      { id: 3, slug: "tel-aviv" },
+      { id: 5, slug: "north-coast" },
+      { id: 6, slug: "jerusalem" },
+    ]);
     vi.mocked(getDb).mockReturnValue(mockDb as never);
 
     const result = await runYad2PollJob({ enforceSchedule: false });
@@ -95,25 +110,44 @@ describe("runYad2PollJob", () => {
     expect(result.payload.ok).toBe(true);
     expect(result.payload.queued).toBe(true);
     expect(result.payload.batchId).toBe("test-run-id-123");
-    expect(mockDb.insert).toHaveBeenCalledTimes(1);
-    expect(mockDb.insert().values).toHaveBeenCalledWith(
-      expect.objectContaining({ source: "yad2", cityId: "tel-aviv", status: "queued" }),
-    );
-    expect(collectQueue.add).toHaveBeenCalledWith(
+
+    expect(mockDb.insert).toHaveBeenCalledTimes(3);
+    const insertCalls = mockDb.insert().values.mock.calls.map((c: unknown[]) => c[0]);
+    expect(insertCalls).toEqual([
+      expect.objectContaining({ source: "yad2", regionId: 3, status: "queued" }),
+      expect.objectContaining({ source: "yad2", regionId: 5, status: "queued" }),
+      expect.objectContaining({ source: "yad2", regionId: 6, status: "queued" }),
+    ]);
+
+    expect(collectQueue.add).toHaveBeenCalledTimes(3);
+    expect(collectQueue.add).toHaveBeenNthCalledWith(
+      1,
       "collect",
       expect.objectContaining({
         source: "yad2",
-        cityId: "tel-aviv",
-        runId: "test-run-id-123-tel-aviv-yad2",
+        regionId: 3,
+        runId: "test-run-id-123-region-3-yad2",
       }),
       expect.any(Object),
     );
+  });
+
+  it("returns ok with zero queued when no region has launch-ready cities", async () => {
+    const mockDb = makeYad2RegionsDb([]);
+    vi.mocked(getDb).mockReturnValue(mockDb as never);
+
+    const result = await runYad2PollJob({ enforceSchedule: false });
+
+    expect(result.status).toBe(200);
+    expect(result.payload.queued).toBe(true);
+    expect(mockDb.insert).not.toHaveBeenCalled();
+    expect(collectQueue.add).not.toHaveBeenCalled();
   });
 });
 
 describe("runApifyPollJob", () => {
   it("inserts a collection run and enqueues a collect job for Facebook when BullMQ collectors are enabled", async () => {
-    const mockDb = makeMockDb();
+    const mockDb = makeFacebookCitiesDb();
     vi.mocked(getDb).mockReturnValue(mockDb as never);
 
     const result = await runApifyPollJob({

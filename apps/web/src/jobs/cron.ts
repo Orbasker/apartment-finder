@@ -7,8 +7,8 @@ import { processListing } from "@/ingestion/pipeline";
 import { contentHash } from "@/lib/contentHash";
 import { collectQueue } from "@apartment-finder/queue";
 import { getDb } from "@/db";
-import { cities, collectionRuns, listings } from "@/db/schema";
-import { and, eq, isNotNull, lt } from "drizzle-orm";
+import { cities, collectionRuns, listings, yad2Regions } from "@/db/schema";
+import { and, eq, isNotNull, lt, sql } from "drizzle-orm";
 
 export type JobRunResult = {
   status: number;
@@ -33,20 +33,22 @@ export async function runYad2PollJob(options?: {
     return { status: 200, payload: { ok: true, skipped: "outside schedule", localTime } };
   }
 
-  // NEW: enqueue-only path (BullMQ workers on VPS handle everything)
+  // NEW: enqueue-only path (BullMQ workers on VPS handle everything).
+  // Yad2 enqueues one job per REGION (Yad2's gateway only accepts ?region=N);
+  // markers are routed to individual cities by the worker adapter.
   if (env().USE_BULLMQ_COLLECTORS === "true") {
     const db = getDb();
-    const targets = await listCollectorCities("yad2");
+    const targets = await listCollectorRegions();
     const queued: string[] = [];
-    for (const city of targets) {
-      const runId = `${batchId}-${city.id}-yad2`;
+    for (const region of targets) {
+      const runId = `${batchId}-region-${region.id}-yad2`;
       await db
         .insert(collectionRuns)
-        .values({ runId, source: "yad2", cityId: city.id, status: "queued" });
+        .values({ runId, source: "yad2", regionId: region.id, status: "queued" });
       try {
         await collectQueue.add(
           "collect",
-          { runId, source: "yad2", cityId: city.id, enqueuedAt: Date.now() },
+          { runId, source: "yad2", regionId: region.id, enqueuedAt: Date.now() },
           {
             attempts: 3,
             backoff: { type: "exponential", delay: 30_000 },
@@ -55,7 +57,7 @@ export async function runYad2PollJob(options?: {
         queued.push(runId);
       } catch (err) {
         const message = errorMessage(err);
-        log.error("enqueue failed", { runId, cityId: city.id, error: message });
+        log.error("enqueue failed", { runId, regionId: region.id, error: message });
         // Mark the just-inserted row failed so it doesn't sit in `queued` forever
         // — no worker will ever pick it up.
         await db
@@ -234,6 +236,30 @@ async function listCollectorCities(source: "yad2" | "facebook") {
       ),
     );
   return source === "facebook" ? rows.filter((row) => row.facebookGroupUrls.length > 0) : rows;
+}
+
+/**
+ * DISTINCT regions that have ≥1 launch-ready city. Yad2's gateway is
+ * region-scoped, so we fetch once per region and route markers to cities at
+ * adapter time. A region with only dormant cities is skipped — it would still
+ * return markers, but they'd be tagged to non-launch-ready cities that
+ * aren't user-visible.
+ */
+async function listCollectorRegions() {
+  return await getDb()
+    .select({ id: yad2Regions.id, slug: yad2Regions.slug })
+    .from(yad2Regions)
+    .where(
+      and(
+        eq(yad2Regions.isActive, true),
+        sql`EXISTS (
+          SELECT 1 FROM ${cities}
+          WHERE ${cities.regionId} = ${yad2Regions.id}
+            AND ${cities.isActive} = true
+            AND ${cities.isLaunchReady} = true
+        )`,
+      ),
+    );
 }
 
 type BatchStats = { processed: number; unified: number; failed: number; alertsSent: number };
