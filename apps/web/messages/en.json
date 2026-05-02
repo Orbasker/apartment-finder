@@ -90,12 +90,66 @@
   "Matches": {
     "title": "Apartments",
     "description": "The apartments we find for you will appear here, based on your filters.",
-    "searchTitle": "Your search",
-    "citiesLabel": "Cities",
-    "anyCity": "Any city",
-    "editCity": "Edit city and neighborhoods",
-    "comingSoonTitle": "Coming soon",
-    "comingSoonBody": "Matching apartments will appear here in an organized inbox. For now, alerts are sent to the destinations you configured."
+    "tabs": {
+      "feed": "Feed",
+      "board": "Board",
+      "aria": "View modes"
+    },
+    "feed": {
+      "emptyNoMatchesTitle": "No matches yet",
+      "emptyNoMatchesBody": "As soon as we find apartments that match your filters, they will show up here. You can broaden your filters to increase the odds.",
+      "emptyAllSwipedTitle": "No new apartments",
+      "emptyAllSwipedBody": "You've gone through everything we have right now. Check back later.",
+      "undo": "Undo last",
+      "undoSuccess": "Status reverted. Refresh to see it back in the feed.",
+      "editFilters": "Edit filters",
+      "errorStatus": "We couldn't save your action. Try again."
+    },
+    "card": {
+      "openDetails": "Open listing details",
+      "mapAlt": "Map of the apartment location",
+      "pass": "Pass",
+      "save": "Save",
+      "like": "Like",
+      "openListing": "Open listing"
+    },
+    "annotations": {
+      "priceBelowMedian": "₪{delta} below median",
+      "priceAboveMedian": "₪{delta} above median",
+      "walkMinutes": "{mins} min walk from you",
+      "mustHaveCoverage": "{matched}/{total} must-have",
+      "freshMinutes": "{mins} min ago",
+      "freshHours": "{hours} hr ago"
+    },
+    "modal": {
+      "untitled": "Apartment",
+      "matchedAttributes": "Matches your filters",
+      "unverifiedAttributes": "Couldn't verify from the listing",
+      "statusLegend": "Status",
+      "openListing": "Open listing",
+      "openSource": "View source",
+      "infoLabels": {
+        "pricePerSqm": "Price per sqm",
+        "arnona": "Arnona",
+        "condition": "Condition",
+        "vaadBayit": "House committee",
+        "entryDate": "Entry date",
+        "balcony": "Balcony",
+        "totalFloors": "Floors in building",
+        "furniture": "Furniture"
+      }
+    },
+    "statusLabels": {
+      "new": "New",
+      "interested": "Interested",
+      "contacted": "Contacted",
+      "visited": "Visited",
+      "rejected": "Rejected"
+    },
+    "board": {
+      "comingSoonTitle": "Coming soon",
+      "comingSoonBody": "The kanban board (cards grouped by status) lands in the next update."
+    }
   },
   "Onboarding": {
     "firstPrompt": "Hi. In a few questions we will set up accurate apartment alerts. You can add several cities, each with its own neighborhoods. First, which city should we start with?",
