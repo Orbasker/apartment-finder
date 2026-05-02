@@ -11,11 +11,12 @@ import {
 } from "@dnd-kit/core";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { Annotation } from "@/matches/annotations";
 import type { MatchFeedItem, UserApartmentStatusKind } from "@/matches/types";
+import { toastError } from "@/lib/ui/toast";
 import { setApartmentStatusAction } from "../actions";
 import { KanbanColumn } from "./kanban-column";
 import { KanbanMoveMenu } from "./kanban-move-menu";
@@ -52,10 +53,10 @@ type KanbanBoardProps = {
 export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) {
   const t = useTranslations("Matches.board");
   const [columns, setColumns] = useState<ColumnsState>(initialColumns);
-  const [error, setError] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState<string>("");
   const [modalEntry, setModalEntry] = useState<KanbanEntry | null>(null);
   const [moveMenuEntry, setMoveMenuEntry] = useState<KanbanEntry | null>(null);
+  const [movePending, startMoveTransition] = useTransition();
   const isMobile = useIsMobile();
 
   const tColumns = useTranslations("Matches.board.columns");
@@ -82,8 +83,7 @@ export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) 
   );
 
   const moveCard = useCallback(
-    async (apartmentId: number, target: UserApartmentStatusKind) => {
-      setError(null);
+    (apartmentId: number, target: UserApartmentStatusKind) => {
       const located = findEntry(apartmentId);
       if (!located) return;
       const { entry, status: from } = located;
@@ -101,15 +101,17 @@ export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) 
       }));
       setAnnouncement(t("announceMoved", { column: columnLabels[target] }));
 
-      const result = await setApartmentStatusAction({ apartmentId, status: target });
-      if (!result.ok) {
-        setColumns((prev) => ({
-          ...prev,
-          [target]: prev[target].filter((e) => e.item.apartmentId !== apartmentId),
-          [from]: [entry, ...prev[from]],
-        }));
-        setError(t("errorStatus"));
-      }
+      startMoveTransition(async () => {
+        const result = await setApartmentStatusAction({ apartmentId, status: target });
+        if (!result.ok) {
+          setColumns((prev) => ({
+            ...prev,
+            [target]: prev[target].filter((e) => e.item.apartmentId !== apartmentId),
+            [from]: [entry, ...prev[from]],
+          }));
+          toastError(t("errorStatus"));
+        }
+      });
     },
     [findEntry, t, columnLabels],
   );
@@ -134,14 +136,14 @@ export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) 
   );
 
   const onModalChangeStatus = useCallback(
-    async (status: UserApartmentStatusKind) => {
+    (status: UserApartmentStatusKind) => {
       if (!modalEntry) return;
       const updated: KanbanEntry = {
         item: { ...modalEntry.item, status },
         annotations: modalEntry.annotations,
       };
       setModalEntry(updated);
-      await moveCard(modalEntry.item.apartmentId, status);
+      moveCard(modalEntry.item.apartmentId, status);
     },
     [modalEntry, moveCard],
   );
@@ -163,15 +165,6 @@ export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) 
           <DesktopView columns={columns} onOpenCard={setModalEntry} />
         )}
 
-        {error ? (
-          <div
-            role="status"
-            className="mx-auto w-full max-w-md rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200"
-          >
-            {error}
-          </div>
-        ) : null}
-
         <p className="sr-only" aria-live="polite">
           {announcement}
         </p>
@@ -183,7 +176,8 @@ export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) 
             item={modalEntry.item}
             listingUrl={modalEntry.item.sourceUrl}
             sourceUrl={modalEntry.item.sourceUrl}
-            onChangeStatus={(s) => void onModalChangeStatus(s)}
+            onChangeStatus={onModalChangeStatus}
+            statusPending={movePending}
           />
         ) : null}
 
@@ -192,7 +186,7 @@ export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) 
             open={moveMenuEntry !== null}
             onOpenChange={(open) => !open && setMoveMenuEntry(null)}
             currentStatus={moveMenuEntry.item.status}
-            onSelect={(s) => void moveCard(moveMenuEntry.item.apartmentId, s)}
+            onSelect={(s) => moveCard(moveMenuEntry.item.apartmentId, s)}
           />
         ) : null}
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
+import { useTransition } from "react";
 import {
   APARTMENT_ATTRIBUTE_KEYS,
   APARTMENT_ATTRIBUTE_LABELS,
@@ -13,9 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Spinner } from "@/components/ui/spinner";
 import { CityNeighborhoodsWizard } from "@/components/city-neighborhoods-wizard";
 import { RadiusSearchPicker } from "@/components/radius-search-picker";
+import { toastError, toastSuccess } from "@/lib/ui/toast";
 import { saveFiltersAction } from "./actions";
 import type { StoredFilters } from "@/filters/store";
 
@@ -33,9 +33,28 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
   const tCities = useTranslations("Cities");
   const tRadius = useTranslations("RadiusSearch");
   const tUnknowns = useTranslations("FilterSettings");
+  const tFilters = useTranslations("FilterSettings");
+  const [pending, startTransition] = useTransition();
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    startTransition(async () => {
+      try {
+        const result = await saveFiltersAction(fd);
+        if (result.ok) {
+          toastSuccess(tFilters("saveSuccess"));
+        } else {
+          toastError(tFilters("saveError"));
+        }
+      } catch {
+        toastError(tFilters("saveError"));
+      }
+    });
+  }
 
   return (
-    <form action={saveFiltersAction} className="space-y-4 pb-24 sm:space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4 pb-24 sm:space-y-6">
       <Section title="תקציב חודשי (₪)">
         <div className="grid grid-cols-2 gap-3">
           <Field
@@ -167,7 +186,7 @@ export function FiltersForm({ filters }: { filters: StoredFilters }) {
         </div>
       </Section>
 
-      <SubmitBar />
+      <SubmitBar pending={pending} />
     </form>
   );
 }
@@ -317,13 +336,11 @@ function Toggle({
   );
 }
 
-function SubmitBar() {
-  const { pending } = useFormStatus();
+function SubmitBar({ pending }: { pending: boolean }) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:pt-2">
       <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-1 sm:px-0">
-        <Button type="submit" disabled={pending} className="h-11 flex-1 text-base sm:flex-initial">
-          {pending && <Spinner className="h-4 w-4" />}
+        <Button type="submit" loading={pending} className="h-11 flex-1 text-base sm:flex-initial">
           {pending ? "שומר…" : "שמירה"}
         </Button>
       </div>

@@ -121,12 +121,23 @@ function parseRadiusSelection(formData: FormData): RadiusSelection | null {
   };
 }
 
-export async function saveFiltersAction(formData: FormData): Promise<void> {
+export type SaveFiltersResult = { ok: true } | { ok: false; error: string };
+
+export async function saveFiltersAction(formData: FormData): Promise<SaveFiltersResult> {
   const user = await getCurrentUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) return { ok: false, error: "unauthorized" };
+  try {
+    return await persistFilters(user.id, formData);
+  } catch (err) {
+    console.error("[saveFiltersAction] failed", err);
+    return { ok: false, error: "save_failed" };
+  }
+}
+
+async function persistFilters(userId: string, formData: FormData): Promise<SaveFiltersResult> {
   const radius = parseRadiusSelection(formData);
 
-  await upsertFilters(user.id, {
+  await upsertFilters(userId, {
     priceMinNis: parseOptionalInt(formData.get("priceMinNis")),
     priceMaxNis: parseOptionalInt(formData.get("priceMaxNis")),
     roomsMin: parseOptionalNum(formData.get("roomsMin")),
@@ -148,7 +159,7 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
   // over after a city was removed in the UI but the form somehow still has
   // them - shouldn't happen, but be defensive).
   const cities = parseCitySelections(formData, "cities");
-  await replaceCities(user.id, cities);
+  await replaceCities(userId, cities);
   const cityIds = new Set(cities.map((c) => c.cityId));
   const allowed = parseNeighborhoodSelections(formData, "allowedNeighborhoods").filter((n) =>
     cityIds.has(n.cityId),
@@ -156,8 +167,8 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
   const blocked = parseNeighborhoodSelections(formData, "blockedNeighborhoods").filter((n) =>
     cityIds.has(n.cityId),
   );
-  await replaceNeighborhoods(user.id, "allowed", allowed);
-  await replaceNeighborhoods(user.id, "blocked", blocked);
+  await replaceNeighborhoods(userId, "allowed", allowed);
+  await replaceNeighborhoods(userId, "blocked", blocked);
 
   const attrs: Array<{ key: ApartmentAttributeKey; requirement: AttributeRequirement }> = [];
   for (const key of APARTMENT_ATTRIBUTE_KEYS) {
@@ -167,14 +178,15 @@ export async function saveFiltersAction(formData: FormData): Promise<void> {
     if (!parsed.success) continue;
     attrs.push({ key, requirement: parsed.data });
   }
-  await replaceAttributes(user.id, attrs);
+  await replaceAttributes(userId, attrs);
 
-  await replaceTexts(user.id, "wish", parseList(formData.get("wishes")));
-  await replaceTexts(user.id, "dealbreaker", parseList(formData.get("dealbreakers")));
+  await replaceTexts(userId, "wish", parseList(formData.get("wishes")));
+  await replaceTexts(userId, "dealbreaker", parseList(formData.get("dealbreakers")));
 
   // First save = onboarding complete (so /filters can be used as the onboarding alternative).
-  await markOnboarded(user.id);
+  await markOnboarded(userId);
 
   revalidatePath("/filters");
   revalidatePath("/");
+  return { ok: true };
 }
