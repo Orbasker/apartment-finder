@@ -90,12 +90,66 @@
   "Matches": {
     "title": "דירות",
     "description": "כאן תופיע רשימת הדירות שמצאנו עבורך, לפי הסינונים שלך.",
-    "searchTitle": "החיפוש שלך",
-    "citiesLabel": "ערים",
-    "anyCity": "כל עיר",
-    "editCity": "עריכת עיר ושכונות",
-    "comingSoonTitle": "בקרוב",
-    "comingSoonBody": "דירות שיתאימו ייכנסו לכאן ויוצגו בתיבה מסודרת. בינתיים, ההתראות נשלחות לפי היעדים שהגדרת."
+    "tabs": {
+      "feed": "פיד",
+      "board": "לוח",
+      "aria": "מצבי תצוגה"
+    },
+    "feed": {
+      "emptyNoMatchesTitle": "עדיין אין התאמות",
+      "emptyNoMatchesBody": "ברגע שנמצא דירות שתואמות לסינונים שלך, הן יופיעו כאן. אפשר להרחיב את הסינונים כדי להגדיל את הסיכוי.",
+      "emptyAllSwipedTitle": "אין דירות חדשות",
+      "emptyAllSwipedBody": "סיימת לעבור על כל מה שיש כרגע. בדוק שוב מאוחר יותר.",
+      "undo": "החזר אחרונה",
+      "undoSuccess": "הסטטוס שוחזר. רענן את העמוד כדי לראות אותה שוב בפיד.",
+      "editFilters": "עריכת סינונים",
+      "errorStatus": "לא הצלחנו לשמור את הפעולה. נסה שוב."
+    },
+    "card": {
+      "openDetails": "פתח את פרטי הדירה",
+      "mapAlt": "מפה של מיקום הדירה",
+      "pass": "דלג",
+      "save": "שמור",
+      "like": "אהבתי",
+      "openListing": "פתח מודעה"
+    },
+    "annotations": {
+      "priceBelowMedian": "₪{delta} מתחת לחציון",
+      "priceAboveMedian": "₪{delta} מעל החציון",
+      "walkMinutes": "{mins} דק׳ הליכה ממך",
+      "mustHaveCoverage": "{matched}/{total} חובה",
+      "freshMinutes": "פורסם לפני {mins} דק׳",
+      "freshHours": "פורסם לפני {hours} שעות"
+    },
+    "modal": {
+      "untitled": "דירה",
+      "matchedAttributes": "תואם לסינונים שלך",
+      "unverifiedAttributes": "לא הצלחנו לאמת מהמודעה",
+      "statusLegend": "סטטוס",
+      "openListing": "פתח מודעה",
+      "openSource": "צפייה במקור",
+      "infoLabels": {
+        "pricePerSqm": "מחיר למ\"ר",
+        "arnona": "ארנונה",
+        "condition": "מצב הנכס",
+        "vaadBayit": "ועד בית",
+        "entryDate": "תאריך כניסה",
+        "balcony": "מרפסת",
+        "totalFloors": "קומות בבניין",
+        "furniture": "ריהוט"
+      }
+    },
+    "statusLabels": {
+      "new": "חדש",
+      "interested": "מעוניין",
+      "contacted": "פניתי",
+      "visited": "ביקרתי",
+      "rejected": "פסלתי"
+    },
+    "board": {
+      "comingSoonTitle": "בקרוב",
+      "comingSoonBody": "תצוגת לוח (כרטיסיות לפי סטטוס) תהיה זמינה בעדכון הבא."
+    }
   },
   "Onboarding": {
     "firstPrompt": "שלום! בכמה שאלות נכין לך התראות מדויקות לדירות. אפשר להוסיף כמה ערים שונות, וכל עיר עם השכונות שלה. נתחיל - באיזו עיר ראשונה את/ה מחפש/ת דירה?",
