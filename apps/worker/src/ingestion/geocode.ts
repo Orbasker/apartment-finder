@@ -49,14 +49,26 @@ export function normalizeAddressKey(parts: {
 
 /** Geocode an address via Google. Returns null if no API key or no result. */
 export async function geocode(addressKey: string): Promise<GeocodeResult> {
+  const startedAt = Date.now();
   if (!addressKey) return NULL_RESULT;
 
   const cached = await readCache(addressKey);
-  if (cached) return cached;
+  if (cached) {
+    log.info("geocode", {
+      result: "cache_hit",
+      addressKey,
+      ms: Date.now() - startedAt,
+    });
+    return cached;
+  }
 
   const apiKey = env().GOOGLE_GEOCODING_API_KEY;
   if (!apiKey) {
-    log.warn("GOOGLE_GEOCODING_API_KEY not set - skipping geocode");
+    log.warn("geocode", {
+      result: "no_api_key",
+      addressKey,
+      ms: Date.now() - startedAt,
+    });
     return NULL_RESULT;
   }
 
@@ -70,18 +82,33 @@ export async function geocode(addressKey: string): Promise<GeocodeResult> {
   try {
     response = await fetch(url, { method: "GET" });
   } catch (err) {
-    log.error("geocode fetch failed", { error: errorMessage(err) });
+    log.error("geocode", {
+      result: "fetch_error",
+      addressKey,
+      ms: Date.now() - startedAt,
+      error: errorMessage(err),
+    });
     return NULL_RESULT;
   }
 
   if (!response.ok) {
-    log.warn("geocode returned non-200", { status: response.status });
+    log.warn("geocode", {
+      result: "http_error",
+      addressKey,
+      status: response.status,
+      ms: Date.now() - startedAt,
+    });
     return NULL_RESULT;
   }
 
   const json = (await response.json().catch(() => null)) as GoogleGeocodeResponse | null;
   if (!json || json.status !== "OK" || !json.results?.length) {
-    log.warn("geocode no results", { status: json?.status, addressKey });
+    log.info("geocode", {
+      result: "no_result",
+      status: json?.status,
+      addressKey,
+      ms: Date.now() - startedAt,
+    });
     return NULL_RESULT;
   }
 
@@ -101,6 +128,11 @@ export async function geocode(addressKey: string): Promise<GeocodeResult> {
   await writeCache(addressKey, result).catch((err) =>
     log.error("geocode cache write failed", { error: errorMessage(err) }),
   );
+  log.info("geocode", {
+    result: "api_ok",
+    addressKey,
+    ms: Date.now() - startedAt,
+  });
   return result;
 }
 
