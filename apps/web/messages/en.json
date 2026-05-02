@@ -126,7 +126,6 @@
       "errorStatus": "We couldn't save your action. Try again."
     },
     "card": {
-      "openDetails": "Open listing details",
       "mapAlt": "Map of the apartment location",
       "pass": "Pass",
       "save": "Save",
@@ -281,7 +280,8 @@
       "close": "Close",
       "unknown": "Unknown",
       "missingLocation": "<countTag>{count}</countTag> listings without an exact location are not shown on the map.",
-      "switchToTable": "Switch to table"
+      "switchToTable": "Switch to table",
+      "unavailable": "Map is currently unavailable."
     }
   }
 }
