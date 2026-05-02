@@ -167,8 +167,6 @@
       "rejected": "פסלתי"
     },
     "board": {
-      "comingSoonTitle": "בקרוב",
-      "comingSoonBody": "תצוגת לוח (כרטיסיות לפי סטטוס) תהיה זמינה בעדכון הבא.",
       "columns": {
         "new": "חדשות",
         "interested": "מעניינות",
@@ -176,7 +174,6 @@
         "visited": "צפיתי",
         "rejected": "פסלתי"
       },
-      "columnCount": "{count}",
       "emptyColumn": "אין דירות במצב הזה",
       "emptyAllTitle": "עדיין אין התאמות",
       "emptyAllBody": "ברגע שנמצא דירות שתואמות לסינונים שלך, הן יופיעו כאן.",

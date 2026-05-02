@@ -167,8 +167,6 @@
       "rejected": "Rejected"
     },
     "board": {
-      "comingSoonTitle": "Coming soon",
-      "comingSoonBody": "The kanban board (cards grouped by status) lands in the next update.",
       "columns": {
         "new": "New",
         "interested": "Interested",
@@ -176,7 +174,6 @@
         "visited": "Visited",
         "rejected": "Rejected"
       },
-      "columnCount": "{count}",
       "emptyColumn": "No apartments in this state",
       "emptyAllTitle": "No matches yet",
       "emptyAllBody": "As soon as we find apartments that match your filters, they will show up here.",

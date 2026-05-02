@@ -26,6 +26,13 @@ export function KanbanMoveMenu({
 }: KanbanMoveMenuProps) {
   const t = useTranslations("Matches.board");
   const tColumns = useTranslations("Matches.board.columns");
+  const columnLabels: Record<UserApartmentStatusKind, string> = {
+    new: tColumns("new"),
+    interested: tColumns("interested"),
+    contacted: tColumns("contacted"),
+    visited: tColumns("visited"),
+    rejected: tColumns("rejected"),
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="text-start" dir="rtl">
@@ -43,13 +50,11 @@ export function KanbanMoveMenu({
                   }}
                   className={cn(
                     "inline-flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors",
-                    isCurrent
-                      ? "border-foreground/40 bg-muted text-foreground"
-                      : "hover:bg-muted",
+                    isCurrent ? "border-foreground/40 bg-muted text-foreground" : "hover:bg-muted",
                   )}
                   aria-current={isCurrent ? "true" : undefined}
                 >
-                  <span>{tColumns(kind)}</span>
+                  <span>{columnLabels[kind]}</span>
                 </button>
               </li>
             );

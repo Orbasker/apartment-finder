@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { Annotation } from "@/matches/annotations";
@@ -59,6 +59,16 @@ export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) 
   const isMobile = useIsMobile();
 
   const tColumns = useTranslations("Matches.board.columns");
+  const columnLabels: Record<UserApartmentStatusKind, string> = useMemo(
+    () => ({
+      new: tColumns("new"),
+      interested: tColumns("interested"),
+      contacted: tColumns("contacted"),
+      visited: tColumns("visited"),
+      rejected: tColumns("rejected"),
+    }),
+    [tColumns],
+  );
 
   const findEntry = useCallback(
     (apartmentId: number): { entry: KanbanEntry; status: UserApartmentStatusKind } | null => {
@@ -89,7 +99,7 @@ export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) 
         [from]: prev[from].filter((e) => e.item.apartmentId !== apartmentId),
         [target]: [moved, ...prev[target]],
       }));
-      setAnnouncement(t("announceMoved", { column: tColumns(target) }));
+      setAnnouncement(t("announceMoved", { column: columnLabels[target] }));
 
       const result = await setApartmentStatusAction({ apartmentId, status: target });
       if (!result.ok) {
@@ -101,7 +111,7 @@ export function KanbanBoard({ initialColumns, totalEntries }: KanbanBoardProps) 
         setError(t("errorStatus"));
       }
     },
-    [findEntry, t, tColumns],
+    [findEntry, t, columnLabels],
   );
 
   const sensors = useSensors(
@@ -201,12 +211,7 @@ function DesktopView({
   // child on the right, so iterate in spec order and the visual end-result
   // matches the ticket.
   return (
-    <div
-      dir="rtl"
-      className="flex gap-3 overflow-x-auto pb-2"
-      role="group"
-      aria-label="kanban"
-    >
+    <div dir="rtl" className="flex gap-3 overflow-x-auto pb-2" role="group" aria-label="kanban">
       {STATUS_ORDER.map((status) => (
         <KanbanColumn
           key={status}
@@ -231,6 +236,13 @@ function CarouselView({
 }) {
   const t = useTranslations("Matches.board");
   const tColumns = useTranslations("Matches.board.columns");
+  const columnLabels: Record<UserApartmentStatusKind, string> = {
+    new: tColumns("new"),
+    interested: tColumns("interested"),
+    contacted: tColumns("contacted"),
+    visited: tColumns("visited"),
+    rejected: tColumns("rejected"),
+  };
   const [activeIdx, setActiveIdx] = useState(0);
   const goPrev = () => setActiveIdx((i) => Math.max(0, i - 1));
   const goNext = () => setActiveIdx((i) => Math.min(STATUS_ORDER.length - 1, i + 1));
@@ -261,7 +273,7 @@ function CarouselView({
               )}
               aria-current={i === activeIdx ? "true" : undefined}
             >
-              <span>{tColumns(status)}</span>
+              <span>{columnLabels[status]}</span>
               <span className="rounded-full bg-background/30 px-1.5 text-[10px] leading-4">
                 {columns[status].length}
               </span>
@@ -325,4 +337,3 @@ function useIsMobile(): boolean {
   }, []);
   return isMobile;
 }
-

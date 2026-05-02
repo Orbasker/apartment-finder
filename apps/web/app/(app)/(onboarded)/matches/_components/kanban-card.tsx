@@ -37,11 +37,8 @@ export function KanbanCard({
 }: KanbanCardProps) {
   const t = useTranslations("Matches.board");
   // Keep only the two compact annotations from the spec.
-  const compact = annotations.filter(
-    (a) => a.kind === "price_vs_median" || a.kind === "fresh",
-  );
-  const titleLine =
-    item.formattedAddress ?? item.neighborhood ?? item.city ?? "";
+  const compact = annotations.filter((a) => a.kind === "price_vs_median" || a.kind === "fresh");
+  const titleLine = item.formattedAddress ?? item.neighborhood ?? item.city ?? "";
 
   return (
     <div

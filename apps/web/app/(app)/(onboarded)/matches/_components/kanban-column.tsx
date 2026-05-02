@@ -28,6 +28,13 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   const t = useTranslations("Matches.board");
   const tColumns = useTranslations("Matches.board.columns");
+  const columnLabels: Record<UserApartmentStatusKind, string> = {
+    new: tColumns("new"),
+    interested: tColumns("interested"),
+    contacted: tColumns("contacted"),
+    visited: tColumns("visited"),
+    rejected: tColumns("rejected"),
+  };
   const { setNodeRef, isOver } = useDroppable({ id: `column:${status}` });
 
   return (
@@ -41,16 +48,14 @@ export function KanbanColumn({
       )}
     >
       <header className="flex items-center justify-between px-2 py-1.5">
-        <h2 className="text-sm font-medium">{tColumns(status)}</h2>
+        <h2 className="text-sm font-medium">{columnLabels[status]}</h2>
         <span className="rounded-full bg-background px-2 py-0.5 text-xs text-muted-foreground">
           {entries.length}
         </span>
       </header>
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-1 pb-1">
         {entries.length === 0 ? (
-          <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-            {t("emptyColumn")}
-          </p>
+          <p className="px-2 py-4 text-center text-xs text-muted-foreground">{t("emptyColumn")}</p>
         ) : (
           entries.map((entry) =>
             enableDrag ? (
