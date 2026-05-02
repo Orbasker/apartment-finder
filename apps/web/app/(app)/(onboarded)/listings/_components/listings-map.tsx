@@ -2,12 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import {
-  Map,
-  AdvancedMarker,
-  useMap,
-  type MapCameraChangedEvent,
-} from "@vis.gl/react-google-maps";
+import { Map, AdvancedMarker, useMap, type MapCameraChangedEvent } from "@vis.gl/react-google-maps";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import type { MatchedListing } from "@/listings/types";
@@ -93,8 +88,7 @@ export function ListingsMap({
   const initialCenter =
     query.lat !== null && query.lng !== null ? { lat: query.lat, lng: query.lng } : TEL_AVIV_CENTER;
   const initialZoom = query.zoom ?? TEL_AVIV_ZOOM;
-  const shouldFitBoundsOnLoad =
-    query.lat === null || query.lng === null || query.zoom === null;
+  const shouldFitBoundsOnLoad = query.lat === null || query.lng === null || query.zoom === null;
 
   const selectedSummary = selected ? formatSummary(selected) : null;
   const selectedSource = selected ? sourceLabel(selected) : null;
