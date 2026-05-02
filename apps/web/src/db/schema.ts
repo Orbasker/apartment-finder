@@ -100,6 +100,14 @@ export const yad2Regions = pgTable("yad2_regions", {
   isActive: boolean("is_active").default(true).notNull(),
 });
 
+export const userApartmentStatusEnum = pgEnum("user_apartment_status_kind", [
+  "new",
+  "interested",
+  "contacted",
+  "visited",
+  "rejected",
+]);
+
 export const cities = pgTable(
   "cities",
   {
@@ -472,11 +480,40 @@ export const sentAlerts = pgTable(
       .references(() => apartments.id, { onDelete: "cascade" }),
     destination: notificationDestinationEnum("destination").default("email").notNull(),
     sentAt: timestamp("sent_at", { withTimezone: true }).defaultNow().notNull(),
+    seenAt: timestamp("seen_at", { withTimezone: true }),
     providerMessageId: text("provider_message_id"),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.userId, t.apartmentId, t.destination] }),
     sentAtIdx: index("sent_alerts_sent_at_idx").on(t.sentAt.desc()),
+    userUnseenIdx: index("sent_alerts_user_unseen_idx")
+      .on(t.userId)
+      .where(sql`${t.seenAt} IS NULL`),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// user_apartment_status: per-user-per-apartment decision state for the matches
+// feed and kanban. Composite PK; default 'new' on first write so the feed and
+// board can left-join and treat absent rows as new without a coalesce dance.
+// ---------------------------------------------------------------------------
+
+export const userApartmentStatus = pgTable(
+  "user_apartment_status",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    apartmentId: integer("apartment_id")
+      .notNull()
+      .references(() => apartments.id, { onDelete: "cascade" }),
+    status: userApartmentStatusEnum("status").default("new").notNull(),
+    note: text("note"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.userId, t.apartmentId] }),
+    userStatusIdx: index("user_apartment_status_user_status_idx").on(t.userId, t.status),
   }),
 );
 
@@ -676,3 +713,5 @@ export type City = typeof cities.$inferSelect;
 export type NewCity = typeof cities.$inferInsert;
 export type Yad2Region = typeof yad2Regions.$inferSelect;
 export type NewYad2Region = typeof yad2Regions.$inferInsert;
+export type UserApartmentStatus = typeof userApartmentStatus.$inferSelect;
+export type NewUserApartmentStatus = typeof userApartmentStatus.$inferInsert;
